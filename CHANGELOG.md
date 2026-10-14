@@ -6,16 +6,20 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+### Planned
+- **v2: one view of the records you already keep.** Read-only readers for an agent team's requests, decisions, rule
+  cards, git gates and projects, and a page built around them (Waiting, Projects, a map, Record). It is in development
+  and is not part of this release: it passes its tests on Windows, not yet on Linux and macOS.
+
+## [1.1.0] - 2026-10-14
+
+### Fixed
+- **A backup or a kept version is never overwritten by the next one.** Files named by the time could be given the same
+  name twice on a clock that repeats a microsecond (seen on Windows with Python 3.10), so the second overwrote the
+  first. Every such name now comes from one stamp that never repeats in a process and keeps the order the files were
+  made; tests freeze the clock to prove it.
+
 ### Added
-- **v2 preview: one view of the records you already keep** (`/v2`, read-only). Five readers in `semantext/sources/`
-  read the files a person who runs several agents already has, where they lie, and never write: each agent's requests
-  (`cards`), the decision register (`record`), rule cards (`rules`), each repository's git gates by a static read of
-  git's own files, worktree by worktree (`gates`), and the agents, projects, map and documents (`places`). Every line a
-  reader cannot use is listed as a problem, never dropped. The page has four places on one bar: Waiting (the home,
-  card for card), Projects, the map and Record, with drawers for an agent, its rules, a gate and documents.
-  `semantext statusline` gives Claude Code's status bar one line. Each reader was checked against the tool that owns
-  its data on real files, attacked by an independent reviewer, and shown to catch planted faults; a gate's state is
-  only ever a read, never "armed".
 - **Answer from chat.** Send a request's number and your choice to any of your AIs, as a message of its own: `#12 2`,
   `#12 2, but after the tests` (words follow one of `. , ; :`), `#12: your own words` (for a question with no
   options), `#13 done`, `#14 add`. The hook records it as your answer, the way the page and the terminal record theirs

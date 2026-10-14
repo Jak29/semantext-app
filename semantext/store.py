@@ -12,7 +12,8 @@ import os
 import re
 import shutil
 import time
-from datetime import datetime
+import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -55,6 +56,22 @@ FEATURES = {
 
 def now() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+_STAMP_LOCK = threading.Lock()
+_last_stamp: list = [None]
+
+
+def stamp() -> str:
+    """Now, to the microsecond, and never the same twice in one process. A file named by it (a backup, a kept version)
+    never overwrites the one before: on some clocks (Windows with Python 3.10) two calls in a row read the same
+    microsecond, so the second is moved on by one, which keeps the names in the order they were made."""
+    with _STAMP_LOCK:
+        t = datetime.now()
+        if _last_stamp[0] is not None and t <= _last_stamp[0]:
+            t = _last_stamp[0] + timedelta(microseconds=1)
+        _last_stamp[0] = t
+    return t.strftime("%Y%m%d-%H%M%S-%f")
 
 
 def dump(data: dict) -> str:
@@ -142,8 +159,8 @@ class Store:
     def _keep(self, name: str) -> None:
         """The previous version goes to history/ before any write: undo at the file level, and nothing lost."""
         self.history_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        shutil.copyfile(self.path(name), self.history_dir / f"{name}-{stamp}.yaml")
+        mark = stamp()
+        shutil.copyfile(self.path(name), self.history_dir / f"{name}-{mark}.yaml")
 
     def save(self, name: str, data: dict) -> None:
         self._keep(name)
@@ -219,8 +236,8 @@ class Store:
             except (ValueError, OSError):
                 readable = False
             if not readable:
-                stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-                shutil.copyfile(self.state_path, self.state_path.with_name(f"state-unreadable-{stamp}.json"))
+                mark = stamp()
+                shutil.copyfile(self.state_path, self.state_path.with_name(f"state-unreadable-{mark}.json"))
         tmp = self.state_path.with_name(f"state-{os.getpid()}.tmp")
         tmp.write_text(json.dumps(s, indent=1, ensure_ascii=False), encoding="utf-8")
         for attempt in range(20):   # Windows refuses the swap while another process is reading the file
@@ -670,8 +687,8 @@ class Store:
             before = {x.get("id") for x in self.every_entry(self.load(name))}
         except Refused:
             before = None
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        kept = self.history_dir / f"{name}-{stamp}-redo.yaml"
+        mark = stamp()
+        kept = self.history_dir / f"{name}-{mark}-redo.yaml"
         shutil.copyfile(p, kept)
         shutil.copyfile(newest, p)
         newest.replace(newest.with_name(newest.stem + "-used.yaml"))

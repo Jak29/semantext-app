@@ -553,40 +553,6 @@ def cmd_mcp(store: Store, args) -> int:
     return serve(store)
 
 
-def cmd_statusline(args) -> int:
-    """One line for Claude Code's status bar, from your sources: what waits for your word, or how many of your
-    decisions are in force. It reads whatever Claude Code sends on standard input and ignores it, writes nothing (it
-    never opens the home, so it never creates one), and never fails: on any trouble it prints "Semantext: unavailable"
-    and exits 0."""
-    sys.dont_write_bytecode = True   # nothing is written, not even a cached copy of the code it loads
-    line = "Semantext: unavailable"
-    try:
-        stdin = sys.stdin
-        if stdin is not None and not stdin.isatty():
-            import threading   # read in the background, so a sender that never closes cannot hold the line up
-
-            def drain():
-                try:
-                    getattr(stdin, "buffer", stdin).read(1 << 20)
-                except Exception:  # noqa: BLE001
-                    pass
-            reader = threading.Thread(target=drain, daemon=True)
-            reader.start()
-            reader.join(0.5)
-    except Exception:  # noqa: BLE001  what Claude Code sends is not used, so a fault reading it changes nothing
-        pass
-    try:
-        from .sources import view
-        line = view.status_line(Path(args.home).expanduser() if args.home else None, args.width)
-    except Exception:  # noqa: BLE001  the last resort: still one line
-        pass
-    try:
-        print(line)
-    except Exception:  # noqa: BLE001
-        pass
-    return 0
-
-
 def _target_file(args) -> Path:
     if args.file:
         return Path(args.file).expanduser()
@@ -1039,9 +1005,6 @@ def build_parser() -> argparse.ArgumentParser:
                       "for you)")
     add("mcp", cmd_mcp, "Semantext for any AI tool that speaks MCP: the card and the inbox, over stdin and stdout (the "
                         "tool runs it for you)")
-    sp = add("statusline", None, "one line for Claude Code's status bar: what waits for your word, from your sources "
-                                 "(it writes nothing, and on any trouble prints \"Semantext: unavailable\")")
-    sp.add_argument("--width", default="80", help="the most characters the line may take (default 80)")
     tools = ("claude-code", "codex", "freebuff", "agents-md")
     for verb, fn, text in (("install", cmd_install, "connect an AI tool (prints the change; --apply makes it)"),
                            ("uninstall", cmd_uninstall, "disconnect an AI tool (--apply makes the change)")):
@@ -1118,8 +1081,6 @@ def main(argv: list[str] | None = None) -> int:
             import os
             os.environ["SEMANTEXT_HOME"] = args.home
         return hook_main()
-    if args.command == "statusline":   # before the home is opened: the status line writes nothing, not even a new home
-        return cmd_statusline(args)
     if not args.command:
         parser.print_help()
         return 0

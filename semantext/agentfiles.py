@@ -13,7 +13,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from .store import Refused, Store
+from .store import Refused, Store, stamp
 
 START = "<!-- semantext:start"       # the start line is START + " -->", or START + " +newline -->" (see install)
 START_PLAIN, START_ADDED_NL = START + " -->", START + " +newline -->"
@@ -94,7 +94,7 @@ def _split(text: str, path: Path) -> tuple[str, str, str, bool] | None:
 def _backup(path: Path) -> Path | None:
     if not path.exists():
         return None
-    backup = path.with_name(f"{path.name}.semantext-backup-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}")
+    backup = path.with_name(f"{path.name}.semantext-backup-{stamp()}")
     shutil.copyfile(path, backup)
     return backup
 

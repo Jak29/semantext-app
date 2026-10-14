@@ -25,7 +25,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from .store import Refused, now
+from .store import Refused, now, stamp
 
 MAX_TITLE, MAX_TEXT, MAX_OPTIONS, CARD_LINES = 120, 1000, 9, 5
 MAX_RULE = 400        # the same limit as a rule taught at the user's own terminal
@@ -291,7 +291,7 @@ class Inbox:
                     "options": opts, "recommend": recommend or None}
         with self._locked():
             rid = 1 + max(self._seq(), max((e["id"] for e in self.events()), default=0))
-            event = {"type": "request", "id": rid, "uid": datetime.now().strftime("%Y%m%d-%H%M%S-%f"), "at": now(),
+            event = {"type": "request", "id": rid, "uid": stamp(), "at": now(),
                      "from": source, "title": title, "why": why, **body}
             if how:
                 event["from_how"] = how

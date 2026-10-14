@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from .store import Refused
+from .store import Refused, stamp
 
 EVENT = "UserPromptSubmit"
 # Our hook however it is spelled: `semantext hook`, `semantext.exe hook`, a quoted path to either, `python -m semantext
@@ -93,8 +93,8 @@ def _load(path: Path) -> dict:
 def _backup(path: Path) -> Path | None:
     if not path.exists():
         return None
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")   # to the microsecond: two in one second never collide
-    backup = path.with_name(f"{path.name}.semantext-backup-{stamp}")
+    mark = stamp()   # to the microsecond: two in one second never collide
+    backup = path.with_name(f"{path.name}.semantext-backup-{mark}")
     shutil.copyfile(path, backup)
     return backup
 

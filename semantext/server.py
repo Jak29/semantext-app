@@ -24,7 +24,6 @@ from .feed import Feed
 from .hook import LIMIT_BYTES, WORDS, compose, fit, rule_lines, sender_name, sent_layers
 from .inbox import Inbox, age, card_notes
 from .sender import whose
-from .sources import view
 from .store import Refused, Store
 
 
@@ -341,13 +340,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, metrics(st))
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
-            if u.path == "/v2":   # the page in four places, read-only on the person's own files (sources/view.py)
-                return self._send(200, (paths.static_dir() / "v2.html").read_bytes(), "text/html; charset=utf-8")
-            if u.path.startswith("/api/v2/"):
-                if not self._page_reads():
-                    return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
-                body = view.answer(u.path[len("/api/v2/"):], home=st.root)
-                return self._send(200, body) if body is not None else self._send(404, {"error": "not found"})
             return self._send(404, {"error": "not found"})
         except (Refused, ValueError, KeyError, TypeError) as e:
             return self._send(400, {"error": str(e)})

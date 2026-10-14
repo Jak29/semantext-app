@@ -1,3 +1,3 @@
 """Semantext: keep your standing rules for how an AI assistant reads you, and hand them to it with every prompt."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
