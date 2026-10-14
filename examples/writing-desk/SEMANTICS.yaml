@@ -1,0 +1,93 @@
+# An example Semantext environment: a small team that drafts and reviews documents together.
+# Copy this folder to ~/.semantext/profiles/writing-desk/ and run: semantext env use writing-desk
+
+environment:
+  id: writing-desk
+  version: 0.1.0
+  status: candidate
+  owner: you
+  title: Writing desk
+  scope: Drafting and reviewing documents with a small team.
+  inherits: [base@0.1.0]
+
+entries:
+  - id: writing-desk.draft-is-for-comment
+    kind: rule
+    statement: A draft shared for review is for comment. Suggest changes and say why; do not rewrite it unless asked.
+    applies_when: Someone shares a draft and asks what you think.
+    mode: stationary
+    enabled: true
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+      note: Written when the environment was set up.
+
+  - id: writing-desk.keep-the-voice
+    kind: rule
+    statement: Keep the author's voice, spelling and house style. Fix errors; do not restyle.
+    applies_when: Editing or proofreading someone else's text.
+    mode: stationary
+    enabled: true
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+
+  - id: writing-desk.summary-first
+    kind: rule
+    statement: When you return an edited text, start with a short list of what you changed and why.
+    applies_when: Returning an edited document.
+    mode: adaptive
+    enabled: true
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+
+  - id: writing-desk.cuts-need-the-author
+    kind: rule
+    statement: Removing a paragraph or more is the author's decision. Propose the cut; do not make it.
+    applies_when: An edit would remove a paragraph or more.
+    mode: stationary
+    enabled: true
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+
+  # Taught with `semantext teach`, which keeps the correction word for word as the statement and in
+  # provenance.words. The statement was then tidied on the page, and the rule pinned as stationary (`semantext pin`);
+  # provenance.words still holds what was actually said.
+  - id: writing-desk.leave-headings
+    kind: rule
+    statement: Leave headings exactly as written; edit the body text only.
+    applies_when: Editing a document that has headings.
+    mode: stationary
+    enabled: true
+    provenance:
+      type: LEARNED
+      words: "Please stop changing my headings. Only touch the body text."
+      when: "2026-10-13T12:30:00+00:00"
+
+  - id: writing-desk.american-spelling
+    kind: rule
+    statement: Use American spelling.
+    applies_when: Writing or editing any text.
+    mode: stationary
+    enabled: false
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+      note: Switched off while the team decides; it stays in the file, off the card.
+
+  - id: writing-desk.bullet-everything
+    kind: rule
+    statement: Turn long paragraphs into bullet points.
+    applies_when: Editing long paragraphs.
+    mode: stationary
+    enabled: false
+    archived: true
+    archived_at: "2026-10-13T13:00:00+00:00"
+    provenance:
+      type: SETTING
+      when: "2026-10-13T12:00:00+00:00"
+      note: Undone; an archived rule stays in the file and never appears on the card.
+
+tests: []

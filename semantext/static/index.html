@@ -1,0 +1,1633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantext</title>
+<style>
+/* Quiet by design (DESIGN.md has the reasons and their sources). Neutral greys carry every surface, line and word. One
+   accent, gold, marks what is about you right now: a decision waiting, your own words, the live dot. Red is kept for
+   what is broken. Hierarchy comes from size, weight and tone, so the page still reads in greyscale. Each screen holds a
+   few groups, set apart by space rather than boxes, and explanations open only when asked for. Nothing here loads from
+   the network. */
+:root {
+  color-scheme: light;
+  --bg: #fafaf9;
+  --surface: #f1f1ef;
+  --raised: #ffffff;
+  --line: #e6e6e2;
+  --line-2: #d3d3ce;
+  --text: #1b1b19;
+  --text-2: #5a5a55;
+  --text-3: #6f6f69;
+  --accent: #b9831c;
+  --accent-ink: #8a5f0b;
+  --on-accent: #1d1503;
+  --danger: #c2412d;
+  --shadow: 0 12px 32px rgba(20, 20, 18, .14);
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", "SF Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1b1b1a; --raised: #222220; --line: #2a2a28; --line-2: #3b3b38;
+    --text: #ececea; --text-2: #a6a6a0; --text-3: #80807a;
+    --accent: #e8b553; --accent-ink: #e8b553; --on-accent: #1d1503; --danger: #f0705f;
+    --shadow: 0 16px 40px rgba(0, 0, 0, .5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1b1b1a; --raised: #222220; --line: #2a2a28; --line-2: #3b3b38;
+  --text: #ececea; --text-2: #a6a6a0; --text-3: #80807a;
+  --accent: #e8b553; --accent-ink: #e8b553; --on-accent: #1d1503; --danger: #f0705f;
+  --shadow: 0 16px 40px rgba(0, 0, 0, .5);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--ui); min-height: 100vh;
+  display: grid; grid-template-columns: 216px minmax(0, 1fr); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; }
+.meta { font-size: 12px; line-height: 1.5; color: var(--text-3); }
+.soft { color: var(--text-2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+.label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.warn { color: var(--danger); }
+.row { display: flex; align-items: center; gap: 12px; }
+.grow { flex: 1; min-width: 0; }
+kbd { font: 12px var(--mono); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line-2); color: var(--text); }
+
+/* ---------------- the rail: where you are, and the environment your agents read ---------------- */
+.rail { position: sticky; top: 0; align-self: start; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+  padding: 28px 14px 22px; border-right: 1px solid var(--line); }
+.brand { font-weight: 600; padding: 0 10px; }
+.envbtn { display: flex; align-items: center; gap: 6px; margin: 2px 0 30px; padding: 3px 10px; border: 0; background: none;
+  color: var(--text-2); font-size: 12px; border-radius: 6px; text-align: left; max-width: 100%; }
+.envbtn span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.envbtn:hover { color: var(--text); background: var(--surface); }
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; background: none;
+  text-align: left; padding: 7px 10px; border-radius: 8px; color: var(--text-2); }
+.nav:hover { color: var(--text); background: var(--surface); }
+.nav[aria-current="page"] { color: var(--text); background: var(--surface); font-weight: 600; }
+.nav .count { color: var(--accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rail .spacer { flex: 1; }
+
+/* ---------------- the page ---------------- */
+.col { min-width: 0; }
+main { padding: 48px 64px 80px; max-width: 840px; margin: 0 auto; }
+main.wide { max-width: 1120px; }
+.view > header { margin-bottom: 36px; }
+h1 { font-size: 32px; line-height: 1.2; font-weight: 600; letter-spacing: -.015em; text-wrap: balance; }
+.sub { color: var(--text-2); margin-top: 10px; max-width: 66ch; }
+.view > section + section, .view > header + section, .gap { margin-top: 40px; }
+.sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 9px; vertical-align: 2px; }
+.back { margin-bottom: 18px; }
+.problem { margin: 24px auto 0; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--danger); color: var(--text); max-width: 712px; }
+.problem p + p { margin-top: 4px; }
+
+/* lists: one line per thing, set apart by hairlines */
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.list > li { border-bottom: 1px solid var(--line); }
+.empty { padding: 14px 0; color: var(--text-3); }
+.line { display: flex; align-items: baseline; gap: 14px; width: 100%; padding: 12px 2px; border: 0; background: none; text-align: left; }
+button.line:hover { background: var(--surface); }
+.line .who { flex: none; }
+.line .what { flex: 1; min-width: 0; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line .when { flex: none; }
+.line .chev { flex: none; width: 12px; color: var(--text-3); }
+.opened { padding: 4px 2px 18px; }
+
+/* buttons and fields */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--line-2); background: transparent; color: var(--text); white-space: nowrap; }
+.btn:hover { border-color: var(--text-3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.small { height: 28px; padding: 0 10px; font-size: 12px; }
+.link { border: 0; background: none; padding: 0; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--line-2); }
+.link:hover { color: var(--text); text-decoration-color: currentColor; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.input { height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--raised);
+  color: var(--text); outline: none; min-width: 0; }
+.input:focus { border-color: var(--text-3); }
+textarea.input { height: auto; padding: 10px 12px; resize: vertical; width: 100%; }
+.switch { width: 34px; height: 20px; border-radius: 999px; border: 0; background: var(--line-2); position: relative; padding: 0; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg); transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--text-2); }
+.switch[aria-checked="true"]::after { left: 17px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; color: var(--text-2); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; }
+details > summary { cursor: pointer; color: var(--text-2); list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "+ "; color: var(--text-3); }
+details[open] > summary::before { content: "– "; }
+details[open] > summary { margin-bottom: 14px; }
+
+/* ---------------- today ---------------- */
+.ask { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 4px 12px 12px 4px; padding: 16px 20px; }
+.ask + .ask { margin-top: 10px; }
+.ask .title { font-weight: 600; }
+.ask .why { color: var(--text-2); margin-top: 6px; }
+.ask .q { margin-top: 12px; }
+.ask .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ask .opt { height: auto; min-height: 34px; padding: 6px 14px; text-align: left; white-space: normal; }
+.ask .opt small { font-size: 12px; color: var(--text-3); margin-left: 6px; }
+.ask .opt:hover { background: var(--raised); }
+.ask pre { white-space: pre-wrap; word-break: break-word; margin: 12px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: var(--raised); font: 12px/1.6 var(--mono); }
+.ask .earlier { margin-top: 12px; }
+.ask .words { margin-top: 12px; width: 100%; }
+.tip { margin-top: 12px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.stat .n { font-size: 24px; line-height: 1.2; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .meta { margin-top: 4px; color: var(--text-2); max-width: 30ch; }
+.stat .warn { color: var(--danger); }
+.allcounts { margin-top: 22px; }
+.tally { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; align-items: baseline; }
+.tally .n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.steps { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px 18px; margin: 0; }
+.steps dt { padding-top: 2px; }
+.steps dd { margin: 0; }
+.start { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.start li { counter-increment: s; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 2px 14px;
+  align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.start li:first-child { border-top: 1px solid var(--line); }
+.start li::before { content: counter(s); grid-row: span 2; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.start li > :last-child:not(.meta):not(b) { grid-column: 3; grid-row: 1 / span 2; }
+
+/* ---------------- rules: the constellation and the lists ---------------- */
+.sky { position: relative; height: 440px; border-radius: 16px; overflow: hidden; background: var(--surface); }
+.sky canvas { display: block; width: 100%; height: 100%; }
+.sky.map { height: 380px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+.legend .you { background: var(--accent); }
+.legend .app { background: var(--text-3); }
+.legend .agent { background: var(--text-2); }
+.legend .off { border: 1.5px solid var(--text-3); }
+.legend .tested { background: var(--accent); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--accent); }
+.legend .ln { width: 16px; height: 0; border-radius: 0; border-top: 1.5px solid var(--text-3); vertical-align: 3px; }
+.legend .ln.dash { border-top-style: dashed; }
+.legend .ln.asks { border-color: var(--accent); }
+.legend .claim { border: 1.5px dashed var(--text-2); }
+.addrule { display: flex; gap: 10px; flex-wrap: wrap; }
+.addrule .input:first-child { flex: 1; min-width: 220px; }
+.rule .line { align-items: center; }
+.rule .st { flex: 1; min-width: 0; }
+.rule.off .st { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
+.mine { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 10px; vertical-align: 2px; }
+.detail { display: grid; gap: 6px; padding: 0 2px 16px 2px; }
+.detail .quote { color: var(--accent-ink); }
+.picks { list-style: none; padding: 0; margin: 0; }
+.picks label { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.picks input { accent-color: var(--text); margin-top: 5px; }
+.readings { display: grid; gap: 10px; }
+.card { white-space: pre-wrap; margin: 0; font: 12px/1.65 var(--mono); color: var(--text-2); max-height: 520px; overflow: auto;
+  padding: 14px 16px; border-radius: 12px; background: var(--surface); }
+.sizebar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin: 8px 0 14px; }
+.sizebar i { display: block; height: 100%; background: var(--text-3); }
+.layer + .layer { margin-top: 28px; }
+
+/* ---------------- settings and tables ---------------- */
+.setrow { display: flex; align-items: center; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.setrow:first-of-type { border-top: 1px solid var(--line); }
+.setrow > div { flex: 1; min-width: 0; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); font-weight: 600;
+  padding: 0 14px 10px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: baseline; }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: var(--surface); }
+tr[aria-selected="true"] td { background: var(--surface); }
+
+/* ---------------- overlays ---------------- */
+.menu { position: fixed; min-width: 240px; border-radius: 12px; padding: 6px; z-index: 9; background: var(--raised);
+  border: 1px solid var(--line); box-shadow: var(--shadow); }
+.menu button { display: flex; width: 100%; gap: 10px; align-items: center; border: 0; background: none; padding: 8px 10px;
+  border-radius: 8px; text-align: left; }
+.menu button:hover { background: var(--surface); }
+.menu .tick { width: 14px; color: var(--text); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(10, 10, 9, .5); padding: 16px; }
+.sheet { width: min(600px, 100%); max-height: 88vh; overflow: auto; border-radius: 16px; padding: 28px; background: var(--raised);
+  border: 1px solid var(--line); box-shadow: var(--shadow); }
+.sheet.wide { width: min(1000px, 100%); }
+.sheet h2 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.sheet .sub { margin: 0 0 18px; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+textarea.editor { width: 100%; min-height: 440px; resize: vertical; background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px; font: 12px/1.65 var(--mono); outline: none; }
+.two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+dl.lang { display: grid; grid-template-columns: 104px 1fr; gap: 8px 14px; margin: 12px 0 0; }
+dl.lang dt { font: 12px var(--mono); color: var(--text); padding-top: 2px; }
+dl.lang dd { margin: 0; color: var(--text-2); }
+.status-line { min-height: 1.5em; margin-top: 10px; }
+.status-line.bad { color: var(--danger); }
+.toast { position: fixed; left: 50%; bottom: 28px; z-index: 12; transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  padding: 9px 18px; border-radius: 999px; background: var(--text); color: var(--bg); transition: opacity .2s, transform .2s; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.tipbox { position: fixed; z-index: 11; max-width: 320px; padding: 8px 12px; border-radius: 10px; pointer-events: none;
+  background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: 0; transition: opacity .12s; }
+.tipbox.on { opacity: 1; }
+.tipbox b { display: block; font-weight: 600; }
+.pop { position: fixed; z-index: 11; width: min(360px, calc(100% - 32px)); border-radius: 14px; padding: 16px 18px;
+  background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: 8px; }
+.pop .st { font-weight: 600; }
+
+@media (max-width: 900px) {
+  main, main.wide { padding: 36px 28px 72px; }
+  .problem { margin: 20px 28px 0; max-width: none; }
+  .two { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  body { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px;
+    padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .envbtn { margin: 0 auto 0 0; }
+  .rail .spacer { display: none; }
+  main, main.wide { padding: 28px 16px 64px; }
+  .problem { margin: 16px 16px 0; }
+  .stats { grid-template-columns: 1fr; gap: 16px; }
+  .sky { height: 340px; }
+  .sky.map { height: 320px; }
+  .line .what { white-space: normal; }
+  .steps { grid-template-columns: 1fr; gap: 2px 0; }
+  .steps dd { margin-bottom: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<nav class="rail" id="rail" aria-label="Views"></nav>
+<div class="col">
+  <div class="problem" id="problem" role="alert" hidden></div>
+  <main id="main" tabindex="-1"></main>
+</div>
+
+<div class="menu" id="envMenu" role="menu" hidden></div>
+
+<div class="modal" id="newEnv" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+    <h2 id="newTitle">New environment</h2>
+    <p class="sub">A set of rules for one context, such as Office, Studying or Late night. Every agent reads the active one.</p>
+    <input class="input" id="newName" style="width:100%" placeholder="Office, Studying, Late night..." autocomplete="off" aria-label="Environment name">
+    <p class="label" id="newFor" style="margin-top:18px"></p>
+    <ul class="picks" id="picks"></ul>
+    <div class="actions"><button class="btn" id="newCancel" type="button">Cancel</button><button class="btn primary" id="newCreate" type="button">Create</button></div>
+  </div>
+</div>
+
+<div class="modal" id="editorDlg" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <h2 id="edTitle">Edit the file</h2>
+    <p class="sub" id="edLead"></p>
+    <div class="two">
+      <div><textarea class="editor" id="editor" spellcheck="false" aria-label="The environment file"></textarea>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="save" type="button">Save</button><button class="btn" id="revert" type="button">Revert</button><span class="grow"></span><button class="btn" id="edClose" type="button">Close</button></div>
+        <div class="status-line meta" id="editStatus" role="status"></div></div>
+      <div><p class="label">The language</p>
+        <dl class="lang">
+          <dt>statement</dt><dd>The rule in plain words. This is what your AI reads.</dd>
+          <dt>applies_when</dt><dd>When it matters, in plain words.</dd>
+          <dt>enabled</dt><dd>On or off, without deleting it.</dd>
+          <dt>always</dt><dd>On every card, even the short one.</dd>
+          <dt>relay</dt><dd>Also on the short card, for words that are not yours.</dd>
+          <dt>provenance</dt><dd>Where it came from, with your own words kept beside it.</dd>
+          <dt>agents</dt><dd>Each agent's own rules, under its name.</dd>
+        </dl>
+        <p class="meta" style="margin-top:14px">Saving checks the file first, and the old version is always kept.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="tipbox" id="skytip" role="tooltip"></div>
+<div class="pop" id="rulecard" role="dialog" aria-label="Details" hidden></div>
+
+<script>
+// Every element is built with createElement and textContent: rule text is user-editable, so nothing is parsed as HTML.
+const $ = (id) => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v; else el.setAttribute(k, String(v));
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+// flat(Infinity): a list of lists must never reach replaceChildren as an array (it would become "[object ...]" text).
+// A part of another view is simply not there: filling it is a no-op, never an error.
+const fill = (el, nodes) => { const t = typeof el === "string" ? $(el) : el; if (t) t.replaceChildren(...[nodes].flat(Infinity).filter(Boolean)); };
+// Every call names this page with its own header: the server answers changes, and the feed, only to the page itself.
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Semantext": "1" }, body: JSON.stringify(body) }
+                                   : { headers: { "X-Semantext": "1" } });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const enc = encodeURIComponent;
+function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.k); toast.k = setTimeout(() => el.classList.remove("on"), 2400); }
+async function act(path, body, done) { try { const r = await api(path, body); if (done) toast(done); await load(); render(); return r; } catch (e) { toast(e.message); return null; } }
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const live = (es) => (es || []).filter(e => !e.archived);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + "s")}`;
+const fmt = (n) => Number(n || 0).toLocaleString("en");
+const when = (at) => { const d = new Date(String(at || "").replace(/(\.\d{3})\d+/, "$1")); return isNaN(d) ? null : d; };
+function ago(at) {
+  const d = when(at); if (!d) return "";
+  const s = Math.max(0, (Date.now() - d) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  if (s < 86400 * 7) { const n = Math.round(s / 86400); return n === 1 ? "a day ago" : `${n} days ago`; }
+  return d.toLocaleDateString([], { day: "numeric", month: "short" });
+}
+const clock = (at) => { const d = when(at); return d ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""; };
+// The canvases take their colours from the page's own tokens, so they follow the theme like everything else.
+const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function rgbOf(name) {
+  const v = token(name), m = v.match(/^#([0-9a-f]{6})$/i);
+  if (m) { const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  const p = v.match(/\d+(\.\d+)?/g);
+  return p ? p.slice(0, 3).map(Number) : [128, 128, 128];
+}
+const rgba = (k, a) => `rgba(${k[0]},${k[1]},${k[2]},${Math.max(0, Math.min(1, a))})`;
+const palette = () => ({ text: rgbOf("--text"), t2: rgbOf("--text-2"), t3: rgbOf("--text-3"), line: rgbOf("--line-2"),
+  accent: rgbOf("--accent"), danger: rgbOf("--danger"), surface: rgbOf("--surface") });
+
+const S = { view: "today", state: null, base: null, profile: null, agents: [], inbox: { open: [], recent: [] },
+  feed: { on: true, limit: 9500, records: [] }, layers: { agent: "", form: "full", card: null }, test: null,
+  agentOpen: null, ideasOpen: false, metrics: null, register: { q: "", items: null }, expanded: null, ruleOpen: null,
+  testAgent: "" };
+
+// Four places, each answering one question, and Settings. "Try a message" opens from Rules, "What an agent gets" from
+// Agents, and "Every message" from Today: each is a step inside its place, with a way back.
+const NAV = [["today", "Today"], ["rules", "Rules"], ["agents", "Agents"], ["decisions", "Decisions"]];
+const ALIAS = { live: "today", inbox: "decisions" };        // the addresses of earlier versions still work
+const PARENT = { test: "rules", layers: "agents", history: "today" };
+const WORDS = { own: "Your words", agent: "Passed on by another agent", tool: "A tool's notice" };
+const HOW = { bound: "bound by you", observed: "seen by its tool and folder", claimed: "claimed by its shell", fallback: "unnamed" };
+const BASIS = { text: "told by how it opens", transcript: "told by the tool's own record", none: "nothing marked it otherwise", page: "chosen in the test" };
+
+const envTitle = (name) => ((S.state && S.state.profiles.find(p => p.name === name)) || {}).title || name || "";
+const normName = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9@._-]+/g, "-").replace(/^[-._]+|[-._]+$/g, "");
+// A relayed message can name any sender, you included: such a claim is flagged, and never decides whose words they are.
+const claimsYou = (name) => !!name && ((S.state && S.state.you) || []).includes(normName(name));
+const label = (name) => { const a = S.agents.find(x => x.name === name); return name === "ai" ? "An unnamed agent" : (a && a.label) || name; };
+
+// ---------------------------------------------------------------- loading
+function showProblems(lines) {
+  const el = $("problem");
+  el.hidden = !lines.length;
+  fill(el, lines.length ? [...lines.map(t => h("p", {}, t)),
+    h("p", { class: "meta" }, "Fix the line it names, or run `semantext undo --last` to restore the last saved version. Your AI still gets the base rules meanwhile.")] : []);
+}
+async function load() {
+  S.state = await api("/api/state");
+  showProblems((S.state.problems || []).map(p => p.problem));
+  const name = S.state.active;
+  const [profile, base, agents] = await Promise.all([
+    api("/api/profile?name=" + enc(name)).catch(() => ({ environment: { id: name, title: name }, entries: [] })),
+    api("/api/profile?name=base").catch(() => ({ environment: { id: "base", title: "Base" }, entries: [] })),
+    api("/api/agents").catch(() => ({ agents: [] }))]);
+  S.profile = profile; S.base = base; S.agents = agents.agents || [];
+  Space.layout();
+}
+async function loadInbox() {
+  try { S.inbox = await api("/api/inbox"); } catch (e) { S.inbox = { open: [], recent: [] }; }
+  renderRail();
+  Space.layout();
+  if (S.view === "today") { fill("hero", heroNodes()); fill("needs", needsYou()); }
+}
+async function loadMetrics() {
+  try { S.metrics = await api("/api/metrics"); } catch (e) { /* the page works without the counts */ }
+  if (S.view === "today") fill("counts", countsView());
+}
+async function pollFeed() {
+  let fresh = null;
+  try {
+    const f = await api("/api/feed?n=200");
+    const had = S.feed.records[0], newest = f.records[0], first = !S.feedLoaded;
+    S.feed = f; S.feedLoaded = true;
+    if (!had || !newest || newest.at !== had.at) Space.layout();
+    if (!first && newest && (!had || newest.at !== had.at)) fresh = newest;
+  } catch (e) { /* the page works without the feed */ }
+  if (!fresh) return;
+  // Something real happened: the counts, the lines and the picture move, and only then.
+  loadMetrics();
+  if (S.view === "today") { fill("hero", heroNodes()); fill("recent", recentRows()); }
+  if (S.view === "history") fill("historyRows", historyRows());
+  if (S.view === "rules") Sky.pulse(fresh);
+}
+
+// ---------------------------------------------------------------- the frame
+function renderRail() {
+  const n = S.inbox.open.length, cur = (k) => S.view === k || PARENT[S.view] === k ? "page" : null;
+  const envName = S.profile ? (S.profile.environment.title || S.state.active) : "";
+  fill("rail", [
+    h("div", { class: "brand" }, "Semantext"),
+    h("button", { class: "envbtn", id: "envPill", type: "button", "aria-haspopup": "menu", "aria-expanded": "false",
+      title: "The environment your agents read now. Switch it when your context changes." }, h("span", {}, envName), h("span", { "aria-hidden": "true" }, "▾")),
+    NAV.map(([k, name]) => h("button", { class: "nav", type: "button", "data-view": k, "aria-current": cur(k),
+      "aria-label": k === "decisions" && n ? `Decisions: ${n} waiting for you` : null }, name,
+      k === "decisions" && n ? h("span", { class: "count" }, String(n)) : null)),
+    h("div", { class: "spacer" }),
+    h("button", { class: "nav", type: "button", "data-view": "settings", "aria-current": cur("settings") }, "Settings")]);
+}
+// Each view has its own address (#agents, #decisions...), so a view can be bookmarked and Back goes back.
+const viewOf = (hash) => { const v = ALIAS[hash] || hash || "today"; return VIEWS[v] ? v : "today"; };
+function leave() { Space.unmount(); Sky.unmount(); closePop(); closeMenu(); }
+function go(view) {
+  leave();
+  S.view = viewOf(view);
+  if (location.hash.slice(1) !== S.view) history.pushState(null, "", "#" + S.view);
+  render();
+  $("main").focus({ preventScroll: true }); scrollTo({ top: 0 });
+}
+addEventListener("popstate", () => {
+  const v = viewOf(location.hash.slice(1));
+  if (v !== S.view) { leave(); S.view = v; render(); }
+});
+const WIDE = new Set(["rules", "agents", "history", "layers", "test"]);
+function render() {
+  renderRail();
+  $("main").className = WIDE.has(S.view) ? "wide" : "";
+  fill("main", VIEWS[S.view]());
+  AFTER[S.view] && AFTER[S.view]();
+}
+const back = (view, name) => h("button", { class: "link back meta", type: "button", "data-view": view }, "‹ " + name);
+
+// ---------------------------------------------------------------- one delivery, and the five steps it passed through
+function fromRecord(r) { return { ...r, example: false }; }
+function fromTest(r, message, example) {
+  const a = S.agents.find(x => x.name === r.agent);
+  const how = !r.agent ? "fallback" : a && a.folders.length ? "bound" : a && a.sessions.length && a.sessions.every(s => s.how === "claimed") ? "claimed" : "observed";
+  return { at: new Date().toISOString(), agent: r.agent || "ai", how, tool: "", words: r.words, from: r.from || "", basis: r.basis, environment: r.environment,
+    form: r.form, layers: r.layers, bytes: r.bytes, left_out: r.left_out, answers: r.answers, waiting: r.waiting, problem: r.problem,
+    reading: r.reading, text: r.text, message, example };
+}
+const count = (d, l) => d.layers.filter(x => x.layer === l).reduce((n, x) => n + x.ids.length, 0);
+function stages(d) {
+  const counts = { base: count(d, "base"), environment: count(d, "environment"), agent: count(d, "agent") };
+  const total = counts.base + counts.environment + counts.agent;
+  const pct = Math.min(100, Math.round(100 * d.bytes / (S.feed.limit || 9500)));
+  const agent = label(d.agent);
+  return [
+    { caps: "Who asked", v: agent, s: HOW[d.how] || d.how,
+      why: d.how === "bound" ? `You bound its folder to ${agent}, so every agent working there is ${agent}.`
+        : d.how === "observed" ? `Semantext saw ${d.tool || "its tool"} working in this project, so it needed no name.`
+        : d.how === "claimed" ? `Its shell says it is ${agent}. A claim gets the shared rules only, until you bind it.`
+        : "Nothing named it, so it is read as an unnamed agent and gets the shared rules." },
+    { caps: "Whose words", v: WORDS[d.words], s: BASIS[d.basis] || "",
+      why: d.words === "own" ? (d.basis === "transcript" ? "The tool's own record says you typed it." : "Nothing marks it as relayed, so it counts as yours: the safe side, since your full card holds every rule.")
+        : d.words === "agent" ? "Another agent's message is information, never your word."
+          + (claimsYou(d.from) ? ` It names its sender as "${d.from}", as if it were you; the name decides nothing.` : d.from ? ` It names its sender as ${label(d.from)}: a claim.` : "")
+        : "A tool's notice is information, never your word." },
+    { caps: "Which rules", v: d.form === "full" ? "All your rules" : "Only the safety rules", s: envTitle(d.environment),
+      why: d.form === "full" ? "Your own words get all your rules: the shared ones, this environment's, and the agent's own."
+        : "Words that are not yours get only the safety rules, so no one else can speak with your authority." },
+    { caps: "Layers", v: plural(total, "rule"), s: `${counts.base} everywhere · ${counts.environment} environment · ${counts.agent} agent`,
+      why: d.left_out ? `${plural(d.left_out, "rule")} did not fit the size limit; your AI is told how many.`
+        : counts.agent ? `${agent} also gets ${plural(counts.agent, "rule")} of its own, after the shared ones, which they never override.`
+        : "Every layer it is entitled to, whole." },
+    { caps: "Sent", v: `${fmt(d.bytes)} bytes`, s: `${pct}% of the limit`,
+      why: d.answers.length ? `With your answer${d.answers.length > 1 ? "s" : ""} to #${d.answers.join(", #")}, for ${agent} alone.`
+        : d.waiting.length ? `${plural(d.waiting.length, "request")} from ${agent} ${d.waiting.length === 1 ? "waits" : "wait"} for your answer; it is told not to act on ${d.waiting.length === 1 ? "it" : "them"} yet.`
+        : "Added to the prompt before your AI reads a word of it." },
+  ];
+}
+// The steps open only when asked for: a line of what happened, then why, in the small size.
+function stepsView(d) {
+  return h("dl", { class: "steps" }, stages(d).map(s => [h("dt", { class: "label" }, s.caps),
+    h("dd", {}, h("div", {}, s.v, s.s ? h("span", { class: "meta" }, "  ·  " + s.s) : null), h("div", { class: "meta" }, s.why))]));
+}
+
+// ---------------------------------------------------------------- today: is it working, and what needs me
+function connected() {
+  const c = (S.state && S.state.connections) || {};
+  return !!(c.claude_code || (c.files || []).some(f => f.ok) || S.feed.records.length);
+}
+function heroNodes() {
+  const rs = S.feed.records;
+  const today = rs.filter(r => { const d = when(r.at); return d && d.toDateString() === new Date().toDateString(); });
+  const mine = today.filter(r => r.words === "own").length, agents = new Set(today.filter(r => r.words === "own").map(r => r.agent)).size;
+  const wait = S.inbox.open.length, liveNow = rs.length && Date.now() - when(rs[0].at) < 120000;
+  let title, sub;
+  if (!S.feed.on) { title = "Your rules go with every message"; sub = "The feed is off, so nothing shows here. It can be switched on in Settings."; }
+  else if (!connected()) { title = "Connect your AI"; sub = "Then every message you send it carries your rules."; }
+  else {
+    title = wait ? (wait === 1 ? "One decision needs you" : `${wait} decisions need you`) : "Working";
+    sub = mine ? `Your rules went with ${plural(mine, "message")} of yours today${agents > 1 ? `, to ${agents} agents` : ""}.`
+      : rs.length ? `Quiet today. The last message was ${ago(rs[0].at)}.` : "Your next message to your AI shows here.";
+  }
+  return [h("h1", {}, title), h("p", { class: "sub" }, liveNow ? h("span", { class: "live", title: "A card went out in the last two minutes" }) : null, sub)];
+}
+// A request, as a card. On Today only what is needed to answer it; on Decisions, the whole of it.
+function askCard(r, full) {
+  const who = HOW[r.from_how] ? label(r.from) : `${r.from}, as stated`;
+  const e = r.earlier;
+  const opt = (choice, text, rec) => h("button", { class: "btn opt", type: "button", "data-answer": r.id, "data-choice": choice }, text, rec ? h("small", {}, "recommended") : null);
+  let body;
+  if (r.kind === "decision") body = [full && r.question ? h("p", { class: "q" }, r.question) : null,
+    r.options.length ? h("div", { class: "opts" }, r.options.map((o, i) => opt(String(i + 1), `${i + 1}. ${o}`, r.recommend === i + 1))) : null];
+  else if (r.kind === "rule") body = [full ? h("p", { class: "q soft" }, `A rule for ${r.agent ? label(r.agent) + " only" : envTitle(r.env)}, in the agent's words:`) : null,
+    h("pre", {}, r.statement), h("div", { class: "opts" }, opt("add", "Add", false), opt("no", "Don't add", false))];
+  else body = [h("pre", {}, r.command),
+    full ? h("p", { class: "meta", style: "margin-top:8px" }, `What it does: ${r.does}  ·  To undo it: ${r.undo}`) : null,
+    full && r.flags && r.flags.length ? h("p", { class: "meta warn" }, "Look twice: " + r.flags.join("; ")) : null,
+    h("div", { class: "opts" }, copyBtn(r.command), opt("done", "Done", false), opt("won't", "Won't do", false))];
+  return h("div", { class: "ask" },
+    h("p", { class: "title" }, r.title),
+    h("p", { class: "meta" }, `#${r.id} · ${who} · ${r.age} ago`),
+    full && r.why ? h("p", { class: "why" }, r.why) : null,
+    // The same question, answered before: shown, never used for this one. An answer holds for what was offered then.
+    full && e ? h("p", { class: "meta earlier" }, `You answered this ${e.age} ago: ${said(e.answer)}. `,
+      h("button", { class: "link", type: "button", "data-answer": r.id, "data-choice": e.answer.choice || "", "data-words": e.answer.words || "" }, "Same again")) : null,
+    body,
+    full ? h("div", { class: "row", style: "margin-top:12px" },
+      h("input", { class: "input grow", id: `words-${r.id}`, placeholder: "Your own words (optional)", "aria-label": `Your words for #${r.id}`, autocomplete: "off" }),
+      r.kind === "decision" && !r.options.length ? h("button", { class: "btn primary", type: "button", "data-answer": r.id, "data-choice": "" }, "Send") : null) : null);
+}
+function needsYou() {
+  const open = S.inbox.open;
+  if (!open.length) return null;
+  return h("section", { class: "gap" }, open.slice(0, 3).map(r => askCard(r, false)),
+    h("p", { class: "meta tip" }, "Or send ", h("kbd", {}, `#${open[0].id} 1`), " to any of your AIs, as its own message.",
+      open.length > 3 ? [" ", h("button", { class: "link", type: "button", "data-view": "decisions" }, `See all ${open.length}`)] : null));
+}
+// What Semantext did, counted from its own records: three numbers on show, the rest one click away.
+const RULE_FOR = { question: "base.question-not-instruction", suggestion: "base.suggest-not-require", yes: "base.yes-binds-to-offer",
+  pause: "base.parked-stays-parked", time: "base.time-kept-verbatim", correction: "base.corrections-become-rules",
+  instruction: "base.show-your-work", "needs-word": "base.irreversible-needs-your-word" };
+const minutes = (m) => m < 1 ? "a minute" : m < 90 ? `${Math.round(m)} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
+function allCounts(m) {
+  const N = m.noticed || {}, out = [];
+  // What was sent with them, never what an agent then did: that is the agent's, reading the whole card.
+  const missed = (x) => x.covered < x.n ? `${x.n - x.covered} went without it` : "";
+  const cut = [m.cards.cut ? `${m.cards.cut} cut by the size limit` : "", m.cards.base_only ? `${m.cards.base_only} with the base rules only` : ""].filter(Boolean).join(", ");
+  if (m.messages.own) out.push({ n: m.messages.own, t: m.messages.own === 1 ? "message of yours carried your rules" : "messages of yours carried your rules", warn: cut });
+  if (N["needs-word"]) out.push({ n: N["needs-word"].n, t: N["needs-word"].n === 1 ? "risky ask, sent with the rule to wait for you" : "risky asks, each sent with the rule to wait for you", warn: missed(N["needs-word"]) });
+  if (m.others.n) out.push({ n: m.others.n, t: m.others.n === 1 ? "message from another agent, marked not yours" : "messages from other agents, marked not yours",
+    warn: m.others.claims_you ? `${m.others.claims_you} claimed to be you` : "" });
+  if (N.question) out.push({ n: N.question.n, t: N.question.n === 1 ? "question, sent with the rule for questions" : "questions, each sent with the rule for questions", warn: missed(N.question) });
+  if (N.suggestion) out.push({ n: N.suggestion.n, t: N.suggestion.n === 1 ? "maybe, sent with the rule for maybes" : "maybes, each sent with the rule for maybes", warn: missed(N.suggestion) });
+  if (m.decisions.answered) out.push({ n: m.decisions.answered, t: m.decisions.answered === 1 ? "decision you answered" : "decisions you answered",
+    note: [m.decisions.median_minutes !== null ? `half within ${minutes(m.decisions.median_minutes)}` : "", m.decisions.via.chat ? `${m.decisions.via.chat} typed in chat` : ""].filter(Boolean).join(", ") });
+  if (m.rules.cases) out.push({ n: m.rules.cases, t: m.rules.cases === 1 ? "correction kept as a test" : "corrections kept as tests",
+    warn: m.rules.covered < m.rules.cases ? `${m.rules.cases - m.rules.covered} no longer covered` : "" });
+  const added = m.rules.yours + m.rules.proposed;
+  if (added) out.push({ n: added, t: `${added === 1 ? "rule" : "rules"} you added to ${envTitle(S.state.active)}` });
+  return out;
+}
+function countsView() {
+  const m = S.metrics;
+  if (!m || (!m.window.records && !m.decisions.asked)) return null;
+  const all = allCounts(m);
+  if (!all.length) return null;
+  // How far back the feed reaches, as a span rather than a date, so the line reads the same whenever it is read.
+  const since = when(m.window.since), days = since ? Math.max(1, Math.ceil((Date.now() - since) / 86400000)) : 0;
+  const top = all.slice(0, 3), rest = all.slice(3);
+  return h("section", { class: "gap" },
+    h("div", { class: "sechead" }, h("h2", { class: "label" }, "What it did"), days ? h("span", { class: "meta" }, days === 1 ? "last day" : `last ${days} days`) : null),
+    h("div", { class: "stats" }, top.map(x => h("div", { class: "stat" }, h("div", { class: "n" }, fmt(x.n)), h("div", { class: "meta" }, x.t),
+      x.warn ? h("div", { class: "meta warn" }, x.warn) : null))),
+    h("details", { class: "allcounts" }, h("summary", { class: "meta" }, rest.length ? "All counts, and how they are counted" : "How these are counted"),
+      rest.length ? h("div", { class: "tally" }, rest.map(x => [h("span", { class: "n" }, fmt(x.n)),
+        h("span", {}, x.t, x.note ? h("span", { class: "meta" }, "  ·  " + x.note) : null, x.warn ? h("span", { class: "meta warn" }, "  ·  " + x.warn) : null)])) : null,
+      h("p", { class: "meta", style: "margin-top:12px;max-width:66ch" }, `From Semantext's own records, never from what was said: the last ${plural(m.window.records, "message")} it handed a card to, and every decision. A count says what went with a message, not what the agent then did.`)));
+}
+// What just happened, one line each: the agent, what kind of message, how many rules went with it.
+const KIND_WORDS = [["needs-word", "an ask that needs your word"], ["answer", "your answer"], ["correction", "your correction"],
+  ["question", "your question"], ["suggestion", "your maybe"], ["pause", "your pause"], ["yes", "your yes"]];
+function whatOf(r) {
+  const n = r.layers.reduce((k, x) => k + x.ids.length, 0);
+  const got = r.form === "full" ? `all ${n} rules` : `${n} safety rules`;
+  const kind = (KIND_WORDS.find(([k]) => (r.noticed || []).includes(k)) || [null, "your message"])[1];
+  if (r.words === "own") return `${kind}  ·  ${got}`;
+  if (r.words === "tool") return `a tool's notice  ·  ${got}`;
+  return claimsYou(r.from) ? `claims to be you, so treated as passed on  ·  ${got}` : `passed on${r.from ? " by " + label(r.from) : ""}  ·  ${got}`;
+}
+function recentRows() {
+  const rs = S.feed.records.slice(0, 5);
+  if (!rs.length) return h("li", { class: "empty" }, S.feed.on ? "Nothing yet. Each message to your agents shows here." : "The feed is off.");
+  return rs.map(r => {
+    const open = S.expanded === r.at;
+    return h("li", {},
+      h("button", { class: "line", type: "button", "data-explain": r.at, "aria-expanded": String(open) },
+        h("span", { class: "who" }, label(r.agent)),
+        h("span", { class: "what" + (claimsYou(r.from) && r.words === "agent" ? " warn" : "") }, whatOf(r)),
+        h("span", { class: "when meta" }, ago(r.at)),
+        h("span", { class: "chev", "aria-hidden": "true" }, open ? "–" : "+")),
+      open ? h("div", { class: "opened" }, stepsView(fromRecord(r))) : null);
+  });
+}
+// The first time: three steps, in order, and nothing else.
+function startHere() {
+  const c = (S.state && S.state.connections) || {};
+  return h("section", {}, h("ol", { class: "start" },
+    h("li", {}, h("b", {}, "Connect your AI"), h("span", { class: "meta" }, c.claude_code ? "Claude Code is connected." : "For Claude Code, run this once in a terminal."),
+      c.claude_code ? h("span", { class: "meta" }, "Done") : copyBtn("semantext install claude-code --apply")),
+    h("li", {}, h("b", {}, "Check your rules"), h("span", { class: "meta" }, `${plural(live(S.base.entries).length, "starter rule")} are on.`),
+      h("button", { class: "btn small", type: "button", "data-view": "rules" }, "See them")),
+    h("li", {}, h("b", {}, "Talk to your AI"), h("span", { class: "meta" }, "Your next message shows here."))));
+}
+function historyRows() {
+  const rs = S.feed.records.slice(0, 100);
+  if (!rs.length) return h("tr", {}, h("td", { colspan: "6", class: "empty" }, S.feed.on ? "No messages yet." : "The feed is off."));
+  return rs.map(r => {
+    const sel = S.expanded === r.at;
+    return [h("tr", { class: "pick", "data-at": r.at, "aria-selected": String(sel), tabindex: "0" },
+      h("td", { class: "num soft" }, clock(r.at)),
+      h("td", {}, label(r.agent)),
+      h("td", { class: claimsYou(r.from) && r.words === "agent" ? "warn" : "soft" }, claimsYou(r.from) && r.words === "agent" ? "Claims to be you" : WORDS[r.words]),
+      h("td", { class: "soft" }, (r.form === "full" ? "Full" : "Short") + " · " + envTitle(r.environment), r.problem ? h("span", { class: "warn" }, " · a file is broken") : null),
+      h("td", { class: "num soft" }, `${count(r, "base")} · ${count(r, "environment")} · ${count(r, "agent")}`),
+      h("td", { class: "num soft" }, fmt(r.bytes), r.left_out ? h("span", { class: "warn" }, ` · ${r.left_out} left out`) : null)),
+      sel ? h("tr", {}, h("td", { colspan: "6", style: "white-space:normal;padding:16px 0 20px" }, stepsView(fromRecord(r)))) : null];
+  });
+}
+
+// ---------------------------------------------------------------- the views
+const VIEWS = {
+  today: () => h("section", { class: "view", "data-part": "today" },
+    h("header", { id: "hero" }, heroNodes()),
+    S.feed.on && !connected() ? startHere() : [
+      h("div", { id: "needs" }, needsYou()),
+      h("div", { id: "counts" }, countsView()),
+      h("section", { class: "gap" },
+        h("div", { class: "sechead" }, h("h2", { class: "label" }, "Recent"),
+          S.feed.records.length > 5 ? h("button", { class: "link meta", type: "button", "data-view": "history" }, "Every message") : null),
+        h("ul", { class: "list", id: "recent" }, recentRows()))]),
+
+  history: () => h("section", { class: "view", "data-part": "history" },
+    back("today", "Today"),
+    h("header", {}, h("h1", {}, "Every message"), h("p", { class: "sub" }, "One row per message, newest first. What was said is never kept. Select a row for its five steps.")),
+    h("section", {}, h("div", { class: "tablewrap" }, h("table", {},
+      h("thead", {}, h("tr", {}, ["Time", "Who asked", "Whose words", "Card", "Rules: everywhere · environment · agent", "Bytes"].map(t => h("th", { scope: "col" }, t)))),
+      h("tbody", { id: "historyRows" }, historyRows()))))),
+
+  rules: () => {
+    const env = live(S.profile.entries);
+    const named = S.agents.filter(a => a.name !== "ai");
+    return h("section", { class: "view", "data-part": "rules" },
+      h("header", {}, h("h1", {}, "Rules"),
+        h("p", { class: "sub" }, `What your agents follow in ${S.profile.environment.title}. The centre applies everywhere, and each ring out applies more narrowly.`)),
+      h("section", {}, h("div", { class: "sky", id: "ruleSky" }), skyLegend()),
+      h("section", { class: "gap" },
+        h("form", { class: "addrule", id: "addRule" },
+          h("input", { class: "input", name: "words", placeholder: "A rule in your own words, such as: Always answer in one line.", autocomplete: "off", "aria-label": "A new rule, in your own words" }),
+          named.length ? h("select", { class: "input", name: "scope", "aria-label": "Who it is for" }, h("option", { value: "" }, "Every agent"),
+            named.map(a => h("option", { value: a.name }, `${label(a.name)} only`))) : null,
+          h("button", { class: "btn primary", type: "submit" }, "Add")),
+        h("div", { id: "ruleLists" }, ruleLists(env))),
+      h("section", { class: "gap" },
+        h("div", { class: "links" },
+          h("button", { class: "link", type: "button", "data-view": "test" }, "Try a message"),
+          h("button", { class: "link", type: "button", "data-do": "editor" }, "Edit the file"),
+          S.state.log.length ? h("button", { class: "link", type: "button", "data-do": "undo-last" }, "Undo the last change") : null),
+        h("details", { id: "ideasBox", class: "gap", open: S.ideasOpen ? "" : null },
+          h("summary", {}, "Add suggested rules"), h("div", { id: "ideasList" }, h("p", { class: "meta" }, "Looking...")))));
+  },
+
+  test: () => h("section", { class: "view", "data-part": "test" },
+    back("rules", "Rules"),
+    h("header", {}, h("h1", {}, "Try a message"), h("p", { class: "sub" }, "See how one message would be read, and which rules would go with it. Nothing is saved.")),
+    h("section", {}, h("form", { id: "testForm" },
+      h("textarea", { class: "input", name: "message", rows: "3", placeholder: "Could we maybe publish it tomorrow?", "aria-label": "The message to try" }, S.test ? S.test.message : ""),
+      h("div", { class: "row", style: "margin-top:12px;flex-wrap:wrap" },
+        h("select", { class: "input", name: "words", "aria-label": "Whose words" },
+          [["", "Whose words: tell from the text"], ["own", "Mine"], ["agent", "Another agent's"], ["tool", "A tool's notice"]].map(([v, t]) => h("option", { value: v }, t))),
+        h("select", { class: "input", name: "agent", "aria-label": "Sent to" }, h("option", { value: "" }, "Sent to: an unnamed agent"),
+          S.agents.filter(a => a.name !== "ai").map(a => h("option", { value: a.name, selected: S.testAgent === a.name ? "" : null }, label(a.name)))),
+        h("span", { class: "grow" }),
+        h("button", { class: "btn primary", type: "submit" }, "Try it")))),
+    h("div", { id: "testFlow" }, testFlow())),
+
+  agents: () => {
+    const envs = S.state.profiles.filter(p => p.name !== "base"), list = allAgents(), many = list.length > 1 || envs.length > 1;
+    return h("section", { class: "view", "data-part": "agents" },
+      h("header", {}, h("h1", {}, "Agents"),
+        h("p", { class: "sub" }, `${plural(list.length, "agent")} · ${plural(envs.length, "environment")}`)),
+      many ? h("section", {}, h("div", { class: "sky map", id: "skyHost" }), spaceLegend()) : null,
+      h("section", { class: "gap" }, h("ul", { class: "list" }, agentRows(list))),
+      h("section", { class: "gap" },
+        h("div", { class: "links" }, h("button", { class: "link", type: "button", "data-view": "layers" }, "What an agent gets")),
+        h("details", { class: "gap" }, h("summary", {}, "Name an agent by its folder"),
+          h("form", { class: "addrule", id: "bindForm" },
+            h("input", { class: "input", name: "agent", placeholder: "A name, such as reviewer", autocomplete: "off", "aria-label": "The agent's name", style: "flex:0 1 220px" }),
+            h("input", { class: "input", name: "folder", placeholder: "Its folder, such as C:\\code\\app", autocomplete: "off", "aria-label": "The folder", style: "flex:1 1 260px" }),
+            h("button", { class: "btn primary", type: "submit" }, "Bind")),
+          h("p", { class: "meta", style: "margin-top:10px;max-width:66ch" }, "Every agent working in that folder then has that name, and gets the rules you give it. A name an agent gives itself is only a claim."))));
+  },
+
+  layers: () => {
+    const named = S.agents.filter(a => a.name !== "ai");
+    return h("section", { class: "view", "data-part": "layers" },
+      back("agents", "Agents"),
+      h("header", {}, h("h1", {}, "What an agent gets"),
+        h("p", { class: "sub" }, "Every card is built from layers: the rules shared everywhere, the environment's, and the agent's own, which never override the ones beneath.")),
+      h("section", {}, h("div", { class: "row", style: "flex-wrap:wrap" },
+        h("select", { class: "input", id: "layAgent", "aria-label": "For" }, h("option", { value: "" }, "Any agent without rules of its own"),
+          named.map(a => h("option", { value: a.name, selected: S.layers.agent === a.name ? "" : null }, label(a.name)))),
+        h("div", { class: "seg", role: "group", "aria-label": "Whose words" },
+          h("button", { type: "button", "data-form": "full", "aria-pressed": String(S.layers.form === "full") }, "Your words: the full card"),
+          h("button", { type: "button", "data-form": "relay", "aria-pressed": String(S.layers.form === "relay") }, "Not yours: the short card")))),
+      h("section", { class: "gap two" }, h("div", { id: "layStack" }, layerStack()), h("div", { id: "layCard" }, layerCard())));
+  },
+
+  decisions: () => {
+    const open = S.inbox.open, feat = live(S.profile.entries).some(e => e.id === "feature.inbox" && e.enabled !== false);
+    return h("section", { class: "view", "data-part": "decisions" },
+      h("header", {}, h("h1", {}, "Decisions"),
+        h("p", { class: "sub" }, open.length ? `${open.length} waiting. Your answer goes to the agent that asked, with its next prompt.` : "Nothing is waiting for you.")),
+      open.length ? h("section", {}, open.map(r => askCard(r, true)),
+        h("p", { class: "meta tip" }, "Or send the number and your choice, such as ", h("kbd", {}, "#12 1"), " or ", h("kbd", {}, "#12 1, after lunch"),
+          ", to any of your AIs as its own message. It counts only when the tool's own record shows you typed it.")) : null,
+      h("section", { class: "gap" },
+        h("div", { class: "sechead" }, h("h2", { class: "label" }, "On record"),
+          h("input", { class: "input", id: "registerQ", type: "search", placeholder: "Search your decisions", value: S.register.q, autocomplete: "off",
+            "aria-label": "Search your decisions", style: "width:min(280px,60%);height:32px" })),
+        h("ul", { class: "list", id: "registerList" }, registerRows())),
+      h("section", { class: "gap" }, h("div", { class: "setrow" },
+        h("div", {}, "Agents ask here", h("div", { class: "meta" }, feat ? `On in ${S.profile.environment.title}: agents file what needs your word with semantext ask.`
+          : `Off in ${S.profile.environment.title}: agents are not told this inbox exists.`)),
+        h("button", { class: "switch", role: "switch", "aria-checked": String(feat), "aria-label": "Agents ask here", "data-feature": "inbox", type: "button" }))));
+  },
+
+  settings: () => {
+    const st = S.state, c = st.connections || {};
+    const feat = (k) => live(S.profile.entries).some(e => e.id === "feature." + k && e.enabled !== false);
+    const sw = (attrs, on, name) => h("button", { class: "switch", role: "switch", "aria-checked": String(on), "aria-label": name, type: "button", ...attrs });
+    const setrow = (title, help, control) => h("div", { class: "setrow" }, h("div", {}, title, help ? h("div", { class: "meta" }, help) : null), control);
+    return h("section", { class: "view", "data-part": "settings" },
+      h("header", {}, h("h1", {}, "Settings"), h("p", { class: "sub" }, "Everything Semantext keeps is a plain file on this machine.")),
+      h("section", {}, h("div", { class: "sechead" }, h("h2", { class: "label" }, "Environment")),
+        setrow(S.profile.environment.title, `${plural(live(S.profile.entries).length, "rule")} of its own, on top of ${plural(live(S.base.entries).length, "shared rule")}.`,
+          h("div", { class: "row" }, h("button", { class: "btn small", type: "button", "data-do": "env-menu" }, "Switch"),
+            h("button", { class: "btn small", type: "button", "data-do": "new-env" }, "New"),
+            h("button", { class: "btn small", type: "button", "data-do": "editor" }, "Edit the file")))),
+      h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "Switches")),
+        setrow("Match my tone", "One rule: familiar phrasing, never copying you.", sw({ "data-feature": "tone" }, feat("tone"), "Match my tone")),
+        setrow("Jokes", "One rule: humour is welcome, never at your expense.", sw({ "data-feature": "jokes" }, feat("jokes"), "Jokes")),
+        setrow("Ask me in the inbox", "One rule: agents file what needs your word, and wait.", sw({ "data-feature": "inbox" }, feat("inbox"), "Ask me in the inbox")),
+        setrow("The feed", "One line per prompt: who asked, whose words, which card. Never what was said.", sw({ "data-setting": "feed" }, !!st.feed, "The feed")),
+        setrow("Hear my prompts", "Keeps your own prompts on this machine, so rules can be proposed from them.", sw({ "data-setting": "hear_prompts" }, !!st.hear_prompts, "Hear my prompts"))),
+      h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "Connections")),
+        setrow("Claude Code", c.claude_code ? `Every prompt gets your card (${c.settings}).` : c.claude_code === null ? `Its settings file could not be read (${c.settings}).` : "Not connected yet.",
+          c.claude_code ? h("span", { class: "meta" }, "Connected") : copyBtn("semantext install claude-code --apply")),
+        (c.files || []).map(f => setrow("Instructions file", f.file, h("span", { class: f.ok ? "meta" : "meta warn" }, f.ok ? "Up to date" : "Block missing"))),
+        setrow("Any MCP tool", "Add semantext mcp as a server: the card and the inbox.", copyBtn("semantext mcp")),
+        setrow("Local models", h("span", { id: "models" }, "Looking..."), null),
+        h("p", { class: "meta", style: "margin-top:12px" }, "Codex, freebuff and any agent with an instructions file: semantext install codex | freebuff | agents-md --apply.")),
+      h("details", { class: "gap" }, h("summary", {}, "Recent changes"),
+        st.log.length ? h("ul", { class: "list" }, st.log.map(l => h("li", { class: "line" }, h("span", { class: "when meta mono" }, String(l.when).slice(5, 16).replace("T", " ")), h("span", { class: "what" }, l.what))))
+          : h("p", { class: "meta" }, "Nothing yet.")),
+      h("p", { class: "meta gap" }, `Semantext ${st.version || ""}`));
+  },
+};
+const AFTER = {
+  today: () => loadMetrics(),
+  layers: () => refreshLayers(),
+  rules: () => { Sky.mount("ruleSky"); if (S.ideasOpen) loadIdeas(); },
+  agents: () => { if ($("skyHost")) Space.mount("skyHost"); },
+  decisions: () => loadRegister(),
+  settings: () => loadModels(),
+};
+
+// ---------------------------------------------------------------- the constellation: your rules, as structure
+// Rings are where a rule applies: the centre, everywhere (the shared base); the next ring, the active environment; the
+// outer ring, one agent's own, an arc of it per agent. Your own words are gold, joined in the order you added them, so
+// the shape grows as you correct your AIs; everything Semantext wrote is grey. A rule switched off is a hollow star.
+// Only the structure you have is drawn: a ring with no rules on it is not there. It is still until something real
+// happens: a message lights the rules that went with it, for a moment.
+const Sky = (() => {
+  const c = h("canvas", { role: "img", "aria-label": "Your rules as a constellation: the centre applies everywhere, and each ring out applies more narrowly. Gold stars are rules in your own words. The list below says the same in words." });
+  const x = c.getContext("2d");
+  const api = {};
+  let W = 0, H = 0, dpr = 1, host = null, raf = 0, font = "system-ui", hover = null;
+  let stars = [], rings = [], arcs = [], mid = null, lit = new Map();
+  const ro = "ResizeObserver" in window ? new ResizeObserver(() => { size(); api.layout(); }) : null;
+  const originOf = (e) => { const t = (e.provenance || {}).type; return t === "LEARNED" ? "you" : t === "PROPOSED" ? "agent" : "app"; };
+  const addedAt = (e) => { const p = e.provenance || {}; return String(p.when || p.added || p.proposed || ""); };
+  const ORDER = { app: 0, agent: 1, you: 2 };
+  const kept = (es) => (es || []).filter(e => e && !e.archived);
+  const testedIds = () => new Set(((S.profile && S.profile.tests) || []).flatMap(t => t.rules || []));
+
+  function size() {
+    if (!host || !host.isConnected) return;
+    const r = host.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    dpr = devicePixelRatio || 1; W = r.width; H = r.height;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  }
+  function star(e, layer, sx, sy, agent, tested) {
+    const o = originOf(e);
+    return { e, id: e.id, layer, origin: o, x: sx, y: sy, agent, off: e.enabled === false, tested: tested.has(e.id),
+      r: o === "you" ? 4.4 : o === "agent" ? 3.8 : 3.1 };
+  }
+  // Stars evenly round a ring, from the top; a crowded ring alternates between two radii so none overlap.
+  function round(list, r, a0, step, layer, agent, tested) {
+    const crowded = 2 * Math.PI * r / Math.max(1, list.length) < 11;
+    list.forEach((e, i) => { const a = a0 + i * step, rr = crowded && i % 2 ? r * .9 : r; stars.push(star(e, layer, mid.x + Math.cos(a) * rr, mid.y + Math.sin(a) * rr, agent, tested)); });
+  }
+  api.layout = () => {
+    if (!W || !S.base || !S.profile) return;
+    font = getComputedStyle(document.body).fontFamily;
+    const R = Math.min(W * .44, H * .42);
+    mid = { x: W / 2, y: H / 2 + 6, R };
+    const tested = testedIds();
+    const base = kept(S.base.entries), env = kept(S.profile.entries);
+    const agents = S.agents.map(a => ({ name: a.name, rules: kept([...(a.rules || []), ...(a.carried || []).flatMap(k => k.rules)]) })).filter(a => a.rules.length);
+    stars = []; rings = []; arcs = [];
+    const rb = R * (env.length || agents.length ? .24 : .5);
+    rings.push({ key: "base", r: rb, n: base.length });
+    round(base, rb, -Math.PI / 2, 2 * Math.PI / Math.max(1, base.length), "base", null, tested);
+    if (env.length) {
+      // this environment's rules, grouped by who wrote them, each group in the order its rules were added
+      const re = R * (agents.length ? .6 : .86);
+      rings.push({ key: "environment", r: re, n: env.length });
+      const sorted = env.slice().sort((p, q) => ORDER[originOf(p)] - ORDER[originOf(q)] || addedAt(p).localeCompare(addedAt(q)));
+      const groups = new Set(sorted.map(originOf)).size, step = 2 * Math.PI / (sorted.length + (groups > 1 ? groups : 0));
+      let a = -Math.PI / 2, prev = null;
+      for (const e of sorted) {
+        if (prev !== null && originOf(e) !== prev) a += step;
+        round([e], re, a, 0, "environment", null, tested); prev = originOf(e); a += step;
+      }
+    }
+    if (agents.length) {
+      const ra = R * .93, total = agents.reduce((n, g) => n + g.rules.length, 0) + agents.length, step = 2 * Math.PI / total;
+      rings.push({ key: "agent", r: ra, n: total - agents.length });
+      let a = -Math.PI / 2 + step / 2;
+      for (const g of agents) {
+        const a0 = a, list = g.rules.slice().sort((p, q) => addedAt(p).localeCompare(addedAt(q)));
+        round(list, ra, a, step, "agent", g.name, tested);
+        a += step * list.length;
+        arcs.push({ name: g.name, a0: a0 - step * .35, a1: a - step * .65, r: ra });
+        a += step;
+      }
+    }
+    api.kick();
+  };
+
+  function frame(now) { raf = 0; draw(now); if (!still && host && busy(now)) raf = requestAnimationFrame(frame); }
+  const busy = (now) => [...lit.values()].some(t => t > now);
+  api.kick = () => { if (!raf && host) raf = requestAnimationFrame(frame); };
+  function text(s, px, py, sz, col, weight, align) {
+    x.font = `${weight || 400} ${sz}px ${font}`; x.fillStyle = col; x.textAlign = align || "center"; x.textBaseline = "middle"; x.fillText(s, px, py);
+  }
+  function caps(s, px, py, col, align) {
+    try { x.letterSpacing = "1.5px"; } catch (e) { /* older canvases draw it without the spacing */ }
+    text(s.toUpperCase(), px, py, 11, col, 600, align);
+    try { x.letterSpacing = "0px"; } catch (e) { /* as above */ }
+  }
+  const short = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  // How bright a star is now: lit by the last message (fading over 1.4 s; with reduced motion, until the next one).
+  const glowOf = (s, now) => { const t = lit.get(s.id); return t === undefined ? 0 : still ? .8 : t > now ? Math.min(1, (t - now) / 1400) : 0; };
+
+  function draw(now) {
+    if (!W || !mid) return;
+    const P = palette();
+    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+    const { x: cx, y: cy } = mid;
+    // the rings: where a rule applies, each named
+    for (const g of rings) {
+      x.save(); x.setLineDash([2, 5]); x.strokeStyle = rgba(P.line, 1); x.lineWidth = 1;
+      x.beginPath(); x.arc(cx, cy, g.r, 0, 6.283); x.stroke(); x.restore();
+    }
+    const top = (g) => cy - g.r - 14;
+    for (const g of rings) {
+      if (g.key === "base") caps(rings.length > 1 ? `Everywhere · ${g.n}` : `Everywhere · ${plural(g.n, "rule")}`, cx, rings.length > 1 ? cy + g.r + 17 : top(g), rgba(P.t3, 1));
+      if (g.key === "environment") caps(`In ${S.profile.environment.title} · ${g.n}`, cx, top(g), rgba(P.t3, 1));
+    }
+    for (const a of arcs) {
+      const am = (a.a0 + a.a1) / 2, lx = cx + Math.cos(am) * (a.r + 18), ly = cy + Math.sin(am) * (a.r + 18);
+      x.save(); x.strokeStyle = rgba(P.t3, .7); x.lineWidth = 1.5; x.beginPath(); x.arc(cx, cy, a.r + 8, a.a0, a.a1); x.stroke(); x.restore();
+      text(short(label(a.name), 20) + " only", lx, ly, 12, rgba(P.t2, 1), 400, Math.cos(am) > .25 ? "left" : Math.cos(am) < -.25 ? "right" : "center");
+    }
+    // the shared rules, joined in a closed ring: every full card carries all of them together
+    const shared = stars.filter(s => s.layer === "base" && !s.off);
+    if (shared.length > 2) {
+      x.strokeStyle = rgba(P.t3, .3); x.lineWidth = 1; x.beginPath();
+      shared.forEach((s, i) => (i ? x.lineTo(s.x, s.y) : x.moveTo(s.x, s.y))); x.closePath(); x.stroke();
+    }
+    // your own rules, joined in the order you added them
+    const yours = new Map();
+    for (const s of stars) if (s.origin === "you" && s.layer !== "base") { const k = s.layer + ":" + (s.agent || ""); if (!yours.has(k)) yours.set(k, []); yours.get(k).push(s); }
+    for (const g of yours.values()) {
+      if (g.length < 2) continue;
+      x.strokeStyle = rgba(P.accent, .55); x.lineWidth = 1.2; x.beginPath();
+      g.forEach((s, i) => (i ? x.lineTo(s.x, s.y) : x.moveTo(s.x, s.y))); x.stroke();
+    }
+    // the stars
+    for (const s of stars) {
+      const k = s.origin === "you" ? P.accent : s.origin === "agent" ? P.t2 : P.t3, g = glowOf(s, now), hov = hover === s;
+      if (g || hov) {
+        const rad = s.r * (3.5 + 3 * g) + (hov ? 4 : 0), gr = x.createRadialGradient(s.x, s.y, 0, s.x, s.y, rad);
+        gr.addColorStop(0, rgba(g ? P.text : k, .22 + .4 * g)); gr.addColorStop(1, rgba(g ? P.text : k, 0));
+        x.fillStyle = gr; x.beginPath(); x.arc(s.x, s.y, rad, 0, 6.283); x.fill();
+      }
+      if (s.off) { x.strokeStyle = rgba(k, .9); x.lineWidth = 1.3; x.beginPath(); x.arc(s.x, s.y, s.r, 0, 6.283); x.stroke(); }
+      else { x.fillStyle = rgba(g ? P.text : k, 1); x.beginPath(); x.arc(s.x, s.y, s.r + 1.2 * g, 0, 6.283); x.fill(); }
+      if (s.tested) { x.strokeStyle = rgba(k, .9); x.lineWidth = 1; x.beginPath(); x.arc(s.x, s.y, s.r + 3.4, 0, 6.283); x.stroke(); }
+    }
+  }
+
+  // A delivery: the rules that went with it light up for a moment. Which rules light is read from the feed line alone:
+  // the ones sent, and for your own words, the shared rules that speak to what the quick reading noticed.
+  api.pulse = (r) => {
+    if (!host || !r) return;
+    api.layout();
+    const now = performance.now(), sent = new Set(r.layers.flatMap(L => L.ids)), on = new Set();
+    if (r.words === "own") {
+      for (const k of r.noticed || []) if (RULE_FOR[k] && sent.has(RULE_FOR[k])) on.add(RULE_FOR[k]);
+      for (const s of stars) if (s.layer !== "base" && sent.has(s.id)) on.add(s.id);
+    } else for (const s of stars) if (sent.has(s.id)) on.add(s.id);   // the short card: the safety rules alone
+    lit = new Map([...on].map(id => [id, now + 1400]));
+    api.kick();
+  };
+  api.mount = (el) => {
+    const target = typeof el === "string" ? $(el) : el;
+    if (!target) return;
+    host = target; target.append(c);
+    if (ro) { ro.disconnect(); ro.observe(target); }
+    size(); api.layout();
+  };
+  api.unmount = () => { if (raf) cancelAnimationFrame(raf); raf = 0; if (ro) ro.disconnect(); host = null; tipOff(); };
+
+  // pointing and choosing
+  function hit(mx, my) {
+    let best = null, bd = 13;
+    for (const s of stars) { const d = Math.hypot(s.x - mx, s.y - my); if (d < bd) { bd = d; best = s; } }
+    return best;
+  }
+  const where = (s) => s.layer === "base" ? "Everywhere" : s.layer === "environment" ? `In ${S.profile.environment.title}` : `${label(s.agent)} only`;
+  function tipOn(s, ev) {
+    const t = $("skytip");
+    fill(t, [h("b", {}, short(String(s.e.statement || ""), 140)), h("span", { class: "meta" }, `${where(s)} · ${SOURCE(s.e)}${s.off ? " · off" : ""}`)]);
+    t.style.left = Math.min(ev.clientX + 16, innerWidth - 336) + "px"; t.style.top = (ev.clientY + 14) + "px"; t.classList.add("on");
+  }
+  function tipOff() { const t = $("skytip"); if (t) t.classList.remove("on"); }
+  c.addEventListener("mousemove", (ev) => {
+    const r = c.getBoundingClientRect(), s = hit(ev.clientX - r.left, ev.clientY - r.top);
+    if (hover !== s) { hover = s; api.kick(); }
+    c.style.cursor = s ? "pointer" : "default";
+    if (s) tipOn(s, ev); else tipOff();
+  });
+  c.addEventListener("mouseleave", () => { hover = null; tipOff(); api.kick(); });
+  c.addEventListener("click", (ev) => {
+    const r = c.getBoundingClientRect(), s = hit(ev.clientX - r.left, ev.clientY - r.top);
+    tipOff();
+    if (!s) return closePop();
+    rulePop(s, ev.clientX, ev.clientY, where(s));
+  });
+  return api;
+})();
+// Only what the picture holds goes in its legend.
+function skyLegend() {
+  const all = [...live(S.base.entries), ...live(S.profile.entries), ...S.agents.flatMap(a => [...(a.rules || []), ...(a.carried || []).flatMap(k => k.rules)])];
+  const has = (t) => all.some(e => ((e.provenance || {}).type) === t);
+  const tested = ((S.profile && S.profile.tests) || []).length > 0;
+  return h("div", { class: "legend meta" },
+    has("LEARNED") ? h("span", {}, h("i", { class: "you" }), "Your own words, joined in the order you added them") : null,
+    h("span", {}, h("i", { class: "app" }), "Came with Semantext"),
+    has("PROPOSED") ? h("span", {}, h("i", { class: "agent" }), "An agent's proposal you added") : null,
+    all.some(e => e.enabled === false) ? h("span", {}, h("i", { class: "off" }), "Switched off") : null,
+    tested ? h("span", {}, h("i", { class: "tested" }), "Kept with the message it was taught from") : null);
+}
+// One rule, from the constellation: what it says, when, where it applies, who wrote it, and its switch.
+function rulePop(s, px, py, whereText) {
+  const e = s.e, prof = s.layer === "base" ? "base" : S.state.active;
+  fill("rulecard", [
+    h("div", { class: "row" }, h("span", { class: "label grow" }, whereText),
+      h("button", { class: "link meta", type: "button", "data-do": "close-pop", "aria-label": "Close" }, "Close")),
+    h("p", { class: "st" }, e.statement),
+    ruleDetail(e, prof, true)]);
+  place(px, py);
+}
+function place(px, py) {
+  const el = $("rulecard");
+  el.hidden = false;
+  el.style.left = Math.max(16, Math.min(px + 16, innerWidth - 376)) + "px";
+  el.style.top = Math.max(16, Math.min(py - 20, innerHeight - el.offsetHeight - 16)) + "px";
+}
+function closePop() { const el = $("rulecard"); if (el) el.hidden = true; }
+
+// ---------------------------------------------------------------- the rules, in words
+// Who wrote a rule: Semantext (built in, suggested, a switch), you, or an agent you said add to.
+const SOURCE = (e) => {
+  const p = e.provenance || {};
+  return p.type === "LEARNED" ? "Your words" : p.type === "PROPOSED" ? `Proposed by ${p.by || "an agent"}, added by you`
+    : p.type === "SUGGESTED" ? `Suggested${p.pack ? ": " + p.pack : ""}` : p.type === "SETTING" ? "A switch" : "Came with Semantext";
+};
+function ruleDetail(e, prof, inPop) {
+  const p = e.provenance || {};
+  const added = when(p.when || p.added || p.proposed);
+  const kind = Object.keys(RULE_FOR).find(k => RULE_FOR[k] === e.id), n = kind && S.metrics && S.metrics.noticed[kind];
+  const kept = ((S.profile && S.profile.tests) || []).filter(t => (t.rules || []).includes(e.id));
+  const short = (text, k) => { const v = String(text || "").split(/\s+/).join(" "); return v.length > k ? v.slice(0, k - 1) + "…" : v; };
+  return h("div", { class: "detail" },
+    h("p", { class: "meta" }, "When: ", e.always ? "always, on every card, even the short one" : e.applies_when || "whenever it fits"),
+    h("p", { class: "meta" }, SOURCE(e), added ? `  ·  added ${added.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}` : "",
+      e.relay && !e.always ? "  ·  also on the short card" : ""),
+    p.type === "LEARNED" && p.words && p.words.trim() !== String(e.statement).trim() ? h("p", { class: "meta quote" }, `Your words: “${p.words}”`) : null,
+    n ? h("p", { class: "meta" }, `${n.n} of your recent messages read this way, and this rule went with ${n.covered === n.n ? "every one" : n.covered + " of them"}.`) : null,
+    kept.length ? h("p", { class: "meta" }, kept.length === 1 ? "Its test, the message your AI got wrong: " : `Its ${kept.length} tests: `,
+      kept.slice(0, 2).map((t, i) => [i ? "; " : "", `“${short(t.message, 90)}”`]), kept.length > 2 ? `, and ${kept.length - 2} more` : "",
+      ". Switching it off would let that misreading come back.") : null,
+    h("div", { class: "row", style: "margin-top:4px" },
+      inPop ? [h("button", { class: "switch", role: "switch", "aria-checked": String(e.enabled !== false), "aria-label": "On or off", "data-toggle": e.id, "data-prof": prof, type: "button" }),
+        h("span", { class: "meta" }, e.enabled === false ? "Off: on no card" : "On")] : null,
+      h("span", { class: "grow" }),
+      p.type === "LEARNED" || p.type === "PROPOSED" ? h("button", { class: "link meta", type: "button", "data-remove": e.id, "data-prof": prof }, "Remove") : null));
+}
+function ruleRow(e, prof) {
+  const open = S.ruleOpen === e.id, mine = (e.provenance || {}).type === "LEARNED";
+  return h("li", { class: "rule" + (e.enabled === false ? " off" : "") },
+    h("div", { class: "line" },
+      h("button", { class: "link st", type: "button", "data-rule": e.id, "aria-expanded": String(open), style: "text-decoration:none;color:inherit;text-align:left" },
+        mine ? h("span", { class: "mine", title: "Your own words" }) : null, e.statement),
+      h("button", { class: "switch", role: "switch", "aria-checked": String(e.enabled !== false), "aria-label": "On or off: " + String(e.statement).slice(0, 80), "data-toggle": e.id, "data-prof": prof, type: "button" })),
+    open ? ruleDetail(e, prof, false) : null);
+}
+function ruleGroup(title, rules, prof, empty) {
+  return h("div", { class: "gap" },
+    h("div", { class: "sechead" }, h("h2", { class: "label" }, title), h("span", { class: "meta" }, plural(rules.length, "rule"))),
+    rules.length ? h("ul", { class: "list" }, rules.map(e => ruleRow(e, prof))) : h("p", { class: "meta" }, empty));
+}
+function ruleLists(env) {
+  return [ruleGroup(`In ${S.profile.environment.title}`, env, S.state.active, "None of its own yet: it reads the shared rules. Add one above."),
+    S.agents.filter(a => (a.rules || []).length).map(a => ruleGroup(`${label(a.name)} only`, a.rules, S.state.active, "")),
+    ruleGroup("Everywhere", live(S.base.entries), "base", "None.")];
+}
+async function loadIdeas() {
+  try {
+    const r = await api("/api/ideas?name=" + enc(S.state.active));
+    fill("ideasList", [
+      r.packs.map(p => [h("p", { class: "label", style: "margin-top:16px" }, p.title), h("ul", { class: "picks" }, p.rules.map(x => h("li", {}, h("label", {},
+        h("input", { type: "checkbox", "data-idea": x.id, checked: x.held ? "" : null, disabled: x.held ? "" : null }),
+        h("span", {}, x.statement, x.held ? h("span", { class: "meta" }, "  ·  already here") : null)))))]),
+      h("div", { class: "actions", style: "justify-content:flex-start" }, h("button", { class: "btn", type: "button", "data-do": "add-ideas" }, "Add the ticked ones"))]);
+  } catch (e) { fill("ideasList", h("p", { class: "meta" }, "The suggestions could not be loaded: " + e.message)); }
+}
+
+// ---------------------------------------------------------------- try a message
+const ruleIndex = () => {
+  const m = new Map();
+  for (const e of live(S.base.entries)) m.set(e.id, e.statement);
+  for (const e of live(S.profile.entries)) m.set(e.id, e.statement);
+  for (const a of S.agents) for (const e of [...(a.rules || []), ...(a.carried || []).flatMap(c => c.rules)]) m.set(e.id, e.statement);
+  return m;
+};
+function testFlow() {
+  const d = S.test;
+  if (!d) return null;
+  const R = d.reading || { readings: [], decisions: [], touched: [] };
+  const idx = ruleIndex();
+  return [
+    h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "How it is read")),
+      R.readings.length || R.decisions.length ? h("div", { class: "readings" },
+        R.readings.map(x => h("div", {}, h("div", {}, h("b", {}, x.label), "  ", h("span", { class: "soft" }, x.says)), h("div", { class: "meta" }, "The rule: " + (idx.get(x.rule) || x.rule)))),
+        R.decisions.map(x => h("div", { style: "color:var(--accent-ink)" }, x.ask))) : h("p", { class: "soft" }, "No cue words: it is read as a plain message, with your whole card."),
+      h("p", { class: "meta", style: "margin-top:12px" }, "This is Semantext's quick reading, from cue words. Your AI reads the message with the whole card.")),
+    h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "What happens to it")), stepsView(d)),
+    h("section", { class: "gap" }, h("details", {}, h("summary", {}, "Not read the way you meant?"),
+      h("form", { class: "addrule", id: "teachFromTest" },
+        h("input", { class: "input", name: "words", placeholder: "How it should have been read, as a rule", autocomplete: "off", "aria-label": "How this message should have been read, as a rule" }),
+        h("button", { class: "btn primary", type: "submit" }, "Keep the rule")),
+      h("p", { class: "meta", style: "margin-top:10px" }, "This message is kept beside the rule, as its test."))),
+    h("section", { class: "gap" }, h("details", {}, h("summary", {}, "The card it would get"), h("pre", { class: "card" }, d.text)))];
+}
+
+// ---------------------------------------------------------------- agents
+function deliveries(agent, env) { return S.feed.records.filter(r => r.agent === agent && (!env || r.environment === env)); }
+function allAgents() {
+  const names = new Map(S.agents.map(a => [a.name, a]));
+  for (const r of S.feed.records) if (!names.has(r.agent)) names.set(r.agent, { name: r.agent, label: "", folders: [], sessions: [], rules: [], carried: [], envs: {} });
+  return [...names.values()];
+}
+function agentRows(list) {
+  if (!list.length) return h("li", { class: "empty" }, "No agents yet. One appears here once it uses Semantext, or when you name one by its folder.");
+  return list.map(a => {
+    const open = S.agentOpen === a.name, cards = deliveries(a.name).length, own = (a.rules || []).length;
+    const how = a.folders.length ? "bound by you" : a.sessions.length ? (a.sessions.every(s => s.how === "claimed") ? "claimed" : "seen in its folder") : a.name === "ai" ? "unnamed" : "rules only";
+    return h("li", {},
+      h("button", { class: "line", type: "button", "data-agent": a.name, "aria-expanded": String(open) },
+        h("span", { class: "who" }, label(a.name)),
+        h("span", { class: "what meta", style: "color:var(--text-3)" }, how),
+        h("span", { class: "when meta" }, [plural(cards, "card"), own ? plural(own, "own rule") : ""].filter(Boolean).join("  ·  ")),
+        h("span", { class: "chev", "aria-hidden": "true" }, open ? "–" : "+")),
+      open ? agentDetail(a) : null);
+  });
+}
+function agentDetail(a) {
+  const name = S.state.active, open = S.inbox.open.filter(q => q.from === a.name).length;
+  return h("div", { class: "opened", id: "agentDetail" },
+    h("p", { class: "meta" }, (a.folders.length ? "Bound by you to " + a.folders.join(", ") : a.sessions.length ? "Seen by its tool and project" : "Known by the rules you gave it")
+      + (a.seen ? `, last seen ${a.seen}` : "") + (a.sessions.length ? ` (${plural(a.sessions.length, "session")})` : "") + "."
+      + (open ? ` ${plural(open, "request")} waiting for you.` : "")),
+    a.folders.length ? h("div", { class: "links", style: "margin-top:6px" }, a.folders.map(f => h("button", { class: "link meta", type: "button", "data-unbind": f }, `Unbind ${f}`))) : null,
+    a.now ? h("p", { class: "meta" }, `You bound its folder to ${a.now}: its rules go with ${a.now} now.`) : null,
+    (a.rules || []).length ? h("ul", { class: "list", style: "margin-top:12px" }, a.rules.map(e => ruleRow(e, name))) : h("p", { class: "meta", style: "margin-top:8px" }, `No rules of its own in ${S.profile.environment.title}.`),
+    (a.carried || []).map(c => [h("p", { class: "meta", style: "margin-top:10px" }, `Taught to it as ${c.from}, before you named it:`), h("ul", { class: "list" }, c.rules.map(e => ruleRow(e, name)))]),
+    h("form", { class: "addrule", "data-agent-rule": a.name, style: "margin-top:14px" },
+      h("input", { class: "input", placeholder: `A rule for ${label(a.name)} only`, autocomplete: "off", "aria-label": `A rule for ${a.name}` }),
+      h("button", { class: "btn", type: "submit" }, "Add")),
+    h("form", { class: "addrule", "data-agent-label": a.name, style: "margin-top:8px" },
+      h("input", { class: "input", placeholder: "A display name, if you like", value: a.label || "", autocomplete: "off", "aria-label": `A display name for ${a.name}` }),
+      h("button", { class: "btn", type: "submit" }, "Name it")),
+    h("div", { class: "links", style: "margin-top:12px" },
+      h("button", { class: "link meta", type: "button", "data-do": "test-agent", "data-name": a.name }, "Try a message to it"),
+      h("button", { class: "link meta", type: "button", "data-do": "layers-agent", "data-name": a.name }, "What it gets")));
+}
+
+// ---------------------------------------------------------------- the map: your agents at work
+// Each environment is a zone: membership, not walls. Each agent sits in the zones it works in (between them when it
+// works in more than one), and you are on the left. Lines are what passes between you and them: your words and your
+// answers; another agent's relayed words (dashed: information, never your voice); a tool's notices (dotted); and an
+// agent asking you, in gold, the one thing here that waits on you. A name an agent only claims is drawn dashed.
+const Space = (() => {
+  const c = h("canvas", { role: "img", "aria-label": "Your agents at work: you on the left, each environment a zone, each agent inside the zones it works in, with lines for what passes between you and them. The list below says the same in words." });
+  const x = c.getContext("2d");
+  const api = {};
+  let W = 0, H = 0, dpr = 1, host = null, font = "system-ui", hover = null, raf = 0;
+  let you = null, tools = null, zones = [], nodes = [], outsiders = [], edges = [];
+  const hash = (s) => { let v = 0; for (const ch of String(s)) v = (v * 31 + ch.charCodeAt(0)) >>> 0; return v; };
+  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9@._-]+/g, "-").replace(/^[-._]+|[-._]+$/g, "");
+  const ro = "ResizeObserver" in window ? new ResizeObserver(() => { size(); api.layout(); }) : null;
+
+  function size() {
+    if (!host || !host.isConnected) return;
+    const r = host.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    dpr = devicePixelRatio || 1; W = r.width; H = r.height;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  }
+  api.layout = () => {
+    if (!W || !S.state || !S.base) return;
+    font = getComputedStyle(document.body).fontFamily;
+    const narrow = W < 560;
+    you = { kind: "you", key: "you", name: "You", x: narrow ? W * .5 : W * .08, y: narrow ? 26 : H * .44, r: 9 };
+    tools = { kind: "tools", key: "tools", name: "Tools", x: narrow ? W * .12 : W * .08, y: narrow ? 26 : H * .84, r: 5 };
+    const envs = S.state.profiles.filter(p => p.name !== "base");
+    const box = narrow ? { x0: W * .03, x1: W * .97, y0: 64, y1: H - 34 } : { x0: W * .18, x1: W * .9, y0: H * .08, y1: H * .9 };
+    // The zones overlap as sets do (two side by side, three as a triangle, more round a ring), so an agent that works
+    // in two of them sits in exactly their overlap, and never in a third it has nothing to do with.
+    const bw = box.x1 - box.x0, bh = box.y1 - box.y0, bx = (box.x0 + box.x1) / 2, by = (box.y0 + box.y1) / 2, n = envs.length;
+    const spot = n <= 1 ? [[0, 0, .36, .44]] : n === 2 ? [[-.2, 0, .32, .44], [.2, 0, .32, .44]]
+      : n === 3 ? [[-.17, -.17, .26, .34], [.17, -.17, .26, .34], [0, .2, .26, .34]]
+      : envs.map((_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [Math.cos(a) * .3, Math.sin(a) * .3, .2, .27]; });
+    zones = envs.map((p, i) => {
+      const [dx, dy, rx, ry] = spot[i];
+      return { kind: "zone", key: "zone:" + p.name, name: p.name, title: p.title, rules: p.rules, active: p.name === S.state.active,
+        x: bx + dx * bw, y: by + dy * bh, rx: rx * bw, ry: ry * bh, out: n <= 1 ? -Math.PI / 2 : Math.atan2(dy * bh, dx * bw) };
+    });
+    const zoneOf = new Map(zones.map(z => [z.name, z]));
+    const recs = S.feed.records;
+    nodes = allAgents().map(a => {
+      const mine = recs.filter(r => r.agent === a.name);
+      const inZones = [...new Set([...Object.keys(a.envs || {}), ...mine.map(r => r.environment)])].filter(e => zoneOf.has(e));
+      const how = (a.folders || []).length ? "bound" : mine[0] ? mine[0].how
+        : (a.sessions || []).length && a.sessions.every(s => s.how === "claimed") ? "claimed" : "observed";
+      return { kind: "agent", key: "agent:" + a.name, name: a.name, a, how, zones: inZones,
+        n: { own: mine.filter(r => r.words === "own").length, agent: mine.filter(r => r.words === "agent").length,
+             tool: mine.filter(r => r.words === "tool").length }, r: 6 + Math.min(4, Math.log2(1 + mine.length) * 1.2) };
+    });
+    // Each agent goes to the middle of the zones it works in, spread among those that share exactly those zones.
+    const groups = new Map();
+    for (const nd of nodes) { const g = nd.zones.slice().sort().join("|"); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(nd); }
+    let lobby = 0;
+    for (const [g, members] of groups) {
+      members.sort((p, q) => p.name.localeCompare(q.name));
+      members.forEach((nd, i) => {
+        if (!nd.zones.length) { nd.x = (narrow ? W * .15 : W * .3) + (lobby++) * 90; nd.y = H - 16; nd.lobby = true; return; }
+        const zs = nd.zones.map(z => zoneOf.get(z));
+        let cx = zs.reduce((s, z) => s + z.x, 0) / zs.length, cy = zs.reduce((s, z) => s + z.y, 0) / zs.length;
+        if (zs.length === 1 && zones.length > 1) { cx += Math.cos(zs[0].out) * zs[0].rx * .32; cy += Math.sin(zs[0].out) * zs[0].ry * .32; }
+        const k = members.length, rad = k === 1 ? 0 : Math.min(zs[0].ry * .6, 18 + 8 * k);
+        const ang = -Math.PI / 2 + i * 2 * Math.PI / k + (hash(g) % 100) / 100;
+        nd.x = cx + Math.cos(ang) * rad * 1.6; nd.y = cy + Math.sin(ang) * rad + (zs.length > 1 ? 0 : 8);
+      });
+    }
+    for (let it = 0; it < 40; it++) for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const p = nodes[i], q = nodes[j], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || .01, min = p.r + q.r + 40;
+      if (d < min) { const m = (min - d) / 2, ux = dx / d, uy = dy / d; p.x -= ux * m; p.y -= uy * m; q.x += ux * m; q.y += uy * m; }
+    }
+    for (const nd of nodes) { nd.x = Math.max(30, Math.min(W - 30, nd.x)); nd.y = Math.max(24, Math.min(H - 24, nd.y)); }
+    // Who relayed: one of these agents when the name it gave matches; otherwise a sender at the edge, by that name.
+    const byName = new Map(nodes.flatMap(nd => [[norm(nd.name), nd], [norm(label(nd.name)), nd]]));
+    const outs = new Map();
+    const sender = (name) => {
+      const key = norm(name) || "another-agent", found = byName.get(key);
+      if (found) return found;
+      if (!outs.has(key)) outs.set(key, { kind: "outsider", key: "out:" + key, name: name || "another agent", r: 5, impostor: claimsYou(name) });
+      return outs.get(key);
+    };
+    const E = new Map();
+    const add = (from, to, kind) => { const id = from.key + ">" + to.key + ":" + kind; const e = E.get(id) || { from, to, kind, n: 0 }; e.n++; E.set(id, e); };
+    for (const r of recs) {
+      const A = nodes.find(nd => nd.name === r.agent); if (!A) continue;
+      if (r.words === "own") add(you, A, "own"); else if (r.words === "tool") add(tools, A, "tool"); else add(sender(r.from), A, "relay");
+    }
+    for (const q of S.inbox.open) { const A = nodes.find(nd => nd.name === q.from); if (A) add(A, you, "ask"); }
+    for (const q of S.inbox.recent) { const A = nodes.find(nd => nd.name === q.from); if (A && q.answer) add(you, A, "answer"); }
+    outsiders = [...outs.values()];
+    outsiders.forEach((o, i) => { o.x = narrow ? W * .88 : W * .96; o.y = H * (.18 + .64 * (i + .5) / outsiders.length); });
+    edges = [...E.values()];
+    api.kick();
+  };
+  const ctrl = (a, b) => { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, off = Math.min(56, L * .16); return { x: mx - dy / L * off, y: my + dx / L * off }; };
+  const along = (a, b, k) => { const q = ctrl(a, b), u = 1 - k; return { x: u * u * a.x + 2 * u * k * q.x + k * k * b.x, y: u * u * a.y + 2 * u * k * q.y + k * k * b.y }; };
+  function text(s, px, py, size, col, weight, align) {
+    x.font = `${weight || 400} ${size}px ${font}`; x.fillStyle = col; x.textAlign = align || "center"; x.textBaseline = "middle"; x.fillText(s, px, py);
+  }
+  const short = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  // Gold is for what needs you now: an agent's open request. Everything else on the map is grey.
+  function line(e, P) {
+    const needs = e.kind === "ask";
+    const k = e.from.impostor ? P.danger : needs ? P.accent : e.kind === "answer" ? P.t2 : P.t3, q = ctrl(e.from, e.to);
+    const w = (e.kind === "answer" ? 1.4 : 1) + Math.min(2, Math.log2(1 + e.n) * .7);
+    x.save();
+    x.strokeStyle = rgba(k, needs ? .9 : .5); x.lineWidth = w;
+    if (e.kind === "relay") x.setLineDash([5, 5]); else if (e.kind === "tool") x.setLineDash([1.5, 4]);
+    x.beginPath(); x.moveTo(e.from.x, e.from.y); x.quadraticCurveTo(q.x, q.y, e.to.x, e.to.y); x.stroke();
+    x.setLineDash([]);
+    const p = along(e.from, e.to, .78), p2 = along(e.from, e.to, .8), ang = Math.atan2(p2.y - p.y, p2.x - p.x);
+    x.fillStyle = rgba(k, needs ? .95 : .6); x.beginPath();
+    x.moveTo(p2.x + Math.cos(ang) * 5, p2.y + Math.sin(ang) * 5);
+    x.lineTo(p2.x + Math.cos(ang + 2.5) * 5, p2.y + Math.sin(ang + 2.5) * 5);
+    x.lineTo(p2.x + Math.cos(ang - 2.5) * 5, p2.y + Math.sin(ang - 2.5) * 5); x.fill();
+    x.restore();
+  }
+  function frame() { raf = 0; draw(); }
+  api.kick = () => { if (!raf && host) raf = requestAnimationFrame(frame); };
+  function draw() {
+    if (!W || !you) return;
+    const P = palette();
+    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+    for (const z of zones) {
+      x.save(); x.setLineDash([3, 5]); x.strokeStyle = rgba(hover === z ? P.t2 : P.line, 1); x.lineWidth = 1;
+      x.beginPath(); x.ellipse(z.x, z.y, z.rx, z.ry, 0, 0, 6.283); x.stroke(); x.restore();
+      // its name on its outer side, away from the overlaps where agents sit
+      const up = Math.sin(z.out) < .3, lx = z.x + Math.cos(z.out) * z.rx * (zones.length > 1 ? .55 : 0);
+      const ly = up ? z.y - z.ry + 16 : z.y + z.ry - 16;
+      try { x.letterSpacing = "1.5px"; } catch (e) {}
+      text(z.title.toUpperCase() + (z.active ? " · ACTIVE" : ""), lx, ly, 11, rgba(P.t3, 1), 600);
+      try { x.letterSpacing = "0px"; } catch (e) {}
+    }
+    for (const e of edges) line(e, P);
+    // you, the tools, the senders at the edge
+    x.fillStyle = rgba(P.accent, 1); x.beginPath(); x.arc(you.x, you.y, you.r, 0, 6.283); x.fill();
+    text("You", you.x, you.y + you.r + 14, 12, rgba(P.text, 1), 600);
+    x.fillStyle = rgba(P.t3, 1); x.beginPath(); x.arc(tools.x, tools.y, tools.r, 0, 6.283); x.fill();
+    text("Tools", tools.x, tools.y + 15, 12, rgba(P.t3, 1));
+    for (const o of outsiders) {
+      const k = o.impostor ? P.danger : P.t3;
+      x.save(); x.setLineDash(o.impostor ? [] : [2, 3]); x.strokeStyle = rgba(k, 1); x.lineWidth = o.impostor ? 1.6 : 1;
+      x.beginPath(); x.arc(o.x, o.y, o.r, 0, 6.283); x.stroke(); x.restore();
+      text(o.impostor ? `"${short(o.name, 12)}" claims to be you` : short(o.name, 16), o.x - 10, o.y + 15, 11, rgba(k, 1), 400, "right");
+    }
+    // the agents
+    for (const nd of nodes) {
+      if (hover === nd) { x.fillStyle = rgba(P.t3, .18); x.beginPath(); x.arc(nd.x, nd.y, nd.r + 9, 0, 6.283); x.fill(); }
+      x.fillStyle = rgba(P.t2, 1); x.beginPath(); x.arc(nd.x, nd.y, nd.r, 0, 6.283); x.fill();
+      if (nd.how === "claimed") { x.save(); x.setLineDash([3, 3]); x.strokeStyle = rgba(P.t2, 1); x.beginPath(); x.arc(nd.x, nd.y, nd.r + 3, 0, 6.283); x.stroke(); x.restore(); }
+      if (S.inbox.open.some(q => q.from === nd.name)) {   // waiting for your answer
+        x.fillStyle = rgba(P.accent, 1); x.beginPath(); x.arc(nd.x + nd.r * .85, nd.y - nd.r * .85, 3.5, 0, 6.283); x.fill();
+      }
+      text(short(label(nd.name), 22), nd.x, nd.y + nd.r + 14, 12, rgba(P.text, .9), 400);
+    }
+  }
+  api.mount = (el) => {
+    const target = typeof el === "string" ? $(el) : el;
+    if (!target) return;
+    host = target; target.append(c);
+    if (ro) { ro.disconnect(); ro.observe(target); }
+    size(); api.layout();
+  };
+  api.unmount = () => { if (raf) cancelAnimationFrame(raf); raf = 0; if (ro) ro.disconnect(); host = null; tipOff(); };
+
+  // pointing and choosing
+  function hit(mx, my) {
+    let best = null, bd = Infinity;
+    for (const nd of [you, tools, ...nodes, ...outsiders]) {
+      if (!nd) continue;
+      const d = Math.hypot(nd.x - mx, nd.y - my);
+      if (d < nd.r + 9 && d < bd) { bd = d; best = nd; }
+    }
+    if (best) return best;
+    for (const z of zones) if (((mx - z.x) / z.rx) ** 2 + ((my - z.y) / z.ry) ** 2 <= 1) return z;
+    return null;
+  }
+  function tipOn(o, ev) {
+    const t = $("skytip"), open = (nm) => S.inbox.open.filter(q => q.from === nm).length;
+    let head = "", body = "";
+    if (o.kind === "agent") {
+      head = label(o.name);
+      body = (o.zones.length ? `Works in ${o.zones.map(envTitle).join(" and ")}. ` : "")
+        + `${o.n.own} from you, ${o.n.agent} relayed, ${o.n.tool} from tools` + (open(o.name) ? `; ${open(o.name)} waiting for you.` : ".");
+    } else if (o.kind === "you") { head = "You"; body = `${S.inbox.open.length} waiting for your answer. Only you answer.`; }
+    else if (o.kind === "tools") { head = "Tools"; body = "A tool's notices: information, never your word."; }
+    else if (o.kind === "outsider" && o.impostor) { head = `"${o.name}" claims to be you`; body = "It arrived as another agent's words, so it is not your word, whatever name it gives."; }
+    else if (o.kind === "outsider") { head = o.name; body = "Another agent, by the name its message gave: what it relays is information, never your voice."; }
+    else if (o.kind === "zone") { head = o.title; body = `${plural(o.rules, "rule")} of its own, on top of the shared ones.`; }
+    fill(t, [h("b", {}, head), h("span", { class: "meta" }, body)]);
+    t.style.left = Math.min(ev.clientX + 16, innerWidth - 336) + "px"; t.style.top = (ev.clientY + 14) + "px"; t.classList.add("on");
+  }
+  function tipOff() { const t = $("skytip"); if (t) t.classList.remove("on"); }
+  c.addEventListener("mousemove", (ev) => {
+    const r = c.getBoundingClientRect(), o = hit(ev.clientX - r.left, ev.clientY - r.top);
+    if (hover !== o) { hover = o; api.kick(); }
+    c.style.cursor = o && (o.kind === "agent" || o.kind === "you") ? "pointer" : "default";
+    if (o) tipOn(o, ev); else tipOff();
+  });
+  c.addEventListener("mouseleave", () => { hover = null; tipOff(); api.kick(); });
+  c.addEventListener("click", (ev) => {
+    const r = c.getBoundingClientRect(), o = hit(ev.clientX - r.left, ev.clientY - r.top);
+    tipOff();
+    if (!o) return;
+    if (o.kind === "agent") { S.agentOpen = o.name; render(); const el = $("agentDetail"); if (el) el.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" }); return; }
+    if (o.kind === "you") go("decisions");
+  });
+  return api;
+})();
+function spaceLegend() {
+  const kinds = new Set();
+  for (const r of S.feed.records) kinds.add(r.words);
+  return h("div", { class: "legend meta" },
+    h("span", {}, h("i", { class: "you" }), "You"),
+    h("span", {}, h("i", { class: "agent" }), "An agent"),
+    kinds.has("own") ? h("span", {}, h("i", { class: "ln" }), "Your words") : null,
+    kinds.has("agent") ? h("span", {}, h("i", { class: "ln dash" }), "Relayed: information, never your voice") : null,
+    S.inbox.open.length ? h("span", {}, h("i", { class: "ln asks" }), "Waiting for your answer") : null);
+}
+
+// ---------------------------------------------------------------- what an agent gets
+async function refreshLayers() {
+  try { S.layers.card = await api(`/api/card?name=${enc(S.state.active)}&agent=${enc(S.layers.agent)}&form=${S.layers.form}`); }
+  catch (e) { S.layers.card = { error: e.message }; }
+  fill("layStack", layerStack()); fill("layCard", layerCard());
+}
+function layerStack() {
+  const card = S.layers.card;
+  const on = new Set(card && card.layers ? card.layers.flatMap(x => x.ids) : []);
+  const a = S.agents.find(x => x.name === S.layers.agent);
+  const agentRules = a ? [...(a.rules || []), ...(a.carried || []).flatMap(c => c.rules)] : [];
+  const block = (title, rules, empty) => h("div", { class: "layer" },
+    h("div", { class: "sechead" }, h("h2", { class: "label" }, title), h("span", { class: "meta" }, `${rules.filter(e => on.has(e.id)).length} of ${rules.length} on this card`)),
+    rules.length ? h("ul", { class: "list" }, rules.map(e => h("li", { class: "line", style: on.has(e.id) ? "" : "color:var(--text-3)" },
+      h("span", { class: "grow" }, e.statement, !on.has(e.id) ? h("span", { class: "meta" }, e.enabled === false ? "  ·  switched off" : S.layers.form === "relay" ? "  ·  not on the short card" : "  ·  left out by the size limit") : null))))
+      : h("p", { class: "meta" }, empty));
+  return [
+    S.layers.agent ? block(`${label(S.layers.agent)} only`, agentRules, "No rules of its own here.") : null,
+    block(`In ${S.profile.environment.title}`, live(S.profile.entries), "No rules of its own yet."),
+    block("Everywhere", live(S.base.entries), "No shared rules.")];
+}
+function layerCard() {
+  const c = S.layers.card;
+  if (!c) return h("p", { class: "meta" }, "Building the card...");
+  if (c.error) return h("p", { class: "meta warn" }, "The card could not be built: " + c.error);
+  return [h("div", { class: "sechead" }, h("h2", { class: "label" }, "Exactly what it receives"), h("span", { class: "meta num" }, `${fmt(c.bytes)} of ${fmt(c.limit)} bytes`)),
+    h("div", { class: "sizebar" }, h("i", { style: `width:${Math.min(100, Math.round(100 * c.bytes / c.limit))}%` })),
+    c.left_out ? h("p", { class: "meta warn" }, `${plural(c.left_out, "rule")} would not fit the size limit, and would be left out with a line saying so.`) : null,
+    h("pre", { class: "card" }, c.card)];
+}
+
+// ---------------------------------------------------------------- decisions on record
+const said = (a) => (a.picked || a.choice || "") + (a.words ? `${a.picked || a.choice ? " " : ""}“${a.words}”` : "");
+// The register: every request answered or withdrawn, with your words, how you answered, and whether it arrived.
+const VIA = { page: "on this page", chat: "typed in chat", terminal: "in your terminal" };
+function registerRows() {
+  const items = S.register.items;
+  if (items === null) return h("li", { class: "empty" }, "Looking...");
+  if (!items.length) return h("li", { class: "empty" }, S.register.q ? "Nothing on record matches." : "Nothing decided yet. Every answer you give is kept here, with your words.");
+  return items.map(r => {
+    const a = r.answer, sent = a ? S.feed.records.filter(x => x.answers.includes(r.id)).map(x => x.at).sort()[0] : null;
+    const state = !a ? h("span", { class: "meta" }, "withdrawn")
+      : !(a.via in VIA) ? h("span", { class: "meta warn" }, `not from you: via ${a.via || "unknown"}`)
+      : r.read ? h("span", { class: "meta" }, `read by ${label(r.from)}`)
+      : sent ? h("span", { class: "meta" }, `delivered ${ago(sent)}`) : h("span", { class: "meta" }, `waits for ${label(r.from)}'s next prompt`);
+    return h("li", { class: "line", style: "align-items:baseline" },
+      h("div", { class: "grow" }, h("div", {}, h("span", { class: "meta num" }, `#${r.id}  `), r.title),
+        h("div", { class: "meta" }, a ? `${label(r.from)} asked; you answered ${said(a)}, ${VIA[a.via] || "not from you"}, ${r.age} ago.`
+          : `Withdrawn by ${label(r.from)} ${r.age} ago${r.closed && r.closed.how ? ": " + r.closed.how : "."}`)),
+      state);
+  });
+}
+async function loadRegister() {
+  try { S.register.items = (await api("/api/register?q=" + enc(S.register.q))).items; } catch (e) { S.register.items = []; }
+  fill("registerList", registerRows());
+}
+
+// ---------------------------------------------------------------- settings helpers
+function copyBtn(cmd) { return h("button", { class: "btn small", type: "button", "data-copy": cmd, title: cmd }, "Copy the command"); }
+async function loadModels() {
+  try {
+    const m = await api("/api/models");
+    fill("models", m.local.length ? ["On this computer: ", m.local.join(", "), ". ", h("button", { class: "link", type: "button", "data-copy": `semantext export modelfile --base ${m.local[0]}` }, "Copy the command"), " for an Ollama Modelfile with your card."]
+      : "None found. A model you pull with Ollama appears here.");
+  } catch (e) { fill("models", "Could not look: " + e.message); }
+}
+
+// ---------------------------------------------------------------- environments
+function openMenu(anchor) {
+  const st = S.state;
+  fill("envMenu", [
+    st.profiles.filter(p => p.name !== "base").map(p => h("button", { type: "button", role: "menuitem", "data-env": p.name },
+      h("span", { class: "tick" }, p.name === st.active ? "✓" : ""), p.title, h("span", { class: "meta", style: "margin-left:auto" }, plural(p.rules, "rule")))),
+    h("hr"), h("button", { type: "button", role: "menuitem", "data-do": "new-env" }, h("span", { class: "tick" }, "+"), "New environment")]);
+  const m = $("envMenu"), r = (anchor || $("envPill")).getBoundingClientRect();
+  m.hidden = false;
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8)) + "px";
+  m.style.top = Math.min(r.bottom + 6, innerHeight - m.offsetHeight - 8) + "px";
+  const pill = $("envPill"); if (pill) pill.setAttribute("aria-expanded", "true");
+}
+function closeMenu() { const m = $("envMenu"); if (m) m.hidden = true; const pill = $("envPill"); if (pill) pill.setAttribute("aria-expanded", "false"); }
+let suggestTimer = null;
+function openNew() { closeMenu(); $("newEnv").hidden = false; $("newName").value = ""; fill("picks", []); $("newFor").textContent = ""; $("newName").focus(); }
+async function suggest() {
+  const title = $("newName").value.trim();
+  if (!title) { fill("picks", []); $("newFor").textContent = ""; return; }
+  const s = await api("/api/suggest?title=" + enc(title));
+  $("newFor").textContent = s.matched ? `Suggested for ${title}` : "No close match, so some ideas to start from";
+  fill("picks", s.rules.map(r => h("li", {}, h("label", {},
+    h("input", { type: "checkbox", "data-pack": r.pack, "data-id": r.id, checked: r.ticked ? "" : null }),
+    h("span", {}, r.statement, h("span", { class: "meta" }, "  ·  " + r.pack_title))))));
+}
+$("newName").addEventListener("input", () => { clearTimeout(suggestTimer); suggestTimer = setTimeout(suggest, 220); });
+$("newCancel").addEventListener("click", () => { $("newEnv").hidden = true; });
+$("newCreate").addEventListener("click", async () => {
+  const picks = [...document.querySelectorAll("#picks input:checked")].map(i => ({ pack: i.dataset.pack, id: i.dataset.id }));
+  const r = await act("/api/create", { title: $("newName").value.trim(), picks }, picks.length ? "Made, and active" : "Made, and empty: add rules under Rules");
+  if (r) $("newEnv").hidden = true;
+});
+async function openEditor() {
+  $("edLead").textContent = `The file behind ${S.profile.environment.title}.`;
+  $("editStatus").textContent = ""; $("editorDlg").hidden = false;
+  try { $("editor").value = (await api("/api/source?name=" + enc(S.state.active))).text; } catch (e) { $("editStatus").className = "status-line meta bad"; $("editStatus").textContent = e.message; }
+}
+
+// ---------------------------------------------------------------- events
+document.addEventListener("click", async (ev) => {
+  const row = ev.target.closest("tr[data-at]");
+  if (row) { S.expanded = S.expanded === row.dataset.at ? null : row.dataset.at; fill("historyRows", historyRows()); return; }
+  const t = ev.target.closest("button");
+  if (!t) {
+    if (!ev.target.closest("#envMenu")) closeMenu();
+    if (!ev.target.closest("#rulecard") && ev.target.tagName !== "CANVAS") closePop();
+    if (ev.target.id === "newEnv") $("newEnv").hidden = true;
+    return;
+  }
+  if (!t.closest("#envMenu") && t.id !== "envPill" && t.dataset.do !== "env-menu") closeMenu();
+  const name = S.state && S.state.active;
+  if (t.id === "envPill") return $("envMenu").hidden ? openMenu(t) : closeMenu();
+  if (t.dataset.view) return go(t.dataset.view);
+  if (t.dataset.env) { closeMenu(); S.layers.card = null; return act("/api/active", { name: t.dataset.env }, "Switched: every agent now reads " + envTitle(t.dataset.env)); }
+  if (t.dataset.answer !== undefined) {
+    const id = Number(t.dataset.answer);
+    const words = t.dataset.words !== undefined ? t.dataset.words : (($("words-" + id) || {}).value || "").trim();
+    const r = await act("/api/answer", { id, choice: t.dataset.choice, words }, "Answered: it goes to the agent that asked, with its next prompt");
+    if (r) { await Promise.all([loadInbox(), loadMetrics()]); render(); }
+    return;
+  }
+  if (t.dataset.explain) { S.expanded = S.expanded === t.dataset.explain ? null : t.dataset.explain; fill("recent", recentRows()); return; }
+  if (t.dataset.rule) {
+    S.ruleOpen = S.ruleOpen === t.dataset.rule ? null : t.dataset.rule;
+    if (S.view === "rules") fill("ruleLists", ruleLists(live(S.profile.entries)));
+    else render();
+    return;
+  }
+  if (t.dataset.agent) { S.agentOpen = S.agentOpen === t.dataset.agent ? null : t.dataset.agent; return render(); }
+  if (t.dataset.copy !== undefined) { try { await navigator.clipboard.writeText(t.dataset.copy); toast("Copied: " + t.dataset.copy); } catch (e) { toast(t.dataset.copy); } return; }
+  if (t.dataset.form) { S.layers.form = t.dataset.form; document.querySelectorAll("[data-form]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.form === S.layers.form))); return refreshLayers(); }
+  if (t.dataset.toggle || t.dataset.remove) {
+    const r = t.dataset.toggle ? await act("/api/toggle", { name: t.dataset.prof, id: t.dataset.toggle })
+      : await act("/api/undo", { name, id: t.dataset.remove }, "Removed: kept in the file, off the card");
+    closePop();
+    const lost = (r && r.uncovered) || [];   // the kept corrections this leaves uncovered: said plainly, never blocked
+    if (lost.length) toast(`Off the card, so ${lost.length === 1 ? "one of your corrections is" : lost.length + " of your corrections are"} no longer covered: that misreading can come back`);
+    if (r) loadMetrics();                    // switched back on, or off: the counts follow either way
+    return;
+  }
+  if (t.dataset.unbind) return act("/api/agent-unbind", { folder: t.dataset.unbind }, "Unbound: the agents there are known by their tool again");
+  if (t.dataset.feature) { const on = t.getAttribute("aria-checked") !== "true"; return act("/api/feature", { name, feature: t.dataset.feature, on }, on ? "On: one rule added to this environment" : "Off: that rule is off the card"); }
+  if (t.dataset.setting) { const on = t.getAttribute("aria-checked") !== "true"; const r = await act("/api/setting", { key: t.dataset.setting, on }, on ? "On" : "Off"); if (r) pollFeed(); return; }
+  const d = t.dataset.do;
+  if (d === "close-pop") return closePop();
+  if (d === "test-agent") { S.testAgent = t.dataset.name; return go("test"); }
+  if (d === "layers-agent") { S.layers.agent = t.dataset.name; S.layers.card = null; return go("layers"); }
+  if (d === "editor") return openEditor();
+  if (d === "env-menu") return openMenu(t);
+  if (d === "new-env") return openNew();
+  if (d === "undo-last") return act("/api/undo-last", { name }, "Undone: the last saved version is back, and the one it replaced is kept");
+  if (d === "add-ideas") {
+    const ids = [...document.querySelectorAll("#ideasList input[data-idea]:checked:not(:disabled)")].map(i => i.dataset.idea);
+    if (!ids.length) return toast("Tick the suggestions you want first");
+    return act("/api/add-suggestions", { name, ids }, `Added ${plural(ids.length, "rule")}`);
+  }
+  if (t.id === "save") {
+    try { await api("/api/source", { name, text: $("editor").value }); $("editStatus").className = "status-line meta"; $("editStatus").textContent = "Saved. The old version is kept."; await load(); render(); }
+    catch (e) { $("editStatus").className = "status-line meta bad"; $("editStatus").textContent = "Not saved: " + e.message; }
+    return;
+  }
+  if (t.id === "revert") return openEditor();
+  if (t.id === "edClose") { $("editorDlg").hidden = true; return; }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.matches("tr[data-at]")) { e.target.click(); return; }
+  if (e.key !== "Escape") return;
+  if (!$("rulecard").hidden) { closePop(); return; }
+  if (!$("editorDlg").hidden) { $("editorDlg").hidden = true; return; }
+  if (!$("newEnv").hidden) { $("newEnv").hidden = true; return; }
+  closeMenu();
+});
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "layAgent") { S.layers.agent = ev.target.value; refreshLayers(); }
+});
+document.addEventListener("toggle", (ev) => {   // toggle does not bubble, so it is caught on the way down
+  if (ev.target.id !== "ideasBox") return;
+  S.ideasOpen = ev.target.open;
+  if (ev.target.open) loadIdeas();
+}, true);
+// The register's search: as you type, a moment after you stop.
+let registerTimer = null;
+document.addEventListener("input", (ev) => {
+  if (ev.target.id !== "registerQ") return;
+  clearTimeout(registerTimer);
+  registerTimer = setTimeout(() => { S.register.q = ev.target.value.trim(); loadRegister(); }, 220);
+});
+document.addEventListener("submit", async (ev) => {
+  const f = ev.target;
+  ev.preventDefault();
+  if (f.id === "teachFromTest") {
+    const words = f.elements.words.value.trim();
+    if (!words) return toast("Write it first, in your own words");
+    // the very message just tried is kept beside the rule, as its test
+    const misread = S.test ? S.test.message : "";
+    if (await act("/api/learn", { name: S.state.active, words, agent: null, misread: misread || null },
+      misread ? "Added, with the message kept as its test" : "Added: every agent gets it with your next message")) loadMetrics();
+    return;
+  }
+  if (f.id === "bindForm") {
+    const agent = f.elements.agent.value.trim(), folder = f.elements.folder.value.trim();
+    if (agent && folder) await act("/api/agent-bind", { agent, folder }, `Every agent in that folder is now ${agent}`);
+    return;
+  }
+  if (f.id === "addRule") {
+    const words = f.elements.words.value.trim(), agent = f.elements.scope ? f.elements.scope.value : "";
+    if (!words) return toast("Write the rule first, in your own words");
+    await act("/api/learn", { name: S.state.active, words, agent: agent || null }, agent ? `Added, for ${label(agent)} only` : "Added, with your words kept beside it");
+    return;
+  }
+  if (f.dataset.agentRule) {
+    const input = f.querySelector("input");
+    const r = await act("/api/learn", { name: S.state.active, words: input.value, agent: f.dataset.agentRule }, `Added, for ${label(f.dataset.agentRule)} only`);
+    if (r) input.value = "";
+    return;
+  }
+  if (f.dataset.agentLabel) { await act("/api/agent-name", { agent: f.dataset.agentLabel, label: f.querySelector("input").value.trim() }, "Named"); return; }
+  if (f.id === "testForm") {
+    const message = f.elements.message.value.trim();
+    if (!message) return toast("Type a message to try");
+    try {
+      const r = await api("/api/explain", { message, words: f.elements.words.value || null, agent: f.elements.agent.value });
+      S.test = fromTest(r, message, false);
+      fill("testFlow", testFlow());
+    } catch (e) { toast(e.message); }
+  }
+});
+// The canvases follow the theme when it changes.
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { Sky.kick(); Space.kick(); });
+
+// ---------------------------------------------------------------- start
+(async () => {
+  S.view = viewOf(location.hash.slice(1));
+  try {
+    await load();
+    await Promise.all([loadInbox(), pollFeed(), loadMetrics()]);
+    render();
+  } catch (e) {
+    const el = $("problem"); el.hidden = false;
+    fill(el, [h("p", {}, "The page could not start: " + String(e.message || e)), h("p", { class: "meta" }, "Is `semantext serve` still running? Reload the page once it is.")]);
+  }
+  setInterval(pollFeed, 3000);
+  setInterval(loadInbox, 15000);
+})();
+</script>
+</body>
+</html>

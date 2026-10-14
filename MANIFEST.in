@@ -1,0 +1,5 @@
+include LICENSE README.md AGENT-README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md DESIGN.md
+include tests/conftest.py
+recursive-include docs *
+recursive-include examples *
+recursive-include tools *.py

@@ -1,0 +1,11 @@
+environment:
+  id: default
+  version: 0.1.0
+  status: candidate
+  owner: you
+  title: Default
+  scope: Where everyone starts. It holds the shared rules and grows from what you teach it.
+  inherits:
+  - base@0.1.0
+entries: []
+tests: []
