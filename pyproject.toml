@@ -42,7 +42,7 @@ Homepage = "https://github.com/Jak29/semantext-app"
 Issues = "https://github.com/Jak29/semantext-app/issues"
 
 [tool.setuptools]
-packages = ["semantext"]
+packages = ["semantext", "semantext.sources"]
 
 [tool.setuptools.package-data]
 semantext = ["static/*.html", "data/profiles/*/SEMANTICS.yaml", "data/suggestions/*.yaml"]
