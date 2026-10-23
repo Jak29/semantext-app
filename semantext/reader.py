@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from math import comb
 from pathlib import Path
 
+from . import jsonread
 from .backtest import FALLBACK, matched_null, newcombe, read_jsonl, wilson
 from .inbox import SECRET, token_like
 from .mine import units
@@ -85,7 +86,7 @@ def parse_reply(reply, card_ids: set) -> tuple[frozenset, str] | None:
     if not isinstance(reply, str):
         return None
     try:
-        x = json.loads(reply.strip())
+        x = jsonread.loads(reply.strip())
     except ValueError:
         return None
     if not isinstance(x, dict) or set(x) != {"rules", "reading"} or not isinstance(x["rules"], list) \
@@ -438,7 +439,7 @@ def ablation_pass(store: Store, name: str, reader, judges, cases, table, table_s
     if (base_reader.get("name"), base_reader.get("version"), base_reader.get("decoding")) != this:
         raise Refused("the baseline is not this model's first pass: another model, version or decoding. Compare a "
                       "model only with itself")
-    t = json.loads(raw)
+    t = jsonread.loads(raw)
     cases_raw = Path(cases).read_bytes()
     cs = {str(c.get("id")): c for c in read_jsonl(cases)}
     named = [cid for e in (t.get("rules") or []) for cid in (*e["needing"], *e["others"])] + list(t.get("sham") or [])
@@ -535,7 +536,7 @@ class OllamaReader:
         want = self.model if ":" in self.model else self.model + ":latest"
         try:
             with urllib.request.urlopen(self.host.rstrip("/") + "/api/tags", timeout=10) as r:
-                for m in json.loads(r.read().decode("utf-8")).get("models") or []:
+                for m in jsonread.loads(r.read().decode("utf-8")).get("models") or []:
                     if want in (m.get("name"), m.get("model")) and m.get("digest"):
                         self.version = "sha256:" + str(m["digest"])[:12]
                         # the model file's architecture: a fine-tune's name is its tuner's, its architecture the base's
@@ -553,7 +554,7 @@ class OllamaReader:
         req = urllib.request.Request(self.host.rstrip("/") + "/api/generate", data=json.dumps(body).encode("utf-8"),
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=300) as r:
-            out = json.loads(r.read().decode("utf-8"))
+            out = jsonread.loads(r.read().decode("utf-8"))
         ctx = options.get("num_ctx")
         if ctx and (out.get("prompt_eval_count") or 0) + (out.get("eval_count") or 0) >= ctx:
             raise Refused(f"{self.model} reached its context of {ctx} tokens, so the card may have been cut or the "
@@ -602,7 +603,7 @@ class EndpointReader:
                            "messages": [{"role": "user", "content": prompt}]}).encode("utf-8")
         req = urllib.request.Request(self.url, data=body, headers=headers)
         with _open(req, timeout=300) as r:   # never through a redirect: see _NoRedirect
-            return json.loads(r.read().decode("utf-8"))["choices"][0]["message"]["content"]
+            return jsonread.loads(r.read().decode("utf-8"))["choices"][0]["message"]["content"]
 
 
 def is_local(url: str) -> bool:

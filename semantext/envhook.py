@@ -29,7 +29,7 @@ import re
 import sys
 from pathlib import Path
 
-from . import envcard
+from . import envcard, jsonread
 
 SEGMENT = re.compile(r"[\r\n;|]|&&")  # one command per segment; a here-string's lines are segments of their own
 RUNS = re.compile(r"^\s*(?:\$[\w:]+\s*=\s*)?(?:&\s*)?(?:[\"']?[^\s\"']*?(?:python[0-9.]*|py)(?:\.exe)?[\"']?|\$\w+)\s",
@@ -204,7 +204,7 @@ class Config:
     @classmethod
     def load(cls, path) -> "Config":
         p = Path(path)
-        return cls(json.loads(p.read_text(encoding="utf-8")), p.parent)
+        return cls(jsonread.loads(p.read_text(encoding="utf-8")), p.parent)
 
     def env(self, name: str) -> Path:
         return self.envs / name / "SEMANTICS.yaml"
@@ -260,7 +260,7 @@ def latest_scope(transcript, cfg: Config, chunk: int = CHUNK) -> str | None:
                 if mark not in line or b'"tool_use"' not in line:
                     continue
                 try:
-                    name = declared_in(json.loads(line), cfg)
+                    name = declared_in(jsonread.loads(line), cfg)
                 except ValueError:
                     continue
                 if name:
@@ -273,7 +273,7 @@ def folder_seat(cwd, cfg: Config) -> str | None:
     if cfg.roots is None:
         return None
     try:
-        data = json.loads(cfg.roots.read_text(encoding="utf-8"))
+        data = jsonread.loads(cfg.roots.read_text(encoding="utf-8"))
         base = data["base"]
         here = os.path.normcase(os.path.normpath(str(cwd)))
     except (OSError, ValueError, KeyError, TypeError):
@@ -350,7 +350,7 @@ def record_says(transcript, prompt, tail: int = TAIL_BYTES) -> str | None:
         if not any(n in line for n in needles):
             continue
         try:
-            rec = json.loads(line)
+            rec = jsonread.loads(line)
         except ValueError:
             continue
         if not isinstance(rec, dict):
@@ -443,7 +443,7 @@ def part_of(argv: list[str]) -> str:
 def parse_payload(raw: str) -> dict:
     """The hook's JSON input; a leading byte-order mark is stripped, and anything unreadable gives {}."""
     try:
-        payload = json.loads(raw.lstrip("﻿") or "{}")
+        payload = jsonread.loads(raw.lstrip("﻿") or "{}")
     except ValueError:
         return {}
     return payload if isinstance(payload, dict) else {}

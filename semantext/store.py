@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from . import paths
+from . import jsonread, paths
 
 NAME_RE = re.compile(r"[a-z][a-z0-9-]{0,30}")   # always used with fullmatch: "$" would also allow a final "\n"
 # The base rules on every relay card, by their ids as well as by their `always` mark: a mark is an edit away, and the
@@ -235,7 +235,7 @@ class Store:
         self.state_problem = None
         if self.state_path.exists():
             try:
-                got = json.loads(self.state_path.read_text(encoding="utf-8"))
+                got = jsonread.loads(self.state_path.read_text(encoding="utf-8"))
                 if not isinstance(got, dict):
                     raise ValueError("it does not hold settings")
                 s.update(got)
@@ -255,7 +255,7 @@ class Store:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         if self.state_path.exists():
             try:
-                readable = isinstance(json.loads(self.state_path.read_text(encoding="utf-8")), dict)
+                readable = isinstance(jsonread.loads(self.state_path.read_text(encoding="utf-8")), dict)
             except (ValueError, OSError):
                 readable = False
             if not readable:

@@ -10,6 +10,7 @@ import json
 import re
 from pathlib import Path
 
+from . import jsonread
 from .inbox import SECRET
 from .store import Refused, Store, now, valid_name
 
@@ -40,7 +41,7 @@ class Heard:
         out = []
         for line in p.read_text(encoding="utf-8").splitlines():
             try:
-                out.append(json.loads(line))
+                out.append(jsonread.loads(line))
             except json.JSONDecodeError:
                 continue          # a damaged line is skipped, never fatal
         return out

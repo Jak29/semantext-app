@@ -13,6 +13,7 @@ import contextlib
 import io
 import json
 import os
+import pathlib
 from pathlib import Path
 
 import pytest
@@ -1145,6 +1146,10 @@ def watching(monkeypatch):
         m.setattr(builtins, "open", open_)
         m.setattr(os, "scandir", lister(real_scandir))
         m.setattr(os, "listdir", lister(real_listdir))
+        if hasattr(pathlib, "_NormalAccessor"):   # Python 3.10: pathlib kept its own references to these, taken at import
+            m.setattr(pathlib._NormalAccessor, "open", staticmethod(open_))
+            m.setattr(pathlib._NormalAccessor, "scandir", staticmethod(os.scandir))
+            m.setattr(pathlib._NormalAccessor, "listdir", staticmethod(os.listdir))
         yield opened, listed
 
 

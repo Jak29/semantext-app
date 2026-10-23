@@ -9,6 +9,8 @@ import json
 import os
 import stat
 
+import pytest
+
 from semantext.sources import MAX_LINE, record
 
 
@@ -757,11 +759,33 @@ def test_a_genuine_replacement_character_is_text_and_a_byte_that_is_not_utf8_is_
     assert out["entries"][2]["words"] == "caf\ufffd" and out["entries"][3]["words"] == "end\ufffd"   # the byte shown as U+FFFD
 
 
-def test_a_line_nested_past_the_parsers_depth_is_a_problem_not_a_crash(tmp_path):
-    deep = "[" * 30000 + "]" * 30000                   # valid JSON under the line limit; too deep to parse
+@pytest.mark.parametrize("parser", ["overflows", "copes"])
+def test_a_line_nested_past_the_parsers_depth_is_a_problem_not_a_crash(tmp_path, monkeypatch, parser):
+    """Whether 30,000 levels overflow json's parser depends on the interpreter's stack (they do on Windows; under 3.14
+    on Linux and macOS they parse). Both are run here on any machine, and both are said the same way: too deep."""
+    deep = "[" * 30000 + "]" * 30000                   # valid JSON under the line limit
+    real = json.loads
+
+    def loads(text, *a, **k):
+        if text != deep:
+            return real(text, *a, **k)
+        if parser == "overflows":
+            raise RecursionError("maximum recursion depth exceeded")
+        value = []
+        for _ in range(29999):
+            value = [value]
+        return value
+    monkeypatch.setattr(json, "loads", loads)
     out = read(tmp_path, deep, decision("J-20991001-1"))
-    assert len(deep) < MAX_LINE and [(p["line"], p["kind"]) for p in out["problems"]] == [(1, "not-json")]
+    assert len(deep) < MAX_LINE and [(p["line"], p["kind"]) for p in out["problems"]] == [(1, "too-deep")]
     assert [e["id"] for e in out["entries"]] == ["J-20991001-1"]                      # the line after it is still read
+
+
+def test_a_line_nested_past_the_parsers_depth_with_this_machines_own_parser(tmp_path):
+    deep = "[" * 30000 + "]" * 30000
+    out = read(tmp_path, deep, decision("J-20991001-1"))
+    assert [(p["line"], p["kind"]) for p in out["problems"]] == [(1, "too-deep")]
+    assert [e["id"] for e in out["entries"]] == ["J-20991001-1"]
 
 
 def test_a_value_nested_deeper_than_any_decision_is_not_read__must_pass(tmp_path):

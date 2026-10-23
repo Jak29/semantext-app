@@ -6,6 +6,38 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.2.3] - unreleased: should run on Linux and macOS (confirmed only when CI passes)
+
+1.2.2 passed every test on Windows, but CI failed 10 to 13 tests on each Linux and macOS job and 1 to 4 on each
+Windows job. Two were the product; the rest were tests that took the machine they ran on for granted.
+
+### Fixed
+- **Outside Windows, a checker's `where` with a backslash or a colon is looked up as the local name it is.** The
+  guard that never looks up a share, a device or a stream held back `hooks:x`, `\\host\share` and even `C:\hooks\x`
+  on Linux and macOS, where those are ordinary names, so such a checker was wrongly reported as "a network or device
+  path". On Windows, and under Python built for Cygwin or MSYS (whose `os.name` is "posix" though its paths reach
+  Windows' shares), the rule is unchanged: it is chosen by `sys.platform`. Elsewhere only a path that starts with
+  exactly two slashes is held back (POSIX leaves its meaning to the system, and some take it as a share).
+- **JSON nested past the parser's depth gets the same answer on every machine, at every reader.** Whether 30,000
+  levels overflow Python's parser depends on the interpreter's stack: on Windows they did, and on Linux and macOS
+  under 3.14 they parse. So the register called such a line "not JSON" on one and "not an object" on the other; the
+  seats file, the sources file and the reading-card hook crashed on Windows; the guards file was `bad-guards` on
+  Windows and `bad-checker` on Linux; and a deep request to the page's server got no answer and printed a traceback.
+  Every reader now goes through one loader (`semantext/jsonread.py`), which refuses a text nested more than 256
+  levels deep before parsing it, and an overflow the same way. The register says `too-deep`; the server answers 400
+  with "the request is nested too deeply to be read". Its depth count reads a string with no closing quote to the end
+  of the text in one pass (before, the count began again at every later quote: one 64 KB line of `\"` took 20 s).
+
+### Tests
+- The missing-system-settings test no longer depends on the machine having no `/etc/gitconfig` (the packaged places
+  are now a module constant the test moves into its own folder).
+- The `%(prefix)/../..` include test makes its prefix folder: outside Windows `..` is taken on the disk, so a path
+  climbing through a folder that is not there names no file, as it does for git.
+- The rooted-include test runs from its temporary folder's drive (a Windows runner keeps its checkout on another
+  drive than its temp folder).
+- The file-open watchers also watch Python 3.10's pathlib, which kept its own reference to `io.open`; on 3.10 they saw
+  no file opened at all.
+
 ## [1.2.2] - 2026-10-23
 
 ### Fixed

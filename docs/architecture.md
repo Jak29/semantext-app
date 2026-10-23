@@ -51,6 +51,7 @@ flowchart LR
 | Module | What it does |
 |---|---|
 | `paths.py` | Where things live: your home (`~/.semantext`, or `SEMANTEXT_HOME`), the package's data and the page. It creates the home on first use by copying in the starting environments, and never overwrites. |
+| `jsonread.py` | The one JSON loader every reader uses: a text nested more than 256 levels deep is refused before it is parsed, so it gets the same answer on every machine (how deep Python's parser can go is the interpreter's stack). |
 | `store.py` | The rule files: load and save, environments and suggestions, toggle, pin, teach, undo and undo-last, the editor's checks, the card, and the cue-word reading of a message. |
 | `heard.py` | The local log of what was heard (`heard/<environment>.jsonl`): hear, recall and forget, and proposals made from sentences shaped like rules. |
 | `inbox.py` | The inbox: requests (decisions, commands and rule proposals), answers, withdrawals and reads, appended to `inbox.jsonl` under a file lock; the checks on who may answer and whose request is whose; the strict form of an answer typed in chat; the register (`search`, and the same question answered before, shown and never used); and the notes the hook puts before the card, within 3,000 bytes. |

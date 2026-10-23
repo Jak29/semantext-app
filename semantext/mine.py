@@ -20,6 +20,7 @@ import json
 import re
 from pathlib import Path
 
+from . import jsonread
 from .agents import _user_home, project_root
 from .heard import Heard
 from .inbox import SECRET
@@ -73,7 +74,7 @@ def turns(path: Path):
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             try:
-                r = json.loads(line)
+                r = jsonread.loads(line)
             except ValueError:
                 continue
             if not isinstance(r, dict) or r.get("isSidechain"):

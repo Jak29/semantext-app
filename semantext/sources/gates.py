@@ -38,6 +38,7 @@ import stat
 from pathlib import Path
 from typing import Mapping, NamedTuple
 
+from .. import jsonread
 from . import problem
 
 READ = "static"
@@ -50,6 +51,8 @@ MAX_VISITS = 500         # files opened while following the includes of one sett
 MAX_GITFILE = 1 << 20    # git refuses a .git file longer than this
 WINDOWS = os.name == "nt"
 ULONG_BITS = 32 if WINDOWS else 64      # git's unsigned long settings are as wide as the platform's
+# Where a packaged git keeps its system settings file when no git on the path names one: a distribution's, then Homebrew's
+SYSTEM_FILES = ("/etc/gitconfig", "/usr/local/etc/gitconfig", "/opt/homebrew/etc/gitconfig")
 
 # The acts a gate must cover. An act is covered when any one of its hooks is there; they are listed best first.
 EVENTS = (
@@ -507,7 +510,7 @@ def system_candidates(env: Mapping) -> list:
             out.append(Path(env[var]) / "Git" / "etc" / "gitconfig")
     if env.get("LOCALAPPDATA"):
         out.append(Path(env["LOCALAPPDATA"]) / "Programs" / "Git" / "etc" / "gitconfig")
-    out += [Path("/etc/gitconfig"), Path("/usr/local/etc/gitconfig"), Path("/opt/homebrew/etc/gitconfig")]
+    out += [Path(p) for p in SYSTEM_FILES]
     return list(dict.fromkeys(out))
 
 
@@ -1185,7 +1188,7 @@ def read_roots(path: str, problems: list, group: str | None = None) -> tuple:
     if text is None:
         return [], []
     try:
-        data = json.loads(text.lstrip(BOM))
+        data = jsonread.loads(text.lstrip(BOM))
     except ValueError as e:
         problems.append(problem(path, None, "bad-json", e))
         return [], []

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from . import __version__, agentfiles, claude, paths
+from . import __version__, agentfiles, claude, jsonread, paths
 from .feed import Feed
 from .heard import Heard
 from .hook import LIMIT_BYTES
@@ -887,7 +887,7 @@ def cmd_doctor(store: Store, args) -> int:
     size = len(card.encode("utf-8"))
     settings = Path(args.settings).expanduser() if getattr(args, "settings", None) else claude.default_settings()
     try:
-        connected = claude.is_installed(json.loads(settings.read_text(encoding="utf-8-sig"))) if settings.exists() else False
+        connected = claude.is_installed(jsonread.loads(settings.read_text(encoding="utf-8-sig"))) if settings.exists() else False
         claude_row = f"connected ({settings})" if connected else "not connected (semantext install claude-code)"
     except (json.JSONDecodeError, OSError, UnicodeDecodeError, AttributeError) as e:
         claude_row, problems = f"PROBLEM: cannot read {settings} ({type(e).__name__})", problems + 1

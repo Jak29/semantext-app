@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 from pathlib import Path
 
-from . import __version__, agentfiles, claude, paths
+from . import __version__, agentfiles, claude, jsonread, paths
 from .agents import Agents, clean, since
 from .feed import Feed
 from .hook import LIMIT_BYTES, WORDS, compose, fit, rule_lines, sender_name, sent_layers
@@ -86,7 +86,7 @@ def connections(st: Store) -> dict:
     and the instructions files Semantext keeps a copy of the card in."""
     settings = claude.default_settings()
     try:
-        hooked = claude.is_installed(json.loads(settings.read_text(encoding="utf-8-sig"))) if settings.exists() else False
+        hooked = claude.is_installed(jsonread.loads(settings.read_text(encoding="utf-8-sig"))) if settings.exists() else False
     except (ValueError, OSError, UnicodeDecodeError, AttributeError):
         hooked = None
     files = [{"file": str(f), "ok": agentfiles.has_block(Path(f))} for f in st.state().get("agent_files", [])
@@ -211,6 +211,7 @@ def metrics(st: Store) -> dict:
 
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY = 200_000
+DEEP_BODY = "the request is nested too deeply to be read"
 LOOPBACK = ("127.0.0.1", "localhost")   # the server is IPv4; an address it cannot serve is not offered
 
 
@@ -278,7 +279,12 @@ class Handler(BaseHTTPRequestHandler):
             raise Refused("bad Content-Length")
         if n > MAX_BODY:
             raise Refused("request too large")
-        return json.loads(self.rfile.read(n) or b"{}")
+        try:
+            return jsonread.loads(self.rfile.read(n) or b"{}")
+        except jsonread.NotJSON as e:
+            if e.deep:   # before, a RecursionError here left the page with no answer and the console with a traceback
+                raise Refused(DEEP_BODY) from None
+            raise
 
     def do_GET(self):
         if not self._host_ok():

@@ -28,6 +28,7 @@ import math
 import random
 from pathlib import Path
 
+from . import jsonread
 from .inbox import SECRET, token_like
 from .mine import is_correction, units
 from .store import Refused, Store
@@ -106,7 +107,7 @@ def read_jsonl(path) -> list[dict]:
         if not line.strip():
             continue
         try:
-            x = json.loads(line)
+            x = jsonread.loads(line)
         except ValueError:
             raise Refused(f"{path}, line {n}: not valid JSON")
         if not isinstance(x, dict):

@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import pathlib
 import subprocess
 from pathlib import Path
 
@@ -659,10 +660,16 @@ def test_the_machines_own_settings_files_are_found_and_named(tmp_path):
     assert out["system_config"]["file"] == (install / "etc" / "gitconfig").as_posix()
 
 
-def test_a_missing_system_file_is_said(tmp_path):
+def test_a_missing_system_file_is_said(tmp_path, monkeypatch):
+    """The packaged places (/etc/gitconfig and the like) are moved into tmp_path: a runner that has its own system file
+    must not decide this test."""
+    monkeypatch.setattr(gates, "SYSTEM_FILES", (str(tmp_path / "etc" / "gitconfig"),))
     m = gates.this_machine({"PATH": str(tmp_path / "nowhere"), "USERPROFILE": str(tmp_path)})
     assert m.system == () and any("no system settings file was found" in n for n in m.notes)
     assert any("no system settings file" in u for u in one(tmp_path, w=m)["uncertain"])
+    # must pass: a file at a packaged place is the one read
+    touch(tmp_path / "etc" / "gitconfig", "")
+    assert gates.this_machine({"PATH": str(tmp_path / "nowhere")}).system == (tmp_path / "etc" / "gitconfig",)
 
 
 def test_mingw_layouts_are_found(tmp_path):
@@ -1231,7 +1238,10 @@ def test_a_prefix_include_is_followed_and_never_taken_for_a_relative_path(tmp_pa
 
 
 def test_a_prefix_include_that_climbs_out_of_the_prefix_and_one_with_an_absolute_rest(tmp_path):
+    """The prefix folder is made: outside Windows ".." is taken on the disk, not on the text, so a path that climbs
+    through a folder that is not there names no file (git, which opens the path as it stands, skips it too)."""
     prefix = tmp_path / "git-install" / "mingw"
+    prefix.mkdir(parents=True)
     touch(tmp_path / "sibling.cfg", "[core]\n\thooksPath = from-sibling\n")
     touch(tmp_path / "user" / ".gitconfig", "[include]\n\tpath = %(prefix)/../../sibling.cfg\n")
     assert one(tmp_path, w=world(tmp_path, prefix=prefix))["hooks_path"]["value"] == "from-sibling"
@@ -1286,8 +1296,10 @@ def test_on_windows_a_path_that_starts_with_a_single_slash_is_taken_from_the_ins
 
 
 def test_elsewhere_a_rooted_include_path_is_an_ordinary_path(tmp_path, monkeypatch):
-    """Must-pass arm."""
+    """Must-pass arm. On Windows the rooted path is taken on the current drive, so the test runs from tmp_path's drive
+    (a runner whose checkout is on another drive than its temp folder would otherwise look on the wrong one)."""
     monkeypatch.setattr(gates, "WINDOWS", False)
+    monkeypatch.chdir(tmp_path)
     prefix = tmp_path / "git-install"
     rooted = (tmp_path / "inc.cfg").as_posix()
     rooted = rooted.split(":", 1)[1] if ":" in rooted[:3] else rooted
@@ -1784,6 +1796,8 @@ def test_nothing_is_written_and_nothing_is_run(tmp_path, monkeypatch):
         return real_open(file, mode, *a, **k)
 
     monkeypatch.setattr(io, "open", watching)        # pathlib opens every file through io.open
+    if hasattr(pathlib, "_NormalAccessor"):          # Python 3.10: pathlib kept its own reference to io.open
+        monkeypatch.setattr(pathlib._NormalAccessor, "open", staticmethod(watching))
     out = load({"seats": str(path)}, world(tmp_path))
     monkeypatch.undo()
     assert [w["status"] for w in out["repos"][0]["worktrees"]] == ["read", "read", "missing"]

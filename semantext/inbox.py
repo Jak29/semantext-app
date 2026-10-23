@@ -25,6 +25,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
+from . import jsonread
 from .store import Refused, now, stamp
 
 MAX_TITLE, MAX_TEXT, MAX_OPTIONS, CARD_LINES = 120, 1000, 9, 5
@@ -214,7 +215,7 @@ class Inbox:
         out = []
         for line in self.path.read_text(encoding="utf-8").splitlines():
             try:
-                e = json.loads(line)
+                e = jsonread.loads(line)
             except json.JSONDecodeError:
                 continue  # a damaged line is skipped, never fatal
             if isinstance(e, dict) and isinstance(e.get("id"), int) and e.get("type") in (

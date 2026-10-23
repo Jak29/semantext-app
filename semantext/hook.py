@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sys
 
+from . import jsonread
 from .agents import Agents, clean, key_shaped
 from .feed import Feed, stamp
 from .heard import Heard
@@ -166,7 +167,7 @@ def run(event_text: str, store: Store | None = None) -> str:
     what was sent, never what was said."""
     try:
         text = (event_text or "").lstrip("﻿")   # a PowerShell pipe adds a byte-order mark
-        event = json.loads(text) if text.strip() else {}
+        event = jsonread.loads(text) if text.strip() else {}
     except (ValueError, RecursionError):
         event = {}          # not an event we understand: the card still goes out
     store = store or Store.open()

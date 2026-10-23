@@ -517,12 +517,16 @@ def test_the_word_guards_is_read_too_and_only_a_named_checker_guards(tmp_path):
     assert again["environments"][0]["rules"][0]["checkers"][0]["where_exists"] is True
 
 
-@pytest.mark.parametrize("where", ["\\\\no-such-host\\share\\x", "//no-such-host/share/x", "\\\\?\\UNC\\host\\share",
-                                   "\\\\.\\PhysicalDrive0", "\\\\localhost\\c$\\Windows", "C:\\hooks\\x:stream",
-                                   "hooks:x", "/\\host\\share"])
+WINDOWS_SHAPED = ["\\\\no-such-host\\share\\x", "//no-such-host/share/x", "\\\\?\\UNC\\host\\share",
+                  "\\\\.\\PhysicalDrive0", "\\\\localhost\\c$\\Windows", "C:\\hooks\\x:stream", "hooks:x", "/\\host\\share"]
+
+
+@pytest.mark.parametrize("where", WINDOWS_SHAPED)
 def test_a_network_or_device_where_is_never_looked_up(tmp_path, monkeypatch, where):
     """A checker's where on a share would make the page build open a network connection (16 to 42 s a checker, and
-    the host sees the attempt). It is refused on its text alone: the file system is never asked."""
+    the host sees the attempt). It is refused on its text alone: the file system is never asked. Run under Windows'
+    rule, where these name shares, devices and streams, on any machine."""
+    monkeypatch.setattr(sys, "platform", "win32")
     put(tmp_path, "core", doc("core", [rule("core.a")]))
     calls = []
     monkeypatch.setattr(os.path, "lexists", lambda p: calls.append(str(p)) or False)   # records; never touches a disk
@@ -530,9 +534,41 @@ def test_a_network_or_device_where_is_never_looked_up(tmp_path, monkeypatch, whe
     [k] = out["environments"][0]["rules"][0]["checkers"]
     assert calls == [] and k["where_exists"] is None and k["where_note"] == "not checked: a network or device path"
     assert k["where"] == where                                   # shown as the file's text
-    # must pass: a local where is still looked up, once
-    local = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, {**HOOK, "where": "C:\\hooks\\x"})})
+    # must pass: a local where is still looked up, once; a drive letter's colon is no stream
+    here = str(tmp_path / "hooks" / "x")
+    local = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, {**HOOK, "where": here})})
     assert len(calls) == 1 and local["environments"][0]["rules"][0]["checkers"][0]["where_note"] is None
+    assert rules.not_local("C:\\hooks\\x") is None
+
+
+@pytest.mark.parametrize("where", [w for w in WINDOWS_SHAPED if not w.startswith("//")])
+def test_elsewhere_a_backslash_or_a_colon_is_part_of_a_name(tmp_path, monkeypatch, where):
+    """Outside Windows these are odd names of local files, not shares or devices: they are looked up, once, and a name
+    that is not there is said to be not there. The lookup is recorded, never made."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    put(tmp_path, "core", doc("core", [rule("core.a")]))
+    calls = []
+    monkeypatch.setattr(os.path, "lexists", lambda p: calls.append(str(p)) or False)
+    out = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, {**HOOK, "where": where})})
+    [k] = out["environments"][0]["rules"][0]["checkers"]
+    assert len(calls) == 1 and (k["where_exists"], k["where_note"], k["where"]) == (False, None, where)
+
+
+def test_elsewhere_a_path_that_starts_with_two_slashes_is_still_never_looked_up(monkeypatch):
+    """Must-refuse arm. POSIX leaves a leading // to the system, and some take it as a share; three or more slashes
+    are one."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert rules.not_local("//no-such-host/share/x") == rules.NOT_LOCAL and rules.not_local(" //host") == rules.NOT_LOCAL
+    assert rules.not_local("///etc/x") is None and rules.not_local("/etc/x") is None
+
+
+@pytest.mark.parametrize("platform", ["cygwin", "msys"])
+def test_python_for_cygwin_or_msys_keeps_the_windows_rule(monkeypatch, platform):
+    """Must-refuse arm. There os.name is "posix", yet the paths reach Windows' shares, devices and streams."""
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(os, "name", "posix")
+    assert [w for w in WINDOWS_SHAPED if rules.not_local(w) != rules.NOT_LOCAL] == []
+    assert rules.not_local("C:\\hooks\\x") is None
 
 
 @pytest.mark.parametrize("bad", [

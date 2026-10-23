@@ -13,6 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from . import jsonread
 from .store import Refused, stamp
 
 EVENT = "UserPromptSubmit"
@@ -80,7 +81,7 @@ def _load(path: Path) -> dict:
     if not path.exists():
         return {}
     try:   # utf-8-sig: Windows PowerShell 5.1 saves files with a byte-order mark
-        data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+        data = jsonread.loads(path.read_text(encoding="utf-8-sig") or "{}")
     except UnicodeDecodeError:
         raise Refused(f"{path} is not saved as UTF-8 text; it was left untouched")
     except json.JSONDecodeError as e:

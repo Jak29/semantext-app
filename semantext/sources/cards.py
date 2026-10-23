@@ -29,6 +29,7 @@ import stat
 import unicodedata
 from pathlib import Path
 
+from .. import jsonread
 from . import MAX_LINE, change, problem
 from .places import _linked
 
@@ -159,7 +160,7 @@ def _float_token(token: str):
     return float(token)
 
 
-_BRACKETS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|[\[\]{}]')
+_BRACKETS = jsonread.BRACKETS   # one scan, linear on an unclosed string too (see jsonread)
 
 
 def _nesting(text: str) -> int:
@@ -213,9 +214,11 @@ def _parse(text: str):
     def refuse(name):
         raise ValueError(f"{name} is not JSON")
     try:
-        value = json.loads(text, parse_constant=refuse, parse_int=_int_token, parse_float=_float_token)
-    except RecursionError:
-        raise ValueError("it is nested too deeply") from None
+        value = jsonread.loads(text, parse_constant=refuse, parse_int=_int_token, parse_float=_float_token)
+    except jsonread.NotJSON as e:
+        if e.deep:
+            raise ValueError("it is nested too deeply") from None
+        raise
     if _half_pair(text):
         raise ValueError("it holds half of a surrogate pair")
     if _nesting(text) > MAX_DEPTH:
@@ -540,7 +543,7 @@ def _ws(text: str, i: int) -> int:
 
 def _string(token: str) -> str:
     """The text of a JSON string token. Half of a surrogate pair is not text."""
-    value = json.loads(token)
+    value = jsonread.loads(token)
     try:
         value.encode("utf-8")
     except UnicodeEncodeError:

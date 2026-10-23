@@ -21,6 +21,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from . import jsonread
 from .inbox import SECRET, file_lock, token_like
 from .store import Refused
 
@@ -130,7 +131,7 @@ class Feed:
         out = []
         for line in reversed(lines):
             try:
-                r = json.loads(line)
+                r = jsonread.loads(line)
             except ValueError:
                 continue
             if isinstance(r, dict) and set(r) == OLDER:

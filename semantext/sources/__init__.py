@@ -31,7 +31,7 @@ import json
 import os
 from pathlib import Path
 
-from .. import paths
+from .. import jsonread, paths
 
 KEYS = ("name", "seats", "group", "requests", "changes", "inbox", "register", "notes", "cards", "map", "gaming", "guards")
 MAX_LINE = 64 * 1024   # a longer line is a problem, never parsed
@@ -47,7 +47,7 @@ def load_config(path: str | Path | None = None) -> dict:
     p = Path(path) if path else config_path()
     if not p.is_file():
         return {}
-    data = json.loads(p.read_text(encoding="utf-8-sig"))
+    data = jsonread.loads(p.read_text(encoding="utf-8-sig"))
     return {k: data[k] for k in KEYS if isinstance(data.get(k), str) and data[k]}
 
 

@@ -20,6 +20,8 @@ import math
 import time
 from pathlib import Path
 
+from .. import jsonread
+
 FILE = "gaming.json"
 LAPSE_S = 6 * 3600   # the button's own lapse, as gaming.py has it
 SLACK_S = 600        # gaming.py's allowance past the lapse before an end time is unreadable
@@ -57,7 +59,7 @@ def load(cfg: dict, now: float | None = None) -> dict:
     if len(raw) > MAX_BYTES:
         return _unknown(path, "the gaming flag is too large to be the inbox's")
     try:
-        g = json.loads(raw.decode("utf-8-sig"))
+        g = jsonread.loads(raw.decode("utf-8-sig"))
     except (UnicodeDecodeError, ValueError, RecursionError) as e:
         return _unknown(path, f"the gaming flag is not readable: {e}")
     if not isinstance(g, dict):

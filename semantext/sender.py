@@ -14,6 +14,8 @@ import hashlib
 import json
 import re
 
+from . import jsonread
+
 USER, RELAY, NOTICE = "user", "relay", "notice"
 # Another agent's message: one session's to another, or a subagent's to the session that started it.
 RELAY_STARTS = ("Another Claude session sent a message:", "<cross-session-message", "<agent-message")
@@ -115,7 +117,7 @@ def origin_of(transcript, prompt, tail: int = TAIL_BYTES) -> str | None:
         if needle not in line:
             continue                     # cheap: most lines are not this prompt's record
         try:
-            r = json.loads(line)
+            r = jsonread.loads(line)
         except ValueError:
             continue
         if not isinstance(r, dict):
@@ -169,7 +171,7 @@ def users_sentence(transcript, words) -> dict | None:
         if needle not in line:
             continue
         try:
-            r = json.loads(line)
+            r = jsonread.loads(line)
         except ValueError:
             continue
         text, origin = _record_origin(r) if isinstance(r, dict) else (None, None)

@@ -34,6 +34,7 @@ import json
 import re
 from pathlib import Path
 
+from .. import jsonread
 from . import problem
 
 STATUSES = ("in force", "parked", "reopened")
@@ -141,20 +142,24 @@ def _rows(path: Path, what: str) -> tuple[list, list]:
             continue
         damaged = BAD_BYTE.search(line) is not None
         text = line.encode("utf-8", "surrogateescape").decode("utf-8", "replace") if damaged else line
+        # A line too deep for any parser is said as too deep on every machine (see jsonread)
+        obj, deep = None, False
         try:
-            obj = json.loads(text)
-        except (ValueError, RecursionError) as e:
-            why = ("the line begins with a byte-order mark, which JSON does not allow and the register's own tool "
-                   "refuses too" if text.startswith("\ufeff") else f"the line is not JSON ({e})")
-            problems.append(problem(path, n, "not-json", f"{why}; it begins {text[:60]!r}"))
+            obj = jsonread.loads(text)
+        except ValueError as e:
+            deep = getattr(e, "deep", False)
+            if not deep:
+                why = ("the line begins with a byte-order mark, which JSON does not allow and the register's own tool "
+                       "refuses too" if text.startswith("\ufeff") else f"the line is not JSON ({e})")
+                problems.append(problem(path, n, "not-json", f"{why}; it begins {text[:60]!r}"))
+                continue
+        if deep or _too_deep(obj):
+            problems.append(problem(path, n, "too-deep", f"the line nests its values more than {MAX_DEPTH} levels "
+                                                         f"deep, which no entry of the {what} does, so it was not read"))
             continue
         if not isinstance(obj, dict):
             problems.append(problem(path, n, "not-an-object", f"the line is JSON but holds {type(obj).__name__}, "
                                                               f"not one entry of the {what}"))
-            continue
-        if _too_deep(obj):
-            problems.append(problem(path, n, "too-deep", f"the line nests its values more than {MAX_DEPTH} levels "
-                                                         f"deep, which no entry of the {what} does, so it was not read"))
             continue
         if damaged:   # a genuine U+FFFD in valid UTF-8 is just text; only a byte that is not UTF-8 is said
             problems.append(problem(path, n, "replacement-character", "the line holds bytes that are not valid UTF-8; "

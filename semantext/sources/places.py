@@ -44,6 +44,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePath
 from typing import NamedTuple
 
+from .. import jsonread
 from . import MAX_LINE, problem
 
 MAX_SEATS = 4 * 1024 * 1024   # a seats file over this is a mistake, not a list of seats
@@ -209,7 +210,7 @@ def _json(path, limit: int, problems: list, what: str):
         problems.append(problem(p, None, "unreadable", f"{what} cannot be read: {getattr(e, 'strerror', None) or e}"))
         return None
     try:
-        return json.loads(raw.decode("utf-8-sig"))
+        return jsonread.loads(raw.decode("utf-8-sig"))
     except UnicodeDecodeError:
         problems.append(problem(p, None, "encoding", f"{what} is not saved as UTF-8 text"))
     except (ValueError, RecursionError) as e:

@@ -50,11 +50,13 @@ from __future__ import annotations
 import json
 import os
 import stat
+import sys
 from datetime import date
 from pathlib import Path
 
 import yaml
 
+from .. import jsonread
 from . import problem
 
 CARD = "SEMANTICS.yaml"
@@ -460,13 +462,21 @@ def _held(rule: dict) -> str:
 
 MAX_GUARDS = 1024 * 1024   # bytes in the guards file
 NOT_LOCAL = "not checked: a network or device path"
+# Where Windows' rules for a path hold. Python built for Cygwin or MSYS says os.name "posix", yet its paths reach the
+# same shares and devices, so the platform is asked, when the path is judged, not os.name.
+WINDOWS_PLATFORMS = ("win32", "cygwin", "msys")
 
 
 def not_local(path: str) -> str | None:
-    """NOT_LOCAL for a path whose lookup could leave this machine or reach a device: one that starts with two slashes
-    of either kind (a share, \\\\?\\ or \\\\.\\), or holds a colon anywhere but after a leading drive letter. Decided on
-    the text alone, before any call to the file system. None for a local path."""
+    """NOT_LOCAL for a path whose lookup could leave this machine or reach a device. On Windows, Cygwin and MSYS: one
+    that starts with two slashes of either kind (a share, \\\\?\\ or \\\\.\\), or holds a colon anywhere but after a
+    leading drive letter (a stream, or a device such as CON:). Elsewhere a backslash and a colon are characters of a
+    name like any other, so only a path that starts with exactly two slashes is held back: POSIX leaves its meaning to
+    the system, and some systems take it as a share. Decided on the text alone, before any call to the file system.
+    None for a local path."""
     s = str(path).strip()
+    if sys.platform not in WINDOWS_PLATFORMS:
+        return NOT_LOCAL if s[:2] == "//" and s[2:3] != "/" else None
     if s[:2] in ("\\\\", "//", "\\/", "/\\"):
         return NOT_LOCAL
     rest = s[2:] if len(s) >= 2 and s[1] == ":" and s[0].isascii() and s[0].isalpha() else s
@@ -488,7 +498,7 @@ def checkers(path, problems: list[dict]) -> dict[str, list[dict]]:
         if p.stat().st_size > MAX_GUARDS:
             problems.append(problem(p, None, "too-large", "the guards file is over 1 MiB, so no checker is read"))
             return {}
-        data = json.loads(p.read_bytes().decode("utf-8-sig"))
+        data = jsonread.loads(p.read_bytes().decode("utf-8-sig"))
     except FileNotFoundError:
         problems.append(problem(p, None, "no-guards-file", "the guards file named in your sources file is not there"))
         return {}

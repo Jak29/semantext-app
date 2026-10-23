@@ -41,6 +41,7 @@ from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
+from . import jsonread
 from .inbox import SECRET, file_lock, token_like
 from .store import Refused, now
 
@@ -160,7 +161,7 @@ class Agents:
         the form Semantext writes, reads as `empty` too, unless strict: then it is refused, so that no change is
         written over it."""
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = jsonread.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             return empty
         except (OSError, ValueError):

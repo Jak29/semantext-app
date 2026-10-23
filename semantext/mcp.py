@@ -21,7 +21,7 @@ import json
 import os
 import sys
 
-from . import __version__
+from . import __version__, jsonread
 from .agents import Agents, Identity, clean, key_shaped
 from .hook import LIMIT_BYTES, fit
 from .inbox import Inbox, asked_before, card_notes, describe_answer, mine, register_line
@@ -191,7 +191,7 @@ class Server:
 
     def handle_line(self, line: str):
         try:
-            msg = json.loads(line)
+            msg = jsonread.loads(line)
         except (ValueError, RecursionError):
             return _error(None, -32700, "not valid JSON")
         if isinstance(msg, list):   # a batch, as the 2025-03-26 protocol allows
