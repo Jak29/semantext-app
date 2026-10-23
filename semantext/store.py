@@ -13,7 +13,7 @@ import re
 import shutil
 import time
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -62,16 +62,39 @@ _STAMP_LOCK = threading.Lock()
 _last_stamp: list = [None]
 
 
-def stamp() -> str:
-    """Now, to the microsecond, and never the same twice in one process. A file named by it (a backup, a kept version)
-    never overwrites the one before: on some clocks (Windows with Python 3.10) two calls in a row read the same
-    microsecond, so the second is moved on by one, which keeps the names in the order they were made."""
+_STAMP_FORMAT = "%Y%m%d-%H%M%S-%f"
+_STAMP_MARK = re.compile(r"\d{8}-\d{6}-\d{6}")
+_STAMP_AHEAD = timedelta(days=2)
+
+
+def stamp(after=()) -> str:
+    """Now in UTC, to the microsecond, never the same twice in one process, and later than every mark in `after` (the
+    names already in the folder the file goes to). A file named by it (a backup, a kept version) never overwrites the
+    one before, and sorts after it: on some clocks (Windows with Python 3.10) two calls in a row read the same
+    microsecond, and a local clock goes back an hour each autumn, so a name in local time after a restart could sort
+    before the last one and `undo_last` would restore the wrong version (audit of 44d2dfa). UTC never goes back for
+    the season, and the folder's highest mark also covers names written in local time before this change, and a clock
+    set back by hand."""
     with _STAMP_LOCK:
-        t = datetime.now()
-        if _last_stamp[0] is not None and t <= _last_stamp[0]:
-            t = _last_stamp[0] + timedelta(microseconds=1)
+        t = datetime.now(timezone.utc).replace(tzinfo=None)
+        floor = _last_stamp[0]
+        # a mark more than two days ahead of now is no real time on any clock or offset: it is ignored, so a planted
+        # far-future name cannot make every later name overflow or pin it (audit of 4599bda)
+        latest_real = t + _STAMP_AHEAD
+        for name in after:
+            for m in _STAMP_MARK.findall(str(name)):
+                try:
+                    v = datetime.strptime(m, _STAMP_FORMAT)
+                except ValueError:
+                    continue
+                if v > latest_real:
+                    continue
+                if floor is None or v > floor:
+                    floor = v
+        if floor is not None and t <= floor:
+            t = floor + timedelta(microseconds=1)
         _last_stamp[0] = t
-    return t.strftime("%Y%m%d-%H%M%S-%f")
+    return t.strftime(_STAMP_FORMAT)
 
 
 def dump(data: dict) -> str:
@@ -159,7 +182,7 @@ class Store:
     def _keep(self, name: str) -> None:
         """The previous version goes to history/ before any write: undo at the file level, and nothing lost."""
         self.history_dir.mkdir(parents=True, exist_ok=True)
-        mark = stamp()
+        mark = stamp(p.name for p in self.history_dir.glob(f"{name}-*.yaml"))
         shutil.copyfile(self.path(name), self.history_dir / f"{name}-{mark}.yaml")
 
     def save(self, name: str, data: dict) -> None:
@@ -687,7 +710,7 @@ class Store:
             before = {x.get("id") for x in self.every_entry(self.load(name))}
         except Refused:
             before = None
-        mark = stamp()
+        mark = stamp(p.name for p in self.history_dir.glob(f"{name}-*.yaml"))
         kept = self.history_dir / f"{name}-{mark}-redo.yaml"
         shutil.copyfile(p, kept)
         shutil.copyfile(newest, p)

@@ -58,10 +58,14 @@ def test_a_card_that_touches_everything_has_no_skill(store, tmp_path):
 
 
 def test_a_rule_learned_after_the_split_is_left_off(store, tmp_path):
-    store.learn("default", RULE)
+    early = store.learn("default", RULE)
     late = store.learn("default", LATE)
     d = store.load("default")
     for e in d["entries"]:
+        # both times are pinned: the early rule once took the clock's "now", and the test broke when the real date
+        # passed the split (2026-10-20)
+        if e["id"] == early:
+            e["provenance"]["when"] = "2026-10-16T09:00:00+00:00"       # taught before the split
         if e["id"] == late:
             e["provenance"]["when"] = "2026-10-20T09:00:00+00:00"       # taught after the corrections
     store.save("default", d)

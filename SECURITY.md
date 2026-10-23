@@ -170,6 +170,56 @@ This page says what it touches, how it protects you, what it does not protect ag
   agent changing them through Semantext, by habit or by accident. A program running as you can still write the rule
   files or `settings.json`, unset the variables, open a console, or set another session's id. A rule written into a
   file by hand carries no agent's name, and Semantext does not yet mark such rules on the card.
+- **Reading a session's role from its commands is a heuristic.** `envhook` takes a session's role from the latest
+  command that runs a program with the declaring flag outside quoted text. It reads PowerShell and bash quoting well
+  enough for ordinary commands, not completely. Known shapes it reads wrong: a `$( )` holding its own double quotes
+  inside a double-quoted string; a doubled backtick before a closing quote; a quote straight after a closing
+  parenthesis; PowerShell's doubled single quote (`''`) inside a single-quoted string; and bash's `\"` inside a
+  double-quoted string. In the first three a real declaration can be missed, and the session keeps its earlier role.
+  In the last two a flag written inside text can be taken as real. A command over 200,000 characters declares
+  nothing. A wrong role shows a different set of rules; it grants nothing.
+- **A document read can be raced.** The page reads one listed document through one handle checked against its first
+  look, and checks its folder again before the file's last check. A local program that swaps the folder for a link to
+  another folder, and back, each between two adjacent checks, can still have that other file shown. Swapping once is
+  refused.
+- **A change's evidence digest is an oracle, kept where it confirms nothing new.** "Current" or "stale" tells whether
+  a file's bytes match a guess. So the page digests only files inside the filing agent's own home and the projects
+  bound to it, never through a link or junction below that folder, never a hard link, an alternate stream, a device
+  or short (8.3) name. Two layers decide which files those are. First, evidence is a document, a script or source
+  text, by its kind (`.md`, `.txt`, `.json`, `.jsonl`, `.yaml`, `.yml`, `.toml`, `.py`, `.ts`, `.tsx`, `.js`, `.mjs`,
+  `.cs`, `.rs`, `.lean`, `.svg`, `.csv`, `.sh`, `.ps1`, `.bat`, `.cmd`, `.html`, `.css`, `.xml`, `.cfg`, `.ini`,
+  `.go`, `.java`, `.c`, `.h`, `.hpp`, `.cpp`, `.log`, and the files `LICENSE`, `Makefile`, `Dockerfile`, `README`,
+  `.gitignore`, `.gitattributes` and `.editorconfig`), and nothing else. Those kinds are where secrets live too, so
+  the second layer carries the weight: no part of the path, taken whole and in any case, may be named like a secret
+  (the list is `SECRET_NAMES` in `semantext/sources/change.py`: `.env*`, key and certificate files, `credentials*`,
+  `wallet*`, `vault*`, `secret`/`secrets` and `*_secret*`, `token`/`tokens` and `*_token*`, `password*`, `seed`,
+  `mnemonic*`, `*api_key*`, `key.*`, `settings.local.json`, `hosts.yml` under a `gh` folder, the folders `.ssh*`,
+  `.kube`, `.docker`, `.aws`, `.gnupg` and `*kaggle*`, and more). The trade-off, stated: "token" and "secret" are
+  matched as whole words, so `tokenizer.py` and `secretary.md` stay evidence, while `wallet*`, `vault*` and `.ssh*`
+  also refuse a few honest names (`wallets.md`, `vault_notes.md`, `tokens.md`). A secret kept under an ordinary name
+  of an evidence kind can still be digested; the home and project limit is what keeps that from telling the agent
+  anything it could not read. An absent file is "unknown", never a match. At most 50 files a record and 200 records
+  an agent are digested in one page build, and at most 256 MB is read across all evidence in one build; past those,
+  a record says "not checked: over the cap" or "not checked: over the read budget". Each file's digest is kept in memory
+  (never on disk) for 60 seconds, keyed by its path, size, modification time, file id and its first and last 4 KB.
+  So an edit that keeps the size and both 4 KB ends and puts the modification time back as it was can read as
+  current for up to 60 seconds; an ordinary edit changes the time and is read again.
+- **Which projects an agent is bound to is a claim the project makes.** A project binds to an agent when it is that
+  agent's home, or when its `.identity` file lists the agent's email in a "Name <email>" line. Anyone who can write
+  into a project can append such a line, and the page then digests that project's files for that agent's change
+  records. A project bound to two agents can be digested for either; both can already read it, so the digest tells
+  neither anything new. Likewise a change's "decided" follows a close line on the decision card that asks about it,
+  or an outcome line: both are lines in the agent's own files, so they record what the agent wrote, not what you did.
+  A changes file with a second name (a hard link) or that is a link is not read at all. Two rarer forms still get
+  through, and each amounts to the agent writing the lines itself: a home folder that is itself a junction to another
+  agent's home shows that agent's records under this one (the home is the seats file's to name), and a hard link made
+  in the moment between the check and the read is read once.
+- **A guarded rule's checker path is looked up only when it is local.** The page says whether the `where` a guards
+  file gives for a checker is there now. A `where` that starts with two slashes (a share, `\\?\` or `\\.\`) or holds
+  a colon past a drive letter is never looked up, so building the page makes no network connection for a local drive;
+  a mapped network drive (a letter that points at a share) cannot be told from its text and is looked up like any
+  drive. The page shows a refused `where` as written with "not checked: a network or device path". Whether a checker
+  ran is never claimed.
 
 ## Reporting a vulnerability
 

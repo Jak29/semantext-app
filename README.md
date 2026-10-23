@@ -34,7 +34,7 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
 own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
 
-> **Status: version 1.1.0, stable.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+> **Status: version 1.0.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 
@@ -71,6 +71,24 @@ Nothing moves on its own: the constellation lights up when a real message reache
 ![The page's Rules view: your rules as a constellation, the centre applying everywhere and each ring out applying more narrowly](docs/rules.png)
 
 ![The page's Agents view: your agents at work, each environment a zone, each agent with the card it carries](docs/agents.png)
+
+### Preview: v2, one view of the records you already keep
+
+If you already run several agents, you already keep records: each agent's requests to you, the decisions you have
+given, your rule cards, the repositories your agents work in. v2 reads them where they lie, as its first dataset, and
+writes nothing. Name the files in `~/.semantext/sources.json` (the keys are listed in `semantext/sources/__init__.py`),
+then open `http://127.0.0.1:8765/v2`:
+
+- **Waiting** (the home): your agents' requests, card for card, with your earlier words on the same subject, who asks
+  and who acts, and the project each one belongs to. This page never runs or answers anything.
+- **Projects**, one click away: each repository's agents, its git gates (worktree by worktree, from a static read of
+  git's own files, each marked "(read)"), its requests and its documents.
+- **The map**, one click away, labelled with your own word for the whole: your groups, workspaces and agents, with a
+  mark wherever your word is waiting or a gate is open.
+- **Record**: every decision you have given, verbatim, as threads, with what each one superseded.
+
+`semantext statusline` prints one line for Claude Code's status bar: what is waiting for your word. Every reader is
+checked against the tool that owns its data, on real files and on planted faults; see `CHANGELOG.md`.
 
 Already use Claude Code? Start from what you have already said, in the project's folder:
 

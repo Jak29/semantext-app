@@ -6,10 +6,115 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
-### Planned
-- **v2: one view of the records you already keep.** Read-only readers for an agent team's requests, decisions, rule
-  cards, git gates and projects, and a page built around them (Waiting, Projects, a map, Record). It is in development
-  and is not part of this release: it passes its tests on Windows, not yet on Linux and macOS.
+## [1.2.2] - 2026-10-23
+
+### Fixed
+- **A name far in the future in a history folder no longer stops saving.** 1.2.1 never named a kept version below
+  one already in its folder, so a file dated 9999 made every save fail, and one dated 2099 pinned every later name to
+  2099. Names more than two days ahead of now are ignored; a name a day ahead (a clock east of UTC) still counts.
+
+## [1.2.1] - 2026-10-23
+
+### Fixed
+- **A version kept before a clock change is never restored in place of a later one.** Kept versions and backups were
+  named in local time, so after a restart with the clock an hour earlier (as when summer time ends) a later save could
+  get an earlier name, and `undo_last` restored the wrong version. Names are now in UTC, and never sort below a name
+  already in the folder, which also covers names written in local time before this change. Tests set the clock back
+  across a restart; they fail on 1.2.0.
+
+## [1.2.0] - 2026-10-23
+
+A minor version after 1.1.0: the v2 page (slices 1b and 2), the reading card from a folder of ratified environments (envcard, envhook), and 1.1.0's one fix carried in. Every part was attacked by an independent auditor before release; the known limits are in SECURITY.md. Not yet run: CI on Linux and macOS (the 1.1.0 notes say the v2 preview had failed there), which needs a push.
+
+### Fixed
+- **1.1.0's stamp fix is carried in:** a backup or a kept version is never overwritten by the next one (`store.stamp`, `tests/test_stamp.py`), as in 1.1.0.
+
+### Added
+- **v2 slice 2: the proposed-change card, the Record as zoom, and how firmly each rule is held** (still read-only).
+  A request line of kind `change` is a card on Waiting: what it changes, the hypothesis, the measures it should move
+  (with a stated chance), the risk, why a smaller change would not do, the retroactive check, what changes (files
+  added, removed and changed, and the change in always-on characters), whether its evidence is still today's (a
+  SHA-256 digest of the files it names; "stale" once one moves), and its undo, shown as a commit or a file to restore
+  and never performed. Later `outcome` lines are new entries (an undo too, never an erase), judged against the
+  prediction, with a per-agent Brier score and its count. `diff_summary` and `fingerprint` are reworked from harness2
+  and the fields and the scoring from rrsi, both Apache-2.0, with their notices kept and the changes marked. The
+  Record zooms: threads by subject, then a thread's decisions (words whole up to 512 bytes), then one decision at its
+  source (your words whole, the offer, where they were written down as the register pins them, what superseded them,
+  and the scribe's reading labelled as an agent's); search reads your words, not the readings. A rule is **guarded**
+  only when the sources file's new `guards` file names a checker for it with a must-pass and a must-refuse arm; a
+  guard a card only mentions is shown as its claim and counts for nothing. The Rules drawer gives each rule's level
+  with its source, and the share at each level.
+- **v2 slice 1b: the cards lead, and the page reads what the inbox reads** (still read-only). On Waiting the
+  heading, its sentence, the search and By project sit in the bar, so the first card is the first thing under it; the
+  problems box gives way to a quiet count in the bar ("2 file problems") that opens the list on a click, and stays
+  folded in the other places. A card's extras (who asks and acts, its project, your earlier words) open on a click,
+  and the line says how many earlier words there are. A new **Documents** place lists every cv/<project> folder with
+  a MASTER.md and reads it in the page: MASTER.md with a Copy button, the detailed documents beside it, and its
+  diagrams through an `<img>` on their own light ground. Markdown is built from text, so HTML in a document shows
+  as text; an https link opens in a new tab with `rel=noopener`, a relative .md link opens that document here, and
+  anything else is plain text. The read (`GET /api/v2/document`, the page's header required) serves only a file the
+  documents reader lists in a folder it lists, and refuses `..`, full paths, drive letters, links and anything else.
+  Done shows each run's **Output** (stdout and stderr from runs.jsonl, as text). A **gaming indicator** in the bar
+  reads the inbox's gaming.json as its gaming.py does ("Gaming hold until HH:MM", nothing when off, "Gaming state
+  unknown" when it cannot be read); it never writes the flag and never runs gaming.py. The flag's file is the sources
+  file's new `gaming` key, or gaming.json in the `inbox` folder.
+- **v2 preview: one view of the records you already keep** (`/v2`, read-only). Five readers in `semantext/sources/`
+  read the files a person who runs several agents already has, where they lie, and never write: each agent's requests
+  (`cards`), the decision register (`record`), rule cards (`rules`), each repository's git gates by a static read of
+  git's own files, worktree by worktree (`gates`), and the agents, projects, map and documents (`places`). Every line a
+  reader cannot use is listed as a problem, never dropped. The page has four places on one bar: Waiting (the home,
+  card for card), Projects, the map and Record, with drawers for an agent, its rules, a gate and documents.
+  `semantext statusline` gives Claude Code's status bar one line. Each reader was checked against the tool that owns
+  its data on real files, attacked by an independent reviewer, and shown to catch planted faults; a gate's state is
+  only ever a read, never "armed".
+- **Answer from chat.** Send a request's number and your choice to any of your AIs, as a message of its own: `#12 2`,
+  `#12 2, but after the tests` (words follow one of `. , ; :`), `#12: your own words` (for a question with no
+  options), `#13 done`, `#14 add`. The hook records it as your answer, the way the page and the terminal record theirs
+  (a proposed rule you add is added), and tells the AI what was recorded, or that nothing was, and why. It takes one
+  only from a message that opens as your own words, that the tool's own record says you typed, and that is that one
+  answer and nothing else: pasted notes or a list that mentions requests answers nothing.
+- **Corrections kept as tests.** When you teach a rule, you can keep the message your AI got wrong beside it, as the
+  rule's test: `semantext teach "..." --misread "..."`, the correction box on Today, or "Not read the way you meant?"
+  under Try a message. Each test is re-checked whenever your rules change: it is covered while every rule it needs is
+  on, and switching such a rule off says which correction it uncovers (never blocked). `semantext cases` lists them,
+  `--export` writes them in the back-test's case form, the card says how many there are, the constellation rings
+  their rules, and Today counts them.
+- **The register.** Everything you decided stays on record, with your words: `semantext decisions [WORDS]`, the MCP
+  `decisions` tool, and the page's On record list, with a search. When an agent asks a question you answered before,
+  the earlier answer is shown beside it, to you and to the agent, and never used for it.
+- **What Semantext noticed.** The feed's line now keeps, for your own words only, what Semantext's quick reading noticed,
+  by kind alone: a question, a maybe, an ask that needs your word, an answer, and the rest. Older lines are read as
+  noticing nothing.
+- **Counts of what it did,** from its own records only: your messages that carried your rules; the questions, maybes
+  and risky asks it saw, and whether the rule for each went with it; messages from other agents and tools marked as not
+  yours, and those claiming to be you; decisions answered, how fast, and how; the rules you added.
+- **DESIGN.md:** the page's design, in Google's DESIGN.md format for design tools and agents. Its colours, type,
+  shapes and components come from the page's own code, and the copy comes from the page and the README.
+
+### Changed
+- **The page, in four places,** each answering one question, and Settings. It is quiet by design: neutral greys, one
+  accent (gold) for what is yours or needs you, red only for what is broken, a few groups per screen set apart by
+  space, and explanations that open only when asked for. It follows the system's light or dark setting. DESIGN.md
+  gives the rules and the design research behind them.
+  - **Today:** is it working, and does anything need me? One sentence of status, the decisions waiting (one click, or
+    typed in chat), three counts of what it did with the rest one click away, and the latest messages, each opening to
+    the five steps behind it.
+  - **Rules:** your rules as a constellation that shows their structure: the centre applies everywhere, each ring out
+    applies more narrowly (an environment, then one agent), and your own words are gold, joined in the order you added
+    them. Below it the same rules as lists, each with its switch. Try a message lives here.
+  - **Agents:** every agent in a list, the map of them at work once there are two agents or two environments, and What
+    an agent gets.
+  - **Decisions:** what waits for you, and everything you decided, on record.
+  - Calm by default: nothing replays and no example plays; the constellation moves only when a real message arrives.
+    The old addresses (`#live`, `#inbox`) still work.
+- The inbox notes on every card say the user can answer by sending `#<number>` and their choice as a message of its
+  own.
+
+### Security
+- An answer that looks like it holds a key, a token or a password of a known shape is now refused from anywhere;
+  before, only a request was checked. A long run shaped like an unlisted key is kept but withheld from everything sent
+  to an agent, as the feed withholds it.
+- The counts and the register are given only to the page's own script, like the feed.
 
 ## [1.1.0] - 2026-10-14
 

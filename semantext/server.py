@@ -24,6 +24,7 @@ from .feed import Feed
 from .hook import LIMIT_BYTES, WORDS, compose, fit, rule_lines, sender_name, sent_layers
 from .inbox import Inbox, age, card_notes
 from .sender import whose
+from .sources import view
 from .store import Refused, Store
 
 
@@ -221,12 +222,14 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):  # a quiet console
         pass
 
-    def _send(self, code: int, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code: int, body, ctype="application/json; charset=utf-8", extra: dict | None = None):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -340,6 +343,24 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, metrics(st))
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
+            if u.path == "/v2":   # the page in four places, read-only on the person's own files (sources/view.py)
+                return self._send(200, (paths.static_dir() / "v2.html").read_bytes(), "text/html; charset=utf-8")
+            if u.path == "/api/v2/document":   # one listed file of one listed cv/<project> folder, read (view.document)
+                if not self._page_reads():
+                    return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
+                try:
+                    got = view.document(q.get("doc", ""), q.get("file", ""), home=st.root)
+                except view.DocumentRefused as e:
+                    return self._send(e.status, {"error": e.why})
+                if got["kind"] == "diagram":   # an image the page shows through <img>, which never runs its script
+                    return self._send(200, got["bytes"], "image/svg+xml",
+                                      {"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox"})
+                return self._send(200, got)
+            if u.path.startswith("/api/v2/"):
+                if not self._page_reads():
+                    return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
+                body = view.answer(u.path[len("/api/v2/"):], home=st.root)
+                return self._send(200, body) if body is not None else self._send(404, {"error": "not found"})
             return self._send(404, {"error": "not found"})
         except (Refused, ValueError, KeyError, TypeError) as e:
             return self._send(400, {"error": str(e)})

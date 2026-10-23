@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "semantext"
-version = "1.1.0"
+version = "1.2.2"
 description = "Keep your standing rules for how an AI assistant reads you, and hand them to it with every prompt."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,7 +42,7 @@ Homepage = "https://github.com/Jak29/semantext-app"
 Issues = "https://github.com/Jak29/semantext-app/issues"
 
 [tool.setuptools]
-packages = ["semantext"]
+packages = ["semantext", "semantext.sources"]
 
 [tool.setuptools.package-data]
 semantext = ["static/*.html", "data/profiles/*/SEMANTICS.yaml", "data/suggestions/*.yaml"]
