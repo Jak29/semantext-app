@@ -29,21 +29,16 @@ import re
 import sys
 from pathlib import Path
 
-from . import envcard, jsonread
+from . import envcard, jsonread, provenance
+from .provenance import TAIL_BYTES
 
 SEGMENT = re.compile(r"[\r\n;|]|&&")  # one command per segment; a here-string's lines are segments of their own
 RUNS = re.compile(r"^\s*(?:\$[\w:]+\s*=\s*)?(?:&\s*)?(?:[\"']?[^\s\"']*?(?:python[0-9.]*|py)(?:\.exe)?[\"']?|\$\w+)\s",
                   re.IGNORECASE)
 CHUNK = 8_000_000
-TAIL_BYTES = 4_000_000
-NOT_OWNER = ("<task-notification>", "Another Claude session sent a message:", "<cross-session-message")
-NOTICE = re.compile(r"\[[^\]\n]{0,120}?(?:cross-session|not user input|non-user source|system notification)[^\]\n]{0,120}\]",
-                    re.IGNORECASE)
-# The tool can wrap another session's message, or a notice, in a system-reminder tag.
-WRAPPED = re.compile(r"<system-reminder[^>]*>\s*(?:Another Claude session sent a message|\[SYSTEM NOTIFICATION)",
-                     re.IGNORECASE)
-TURN_ORIGIN = {"human": "own", "peer": "not", "task_notification": "not", "system": "not"}
-ORIGIN_KIND = {"human": "own", "peer": "not", "task-notification": "not", "task_notification": "not", "system": "not"}
+# Whose words a prompt carries is read by provenance.py, the one reader shared with the app's hook (sender.whose);
+# this module keeps only its own vocabulary of it: "own" or "not".
+SAYS = {provenance.USER: "own", provenance.RELAY: "not", provenance.NOTICE: "not"}
 RULE_ID = re.compile(r"^- ([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9_.-]+):")
 # Text that is not a command: a here-string's or a heredoc's body, and a quoted argument that holds a line break or a
 # command separator. A line inside them that looks like a declaration is text (audit of 0515b12, finding 1). One linear
@@ -170,16 +165,10 @@ def masked(command: str) -> str:
     return _blank_quotes(_blank_bodies(command))
 
 
-def _same(text: str) -> str:
-    """A prompt's text in the form the record is compared in: CRLF and CR as LF, a no-break space as a space, no
-    byte-order mark, no outer whitespace. The hook's prompt and the record's text can differ in exactly these
-    (audit of 0515b12, finding 6: two prompts with CRLF got the owner's card in production)."""
-    return text.replace("\r\n", "\n").replace("\r", "\n").replace(" ", " ").lstrip("﻿").strip()
-
-
-def _head(prompt: str) -> str:
-    """The prompt's opening, past whitespace and a byte-order mark (str.lstrip does not remove U+FEFF)."""
-    return prompt.lstrip().lstrip("\ufeff").lstrip()
+def read_json(path):
+    """A JSON file the owner keeps (the config, the roots file). utf-8-sig, so one saved with a byte-order mark, as
+    Windows editors and PowerShell 5.1 write it, reads the same (review of 1.2.2, E2)."""
+    return jsonread.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
 class Config:
@@ -193,9 +182,15 @@ class Config:
         self.relay_rules = tuple(d.get("relay_rules") or ())
         self.relay_seat_suffix = d.get("relay_seat_suffix")
         self.flag = d.get("declare_flag", "--agent-scope")
-        self.scope = re.compile(re.escape(self.flag) + r"[ =]+[\"']?([A-Za-z0-9_-]+)")
+        # a name never starts with "-": `--agent-scope --dry-run` declares nothing, so the folder seat still stands
+        # (review of 1.2.2, E4)
+        self.scope = re.compile(re.escape(self.flag) + r"[ =]+[\"']?([A-Za-z0-9_][A-Za-z0-9_-]*)")
         self.commons = {c.lower() for c in d.get("commons") or ()}
-        self.roots = Path(d["roots"]) if d.get("roots") else None
+        # read against the config's own folder, as `environments` is, never the session's working folder (review of
+        # 1.2.2, E1)
+        roots = Path(d["roots"]) if d.get("roots") else None
+        self.roots = roots if roots is None or roots.is_absolute() or base is None else base / roots
+        self.problems: list[str] = []   # what one run could not read and skipped (review of 1.2.2, E3)
         self.relay_form = d.get("relay_form", True)
         self.record_check = d.get("record_check", True)
         self.limit = int(d.get("limit_bytes", 9_500))
@@ -204,7 +199,7 @@ class Config:
     @classmethod
     def load(cls, path) -> "Config":
         p = Path(path)
-        return cls(jsonread.loads(p.read_text(encoding="utf-8")), p.parent)
+        return cls(read_json(p), p.parent)
 
     def env(self, name: str) -> Path:
         return self.envs / name / "SEMANTICS.yaml"
@@ -222,7 +217,13 @@ def declared_in(rec: dict, cfg: Config) -> str | None:
     for c in content:
         if not (isinstance(c, dict) and c.get("type") == "tool_use"):
             continue
-        command = (c.get("input") or {}).get("command")
+        given = c.get("input") or {}
+        if not isinstance(given, dict):   # a malformed record is skipped and named, never the whole card lost (E3)
+            note = "a tool_use record whose input is not an object was skipped"
+            if note not in cfg.problems:
+                cfg.problems.append(note)
+            continue
+        command = given.get("command")
         if not isinstance(command, str):
             continue
         for seg in SEGMENT.split(joined(masked(command), c.get("name"))):
@@ -273,13 +274,17 @@ def folder_seat(cwd, cfg: Config) -> str | None:
     if cfg.roots is None:
         return None
     try:
-        data = jsonread.loads(cfg.roots.read_text(encoding="utf-8"))
+        data = read_json(cfg.roots)
         base = data["base"]
         here = os.path.normcase(os.path.normpath(str(cwd)))
     except (OSError, ValueError, KeyError, TypeError):
         return None
+    seats = data.get("seats") or {}
+    if not isinstance(seats, dict):   # a list, say: no folder seat, and the card says why (review of 1.2.2, E3)
+        cfg.problems.append(f"{cfg.roots}: 'seats' should map each seat's name to its home, so no folder seat was read")
+        return None
     best, depth = None, -1
-    for name, seat in (data.get("seats") or {}).items():
+    for name, seat in seats.items():
         home = seat.get("home") if isinstance(seat, dict) else None
         if not home:
             continue
@@ -297,84 +302,16 @@ def session_seat(transcript, cwd, cfg: Config) -> str | None:
     return name if name and cfg.seat_env(name).is_file() else None
 
 
-def _kind(origin) -> str | None:
-    return ORIGIN_KIND.get(origin.get("kind")) if isinstance(origin, dict) else None
-
-
-def _record_text(rec: dict) -> str | None:
-    content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
-    if isinstance(content, list):
-        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
-            return None
-        content = "".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text") or None
-    return content if isinstance(content, str) else None
-
-
-def _record_says(rec: dict) -> tuple[str | None, str | None]:
-    a = rec.get("attachment") if isinstance(rec.get("attachment"), dict) else {}
-    if a.get("type") == "queued_command":
-        text = a.get("prompt") if isinstance(a.get("prompt"), str) else None
-        if a.get("humanTurn"):
-            return text, "own"
-        if a.get("commandMode") == "task-notification" or a.get("isMeta"):
-            return text, "not"
-        return text, _kind(a.get("origin")) or _kind(rec.get("origin"))
-    if rec.get("type") == "user":
-        text = _record_text(rec)
-        if rec.get("isCompactSummary") or rec.get("isVisibleInTranscriptOnly"):
-            return text, "not"
-        says = TURN_ORIGIN.get(rec.get("turnOrigin")) or _kind(rec.get("origin"))
-        if says is None and rec.get("isMeta"):
-            says = "not"
-        return text, says
-    return None, None
-
-
 def record_says(transcript, prompt, tail: int = TAIL_BYTES) -> str | None:
     """What the tool's own record says of this prompt: 'own', 'not', or None. The newest matching record decides."""
-    if not transcript or not isinstance(prompt, str) or not prompt.strip():
-        return None
-    want = _same(prompt)
-    # the needle is the first word only (up to 40 characters), so line ends and no-break spaces cannot hide a record;
-    # the exact comparison below decides. A record may store non-ASCII as itself or as \u escapes: both are looked for
-    first = re.split(r"\s", want, maxsplit=1)[0][:40] or want[:40]
-    needles = {json.dumps(first, ensure_ascii=a)[1:-1].encode("utf-8") for a in (False, True)}
-    try:
-        with open(transcript, "rb") as fh:
-            fh.seek(0, 2)
-            fh.seek(max(0, fh.tell() - tail))
-            lines = fh.read().splitlines()
-    except (OSError, ValueError, TypeError):
-        return None
-    for line in reversed(lines):
-        if not any(n in line for n in needles):
-            continue
-        try:
-            rec = jsonread.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(rec, dict):
-            continue
-        text, says = _record_says(rec)
-        if text is not None and _same(text) == want:
-            return says
-    return None
+    return SAYS.get(provenance.recorded(transcript, prompt, tail))
 
 
 def from_owner(prompt, transcript, cfg: Config) -> bool:
-    """False for a prompt that opens as another session's message, a task notice or the tool's bracketed notice, and
+    """False for a prompt that opens as another agent's message, a task notice or the tool's bracketed notice, and
     for one the tool's own record marks as not the owner's. The record can only take a prompt away from the owner."""
-    if not isinstance(prompt, str):
-        return True
-    head = _head(prompt)
-    if head.startswith(NOT_OWNER) or NOTICE.match(head) or WRAPPED.match(head):
-        return False
-    if not cfg.record_check:
-        return True
-    try:
-        return record_says(transcript, prompt) != "not"
-    except Exception:  # noqa: BLE001  the record is a second opinion: it never costs the owner the card
-        return True
+    kind, _ = provenance.classify(prompt, transcript, record_check=cfg.record_check)
+    return kind == provenance.USER
 
 
 def seat_only(card: str, section: str) -> str:
@@ -454,6 +391,7 @@ def run(raw: str, argv: list[str], cfg: Config) -> str:
     payload = parse_payload(raw)
     part = part_of(argv)
     env = cfg.env(cfg.core)
+    cfg.problems.clear()
     try:
         seat = None if part == "core" else session_seat(payload.get("transcript_path") or "", payload.get("cwd"), cfg)
         if seat:
@@ -462,6 +400,8 @@ def run(raw: str, argv: list[str], cfg: Config) -> str:
     except Exception as e:  # noqa: BLE001  never block the message
         return (f"Semantext reading card unavailable (part {part}: {e.__class__.__name__}: {e}). "
                 f"Read it by hand: {cfg.read_hint.format(env=env)}")
+    if text and cfg.problems:   # what was skipped, said after the card, so the card itself stays whole (E3)
+        text += "\n\n" + "\n".join(f"Semantext: {p}." for p in cfg.problems)
     return with_size_warning(text, env, cfg) if text else ""
 
 

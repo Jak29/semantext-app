@@ -22,26 +22,29 @@ from __future__ import annotations
 
 import hashlib
 import os
+import copy
+import json
 import re
 import stat
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import cards, config_path, gaming, gates, load_config, places, record, rules
+from .. import jsonread, outside, paths, registry
+from . import builtin, cards, closed, config_path, gaming, gates, load_config, places, record, refused_keys, rules
 from . import change as change_card
+from . import evidence_gitindex as evidence_way   # which files a change may cite: one module per way (evidence.py)
+from .workplace import work_place
 
-ROUTES = ("waiting", "projects", "documents", "map", "record", "rules", "sources")
-READERS = (("waiting", cards), ("record", record), ("rules", rules), ("gates", gates), ("places", places))
-NAMES = {"waiting": "Waiting", "record": "Record", "rules": "Rules", "gates": "Gates", "places": "Places",
-         "sources": "Sources"}
+# Which readers and places exist is the registry's (semantext/registry.py): the built-in ones are registered at the
+# foot of this file, and ROUTES is read from it there. An answer adds the plug-ins the person turned on.
 UNAVAILABLE = "Semantext: unavailable"
 TEXT = ("title", "why", "question", "options", "command", "does", "undo")   # the words an agent writes to ask
 # An id as a card or a decision carries it: one or two capitals, a date, a time or a number, and sometimes a number
 # after that (X-20261010-195202-2 is another card than X-20261010-195202, so the number is part of the id).
 ID = re.compile(r"(?<![A-Za-z0-9_])[A-Z]{1,2}-\d{8}-\d{1,6}(?:-\d{1,3})?(?![A-Za-z0-9_])")
 # The gate words, worst first. A worktree whose words hold one of BROKEN can let a commit or a push through unchecked.
-WORST = ("off", "checks nothing", "open", "stranded", "unknown", "folder gone", "gated, identity declared")
+WORST = ("off", "checks nothing", "open", "stranded", "unknown", "folder gone", gates.ARMED_WORDS)
 BROKEN = ("off", "checks nothing", "open", "stranded")
 NO_PROJECT = "unassigned"
 WHOLE_BYTES = 512   # words that fit are shown whole at every level of the Record; longer ones whole at their source
@@ -101,33 +104,93 @@ def config_file(home=None) -> Path:
 def _config(home=None) -> tuple[dict, Path, dict | None]:
     """(config, its file, a problem): a sources file that cannot be read is a problem to show, never a failed page."""
     path = config_file(home)
-    try:
-        return load_config(path), path, None
+    try:   # "_file": where the run reader reads the person's closures from (runs._home); no reader shows it.
+        # "_home": the Semantext home the server was started with, where the work store lies (sources/work.py).
+        return {**load_config(path), "_file": str(path), "_home": str(home or paths.home())}, path, None
     except Exception as e:  # noqa: BLE001  whatever is wrong with the file, every place still answers
         return {}, path, {"reader": "sources", "source": str(path), "line": None, "kind": "unreadable",
                           "text": f"your sources file cannot be read ({type(e).__name__}: {e})"[:300]}
 
 
-def _route(name: str, cfg: dict) -> str | None:
+def _route(name: str, cfg: dict, reg=None) -> str | None:
+    """The place a name asks for: a built-in place, the person's word for the whole (the map), then a place the person
+    turned on, so no plug-in can take a built-in's name or the person's word."""
     if name in ROUTES:
         return name
     word = word_of(cfg.get("name"))
-    return "map" if word and name == word else None
+    if word and name == word:
+        return "map"
+    return name if reg is not None and reg.get("place", name) else None
 
 
 # ---- reading ------------------------------------------------------------------------------------------------------
-def _read(cfg: dict, world=None) -> tuple[dict, list]:
-    """Every reader's answer on this config, and a problem for each reader that stopped: one that fails costs the page
-    that reader's part, never the rest."""
-    got, failed = {}, []
-    for name, module in READERS:
+def _capped(part: dict, what: str) -> dict:
+    """An outside answer held to the caps (outside.py): its problems kept short and few, its whole size bounded."""
+    kept, left_out = outside.problems(part.get("problems"))
+    if left_out:
+        kept.append({"source": what, "line": None, "kind": "too many problems",
+                     "text": f"{left_out} more problems were left out (at most {outside.MAX_PROBLEMS} are kept)"})
+    body = {**part, "problems": kept}
+    n = outside.size(body)
+    if n is None:
+        raise TypeError("its answer cannot be written as JSON")
+    if n > outside.MAX_BYTES:
+        raise ValueError(f"its answer is {n // 1024} KB, over the {outside.MAX_BYTES // (1024 * 1024)} MB cap, so it "
+                         f"is not used")
+    return body
+
+
+def _outside(entry, path, ctx=None) -> dict:
+    """An outside source's answer, read on its own keys of the sources file, held to the shape the page reads: a
+    record, its problems a list of records, within the caps. A read that takes a context (api 0.2) is given the
+    build's ReadContext. The read runs with a time budget (outside.run)."""
+    if entry.reads_ctx is None:   # not known for this answer: never read without its ctx (the recheck of 17021c2, NH4)
+        raise RuntimeError(registry.not_without_ctx("read", entry.ctx_trouble))
+    cfg = load_config(path, keys=tuple(entry.obj.keys)) if path else {}
+    # the answer comes back as plain data: made into bounded, depth-checked JSON text in the worker (outside.run_json)
+    owner = registry.key(entry.kind, entry.name)   # counted against the name the registry gave it, never the callable
+    given = (cfg, ctx) if entry.reads_ctx else (cfg,)
+    part = outside.run_json(entry.obj.read, *given, owner=owner)
+    if not isinstance(part, dict):
+        raise TypeError(f"its answer is a {type(part).__name__}, not a record")
+    body = _capped(part, f"plug-in source.{entry.name}")
+    body["problems"] = (refused_keys(path, tuple(entry.obj.keys)) if path else []) + body["problems"]
+    return body
+
+
+def _over_total(spent: int, n: int) -> None:
+    if spent + n > outside.MAX_TOTAL:
+        cap = outside.MAX_TOTAL
+        said = f"{cap // (1024 * 1024)} MB" if cap >= 1024 * 1024 else f"{cap // 1024} KB"
+        raise ValueError(f"its answer ({n // 1024} KB) would take the outside answers of this page over the {said} "
+                         f"they may come to together, so it is not used")
+
+
+def _read(cfg: dict, world=None, reg=None, path=None, home=None) -> tuple[dict, list, int]:
+    """Every reader's answer on this config, a problem for each reader that stopped, and the bytes the outside
+    answers came to: one that fails costs the page that reader's part, never the rest. A reader the person turned on
+    is read the same way, on its own keys; one whose answer would take the outside answers together over
+    outside.MAX_TOTAL is refused (the audit of 784faf6, note 11)."""
+    got, failed, spent = {}, [], 0
+    ctx = None
+    for entry in (reg or BUILT_IN).entries("source"):
+        name = entry.name
+        if entry.reads_ctx and not entry.builtin and ctx is None:
+            ctx = closed.context(home)   # once per build, so every reader judges against the same closures
         try:
-            got[name] = module.load(cfg, world) if module is gates and world is not None else module.load(cfg)
-        except Exception as e:  # noqa: BLE001
+            if entry.builtin:
+                got[name] = entry.obj.read(cfg, world)
+            else:
+                body = _outside(entry, path, ctx)
+                n = outside.size(body) or 0   # plain data by now (outside.run_json): no plug-in code runs here
+                _over_total(spent, n)
+                got[name], spent = body, spent + n
+        except (Exception, SystemExit) as e:  # noqa: BLE001  KeyboardInterrupt, the person's Ctrl-C, goes through
             got[name] = {"off": True, "failed": f"{type(e).__name__}: {e}", "problems": []}
+            title = getattr(entry.obj, "title", None) or name
             failed.append({"reader": name, "source": "", "line": None, "kind": "reader stopped",
-                           "text": f"the {NAMES[name]} reader stopped ({type(e).__name__}: {e})"[:300]})
-    return got, failed
+                           "text": f"the {title} reader stopped ({type(e).__name__}: {e})"[:300]})
+    return got, failed, spent
 
 
 def _allowed(cfg: dict, got: dict) -> set | None:
@@ -174,31 +237,65 @@ def _in_group(got: dict, allowed: set | None) -> dict:
     return {**got, "waiting": c, "places": p, "gates": g}
 
 
-def _off(got: dict) -> dict:
-    """Each source that is off, with the keys the sources file would need to turn it on."""
-    needs = {"waiting": ["seats", "inbox"], "record": ["register"], "rules": ["cards"], "gates": ["seats"],
-             "places": ["seats", "map"]}
+def _off(got: dict, reg=None) -> dict:
+    """Each source that is off, with the keys the sources file would need to turn it on (as each source declares)."""
+    reg = reg or BUILT_IN
     out = {}
     for name, part in got.items():
         if part.get("off"):
-            out[name] = {"missing": part.get("missing") or needs[name], "failed": part.get("failed")}
+            obj = reg.get("source", name).obj
+            needs = list(getattr(obj, "needs", None) or obj.keys)
+            out[name] = {"missing": part.get("missing") or needs, "failed": part.get("failed")}
         elif part.get("missing"):
             out[name] = {"missing": part["missing"], "failed": None, "partly": True}
     return out
 
 
-class _Sources:
-    """One answer's reading: the config, every reader's answer for the group, and the problems, gathered once."""
+def _held() -> list[dict]:
+    """A problem line for each plug-in holding calls that did not answer in time, and one more when they fill the cap of
+    every plug-in together (outside.holding_said): the page names who is holding them (the recheck of 17021c2, NH3)."""
+    return [{"reader": "plug-ins", "source": "plug-in calls", "line": None, "kind": "calls still running",
+             "text": text[:300]} for text in outside.holding_said()]
 
-    def __init__(self, home=None, world=None):
+
+def _said_by(name: str, p: dict, outside_source: bool) -> dict:
+    """A reader's problem as the page lists it: the reader is always the one that said it, set last so no field of the
+    problem's own stands in for it. An outside source's problem names it in its source too, so it never reads as a
+    built-in reader's, about the person's own file (the Fable review of 70f2d3c, F5: {"reader": name, **p} let a plug-in
+    set both)."""
+    row = {**p, "reader": name}
+    if outside_source:
+        said = p.get("source")
+        row["source"] = (f"plug-in source.{name}" + (f": {said}" if said not in (None, "") else ""))[:300]
+    return row
+
+
+class _Sources:
+    """One answer's reading: the config, every reader's answer for the group, and the problems, gathered once.
+
+    `sources[name]` is that source's answer for the group: the one part of this object a place outside the package may
+    rely on (api.py, Place). A plug-in that could not be loaded is one more problem, under "plug-ins"."""
+
+    def __init__(self, home=None, world=None, reg=None):
+        self.home = home   # the home the page was started with: an outside place's build(sources, ctx) is given it
+        self.reg = reg if reg is not None else registry.load_enabled(BUILT_IN, home)
         self.cfg, self.path, trouble = _config(home)
-        got, failed = _read(self.cfg, world)
+        got, failed, self.spent = _read(self.cfg, world, self.reg, self.path, home)   # spent: outside bytes so far
         self.allowed = _allowed(self.cfg, got)
         self.got = _in_group(got, self.allowed)
+        mine = {e.name for e in self.reg.entries("source") if not e.builtin}
         self.problems = ([trouble] if trouble else []) + failed + [
-            {"reader": name, **p} for name, _ in READERS for p in self.got[name].get("problems") or []]
+            _said_by(name, p, name in mine) for name in self.reg.names("source")
+            for p in self.got[name].get("problems") or []
+        ] + [{"reader": "plug-ins", **p} for p in self.reg.problems]
         self._cards = None
         self._projects = None
+
+    def __getitem__(self, name: str) -> dict:
+        return self.got[name]
+
+    def get(self, name: str, default=None):
+        return self.got.get(name, default)
 
     # -- the frame every place carries
     def frame(self) -> dict:
@@ -206,8 +303,16 @@ class _Sources:
         return {"name": self.cfg.get("name"), "word": word_of(self.cfg.get("name")), "group": self.cfg.get("group"),
                 "checked": _now(), "config": str(self.path),
                 "waiting": sum(x.get("state") == "waiting" for x in c.get("cards") or []),
-                "seats": [s.get("seat") for s in c.get("seats") or []], "off": _off(self.got),
-                "problems": self.problems, "gaming": self.gaming()}
+                "seats": [s.get("seat") for s in c.get("seats") or []], "off": _off(self.got, self.reg),
+                "problems": self.problems + _held(), "gaming": self.gaming(), "outside": self.outside()}
+
+    def outside(self) -> list[dict]:
+        """The places the person turned on, after the built-ins in the bar: each with its title, the package it came
+        from, and whether it ships a page module the server will serve (pagemodule.py)."""
+        from .. import pagemodule   # here: the page module rules are the server's, read only for the bar
+        return [{"name": e.name, "title": str(getattr(e.obj, "title", "") or e.name)[:80], "origin": e.origin,
+                 "version": e.version, "module": pagemodule.offers(e)}
+                for e in self.reg.entries("place") if not e.builtin]
 
     def gaming(self) -> dict:
         """The inbox's gaming flag, as its own gaming.py reads it; "unknown" when the reader itself stops."""
@@ -247,19 +352,28 @@ class _Cards:
         self.homes = {s.get("seat"): s.get("home") for s in c.get("seats") or []}
         self.digested: Counter = Counter()   # change records whose evidence this build has digested, per agent
         self.budget = {"left": READ_BUDGET}  # bytes of evidence this build may still read, across every agent
+        self.got = src.got
+        self.policies: dict = {}             # the evidence policy of each agent, built once per page build
         self.notes: dict = {}
         for p in c.get("problems") or []:
             if p.get("shown"):
                 self.notes.setdefault((_key(p.get("source")), p.get("line")), []).append(p.get("text"))
 
     def roots(self, seat) -> list[str]:
-        """Where a change's evidence may be read: the filing agent's own home and the projects the places reader binds
-        to it (as a member or as its home), nowhere else, so a digest confirms nothing that agent could not read."""
+        """The filing agent's own home and the projects the places reader binds to it (as a member or as its home): the
+        most a change's evidence may be read from, so a digest confirms nothing that agent could not read. The evidence
+        way (evidence_way.for_seat) narrows it to the files that are evidence."""
         out = [self.homes.get(seat)]
         for p in self.projects:
             if seat in (p.get("home_of") or []) or any(m.get("name") == seat for m in p.get("members") or []):
                 out.append(p.get("path"))
         return [str(x) for x in out if x]
+
+    def policy(self, seat):
+        """Which files that agent's change records may cite as evidence, as the page's evidence way decides."""
+        if seat not in self.policies:
+            self.policies[seat] = evidence_way.for_seat(seat, self.got, self.roots(seat))
+        return self.policies[seat]
 
     def view(self, c: dict) -> dict:
         closing, run = c.get("closing"), c.get("run")
@@ -292,7 +406,7 @@ class _Cards:
         else:
             self.digested[seat] += bool(own.get("evidence"))
             try:
-                fresh = change_card.freshness(own.get("evidence"), self.roots(seat), self.budget)
+                fresh = change_card.freshness(own.get("evidence"), self.policy(seat), self.budget)
             except Exception as e:  # noqa: BLE001  a record whose evidence cannot be checked says so
                 fresh = {"state": "unknown", "why": f"{type(e).__name__}: {e}"[:300]}
         asked = [f"{r.get('seat')}/{i}" for i in r.get("asked_in") or []]
@@ -402,7 +516,8 @@ def _worktree(w: dict, base) -> dict:
             "broken": any(x in BROKEN for x in words), "events": w.get("events") or [],
             "hooks_path": w.get("hooks_path"), "hooks_dir": w.get("hooks_dir"), "reachable": w.get("reachable") or [],
             "identity": w.get("identity"), "uncertain": w.get("uncertain") or [], "note": w.get("note"),
-            "files": w.get("files") or [],
+            "files": w.get("files") or [], "read_at": w.get("read_at"), "tested": False,
+            "executable": w.get("executable"), "not_executable": w.get("not_executable") or [],
             "open": [e for v in w.get("verdicts") or [] if isinstance(v, dict) for e in v.get("open") or []],
             "stranded": [s for v in w.get("verdicts") or [] if isinstance(v, dict) for s in v.get("stranded") or []]}
 
@@ -443,19 +558,23 @@ def holds(src: _Sources) -> dict:
     if not src.got["gates"].get("off") and trees:
         said = []
         verbs = {"off": ("is off", "are off"), "checks nothing": ("checks nothing", "check nothing"),
-                 "open": ("is open", "are open")}
+                 "open": ("is open", "are open"),
+                 "stranded": ("is stranded (a hook git cannot reach)", "are stranded (hooks git cannot reach)")}
         found = {k: worst(gate_words(w)) for k, w in trees.items()}
         for word, (one, many) in verbs.items():
             hit = [k for k, w in found.items() if w == word]
             if hit:
                 repos = len({repo_of[k] for k in hit})
                 said.append(f"{_n(len(hit), 'worktree')} in {_n(repos, 'repo')} {one if len(hit) == 1 else many}")
-        unread = sum(w in ("unknown", "folder gone") for w in found.values())
-        if not said and not unread:
-            said.append("every worktree is gated, identity declared")
+        # The all-clear only when every worktree's worst word IS the all-clear: any word not said above, stranded
+        # once among them, is counted as unread rather than passed over (review of 1.2.2, V1)
+        unread = sum(w not in verbs and w != WORST[-1] for w in found.values())
+        if not said and not unread:   # what was read, never more: no hook was run, so none is known to refuse
+            said.append(f"every worktree has a hook for each act and an .identity that names someone ({gates.NOT_TESTED})")
         if unread:
             said.append(f"{_n(unread, 'worktree')} could not be read")
-        parts.append("Gates (read): " + "; ".join(said))
+        at = src.got["gates"].get("read_at")
+        parts.append(f"Gates (read{' at ' + at if at else ''}): " + "; ".join(said))
     return {"text": ". ".join(parts) + ".", "in_force": in_force, "parked": parked, "problems": len(problems)}
 
 
@@ -514,7 +633,8 @@ def projects_place(src: _Sources) -> dict:
     placed = {k for r in rows for k in r["cards"]}
     g = src.got["gates"]
     return {"off": bool(src.got["places"].get("off")), "gates_off": bool(g.get("off")),
-            "read": g.get("read"), "read_note": g.get("read_note"), "projects": rows,
+            "read": g.get("read"), "read_note": g.get("read_note"), "read_at": g.get("read_at"),
+            "not_tested": gates.NOT_TESTED, "armed_words": gates.ARMED_WORDS, "projects": rows,
             "cards": {v["key"]: v for v in views if v["key"] in placed},
             "documents": [_doc(d, homes.get(d.get("id"))) for d in src.got["places"].get("documents") or []],
             "total": len(views), "assigned": len(placed), "unassigned": len(views) - len(placed),
@@ -748,7 +868,7 @@ def record_place(src: _Sources) -> dict:
 
 
 RULE_FIELDS = ("id", "kind", "words", "applies_when", "as_of", "basis", "quote", "ratified_by", "candidate", "live",
-               "agent", "guards", "checkers", "held", "relation")
+               "agent", "no_provenance", "guards", "checkers", "runs", "held", "relation")
 ENV_FIELDS = ("name", "id", "title", "version", "status", "ratified_by", "owner", "scope", "seat", "path",
               "ratification", "counts", "parents")
 
@@ -766,33 +886,108 @@ def rules_place(src: _Sources) -> dict:
                       for x in e.get("rules") or []]})
     agents = {a.get("name"): {"id": a.get("id"), **_rules_for(a, envs)} for a in src.got["places"].get("agents") or []}
     return {"off": bool(r.get("off")), "cards": r.get("cards"), "environments": envs, "counts": r.get("counts") or {},
-            "others": r.get("others") or [], "agents": agents, "guards": r.get("guards")}
+            "others": r.get("others") or [], "agents": agents, "guards": r.get("guards"),
+            "run_records": r.get("run_records"), "run_record_days": r.get("run_record_days")}
 
 
 def sources_place(src: _Sources) -> dict:
     keys = {k: src.cfg.get(k) for k in ("name", "seats", "group", "inbox", "register", "notes", "cards", "map",
-                                        "gaming", "guards")}
+                                        "gaming", "guards", "run_records", "run_record_days")}
     readers = {name: {"off": bool(src.got[name].get("off")), "failed": src.got[name].get("failed"),
                       "missing": src.got[name].get("missing") or [],
-                      "problems": len(src.got[name].get("problems") or [])} for name, _ in READERS}
+                      "problems": len(src.got[name].get("problems") or [])} for name in src.reg.names("source")}
     return {"config": {"path": str(src.path), "exists": src.path.is_file()}, "keys": keys, "readers": readers,
             "group": {"name": src.cfg.get("group"), "agents": sorted(src.allowed) if src.allowed is not None else None},
-            "routes": list(ROUTES), "word": word_of(src.cfg.get("name"))}
+            "routes": list(src.reg.names("place")), "word": word_of(src.cfg.get("name"))}
 
 
-PLACES = {"waiting": waiting_place, "projects": projects_place, "documents": documents_place, "map": map_place,
-          "record": record_place, "rules": rules_place, "sources": sources_place}
+class Place:
+    """A built-in place, registered as an outside one is: its route, its title, the sources it reads, and build."""
+
+    kind = "place"
+
+    def __init__(self, name: str, title: str, build, needs: tuple):
+        self.name, self.title, self.build, self.needs = name, title, build, needs
+
+
+_ALL = tuple(s.name for s in builtin.SOURCES)
+BUILT_IN = builtin.registry()
+for _place in (Place("waiting", "Waiting", waiting_place, ("waiting", "record", "places", "gates")),
+               Place("projects", "Projects", projects_place, ("places", "gates", "waiting", "record")),
+               Place("documents", "Documents", documents_place, ("places", "gates", "waiting", "record")),
+               Place("map", "Map", map_place, ("places", "gates", "waiting", "record", "rules")),
+               Place("record", "Record", record_place, ("record",)),
+               Place("rules", "Rules", rules_place, ("rules", "places")),
+               Place("sources", "Sources", sources_place, _ALL),
+               Place("work", "Work", work_place, ("work", "waiting", "record"))):
+    BUILT_IN.add("place", _place.name, _place)
+ROUTES = BUILT_IN.names("place")
+
+
+class _Copy:
+    """What an outside place is given as `sources`: a copy of every source's answer, so it can read them all and
+    change nothing the page or another place reads (the audit of the registry, c696d0b, protection item c). The
+    built-in places keep the live object. An outside source's answer is already plain data of bounded depth
+    (outside.run_json), and is copied as JSON text, never by copy.deepcopy, which would run a __deepcopy__ of the
+    plug-in's or recurse past the stack on a deep answer (the audit of 784faf6, findings 5 and 6)."""
+
+    def __init__(self, got: dict, outside_names=()):
+        self._got = {name: (jsonread.loads(json.dumps(part)) if name in outside_names else copy.deepcopy(part))
+                     for name, part in got.items()}
+
+    def __getitem__(self, name: str) -> dict:
+        return self._got[name]
+
+    def get(self, name: str, default=None):
+        return self._got.get(name, default)
+
+
+def _built(entry, src: _Sources) -> dict:
+    """A place's data. A place the person turned on that stops, is late, answers with something other than a record,
+    or answers over the caps, gives an answer that says so and one more problem; it never costs the frame. A build
+    that takes two arguments is given the ReadContext of the page's home, as a source's read is (before, a place could
+    only ask is_closed_place with no ctx, which reads the default home: the audit of 784faf6, note 10)."""
+    if entry.builtin:
+        return entry.obj.build(src)
+    try:
+        if entry.reads_ctx is None:   # not known for this answer: never built without its ctx (the recheck of 17021c2, NH4)
+            raise RuntimeError(registry.not_without_ctx("build", entry.ctx_trouble))
+        mine = {e.name for e in src.reg.entries("source") if not e.builtin}
+        given = (_Copy(src.got, mine),) + ((closed.context(src.home),) if entry.reads_ctx else ())
+        body = outside.run_json(entry.obj.build, *given,   # plain data back, its size and depth bounded
+                                owner=registry.key(entry.kind, entry.name))
+        if not isinstance(body, dict):
+            raise TypeError(f"its answer is a {type(body).__name__}, not a record")
+        body = {k: v for k, v in body.items() if k not in ("place", "frame")}
+        n = outside.size(body)
+        if n is None:
+            raise TypeError("its answer cannot be written as JSON")
+        if n > outside.MAX_BYTES:
+            raise ValueError(f"its answer is {n // 1024} KB, over the {outside.MAX_BYTES // (1024 * 1024)} MB cap")
+        _over_total(getattr(src, "spent", 0), n)   # the place's body counts with the sources' answers it was built on
+        return body
+    except (Exception, SystemExit) as e:  # noqa: BLE001  KeyboardInterrupt, the person's Ctrl-C, goes through
+        why = f"{type(e).__name__}: {e}"[:300]
+        src.problems.append({"reader": "plug-ins", "source": f"plug-in place.{entry.name}", "line": None,
+                             "kind": "place stopped", "text": f"the {entry.name} place stopped ({why})"[:300]})
+        return {"off": True, "failed": why}
 
 
 def answer(name: str, home=None, world=None) -> dict | None:
     """The page's data for one route: waiting, projects, documents, map (also under the person's own word for the
-    whole), record, rules or sources. None for a name that is no route. Every answer carries the frame."""
+    whole), record, rules, sources, or a place the person turned on. None for a name that is no route. Every answer
+    carries the frame."""
     cfg, _path, _trouble = _config(home)
-    place = _route(str(name or ""), cfg)
+    reg = registry.load_enabled(BUILT_IN, home)
+    place = _route(str(name or ""), cfg, reg)
     if place is None:
         return None
-    src = _Sources(home, world)
-    return {"place": place, "frame": src.frame(), **PLACES[place](src)}
+    src = _Sources(home, world, reg)
+    entry = reg.get("place", place)
+    if entry.builtin:
+        return {"place": place, "frame": src.frame(), **_built(entry, src)}
+    body = _built(entry, src)
+    return {"place": place, "frame": src.frame(), **body}
 
 
 # ---- the status line ------------------------------------------------------------------------------------------

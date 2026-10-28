@@ -10,6 +10,17 @@ the line, and the statement stays whole in the reference. A line is ratified tex
 environment's rules carry lines, the rules with no line come first and whole, under the environment's own section
 titles, then one line per rule, then the environment's own sentence naming where every rule is in full.
 
+An environment with no rules (no `entries`, or an empty list) is still shown, and says so: its header, then the line
+NO_RULES. A header alone would read as a card whose rules were lost, and printing nothing would read as a failure. So
+an empty environment is never silent, never an error, and adds no rule; its parent's rules are shown as ever. (This is
+envcard's own choice: the estate's digest.py exits 1 on both shapes; KNOWN_DIGEST_DIFFERENCES names them.)
+
+A rule that carries no provenance in its environment (no `provenance` section, or an empty one) is counted on the card,
+in one line under its environment's header, and marked one by one only in the reference: a mark on every rule would
+grow the card against the hook's size limit. The file cannot say who wrote such a rule: hand-written into the YAML is
+the usual way, but a rule ratified from a correction whose record was never written looks the same, and `ratified_by`
+records who ratified it, not where it came from. So the line says what is read, no more.
+
 Nothing is written here and nothing a card says is run: a card is read as plain data (yaml.safe_load).
 """
 from __future__ import annotations
@@ -47,6 +58,35 @@ def chain(path: Path) -> tuple[list[tuple[Path, dict]], list[str]]:
     return list(reversed(out)), warnings
 
 
+NO_RULES = "  (no rules: this environment holds no entries)"
+
+# Where the estate's digest.py and envcard knowingly disagree, for a parity check that compares the two: each case is
+# an environment shape, what each tool does with it, and why. digest.py is not this package's; envcard's side is
+# tested (tests/test_envcard_parity_known.py). Any other difference between them is a finding.
+KNOWN_DIGEST_DIFFERENCES = (
+    {"case": "entries-absent", "shape": "SEMANTICS.yaml with an environment section and no `entries` key",
+     "digest": "exits 1 and prints nothing (0 characters), as the E16 audit found; not measured in this package",
+     "envcard": "prints the environment's header and NO_RULES, and returns normally",
+     "why": "the card is shown to an agent: a bare header reads as rules lost and silence as a failure, so envcard "
+            "says the environment holds no rules; an empty environment is not an error to the card"},
+    {"case": "entries-empty", "shape": "SEMANTICS.yaml with `entries: []`",
+     "digest": "exits 1 and prints nothing (0 characters), as the E16 audit found; not measured in this package",
+     "envcard": "prints the environment's header and NO_RULES, and returns normally",
+     "why": "as for entries-absent: the two are one case to envcard"},
+)
+
+
+def no_provenance_line(n: int) -> str:
+    """The card's one line for an environment's rules that record no provenance (the reference marks each)."""
+    return f"  ({n} rule{' here records' if n == 1 else 's here record'} no provenance; the reference marks each)"
+
+
+def recorded(entry: dict) -> bool:
+    """Whether the rule's environment records where it came from: a provenance section with something in it."""
+    pv = entry.get("provenance")
+    return isinstance(pv, dict) and any(v not in (None, "", [], {}) for v in pv.values())
+
+
 def _entry(entry: dict, text) -> str:
     mark = "" if entry.get("ratified_by") else " (candidate)"
     return f"- {entry['id']}: {rule_text(text)}{mark}"
@@ -60,7 +100,12 @@ def card_lines(path: Path) -> tuple[list[str], list[tuple[Path, dict]], list[str
         who = e.get("ratified_by") or "not ratified"
         lines.append(f"## {e['id']} {e['version']} ({e.get('status', '?')}, ratified by {who})")
         entries = env.get("entries") or []
-        if any(x.get("line") for x in entries):
+        bare = sum(not recorded(x) for x in entries)
+        if bare:   # one line per environment, never a mark per rule: the card is held under the hook's size limit
+            lines.append(no_provenance_line(bare))
+        if not entries:
+            lines.append(NO_RULES)
+        elif any(x.get("line") for x in entries):
             titles = e.get("card_sections") or {}
             lines += ["", titles.get("whole", "Whole:")]
             lines += [_entry(x, x["statement"]) for x in entries if not x.get("line")]
@@ -90,9 +135,13 @@ def reference(path: Path) -> str:
     out = [f"# {e['id']} {e['version']} reference: every rule in full", "",
            f"*Generated from environments/{e['id']}/SEMANTICS.yaml. Do not edit it by hand: change the environment "
            "and generate it again.*", ""]
+    if not env.get("entries"):
+        out += [NO_RULES.strip(), ""]
     for x in env.get("entries") or []:
         out += [f"## {x['id']}", "", rule_text(x["statement"]), ""]
-        pv = x.get("provenance") or {}
+        if not recorded(x):
+            out += ["- **Provenance:** none recorded in the environment"]
+        pv = x.get("provenance") if isinstance(x.get("provenance"), dict) else {}
         for label, value in (("On the card", x.get("line")), ("Applies when", x.get("applies_when")),
                              ("The owner's words", pv.get("quote") and f'"{rule_text(str(pv["quote"]))}"'),
                              ("Cases", ", ".join(map(str, pv.get("cases") or [])) or None),

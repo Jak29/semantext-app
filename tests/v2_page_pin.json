@@ -1,0 +1,4532 @@
+{
+ "documents/": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#documents/324b8848c9",
+    "doc:324b8848c9",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Documents",
+   "p.sub: 1 project with a MASTER.md, newest first. Each agent keeps its projects' documents in its own cv folder.",
+   "span.chip.seat: Alder",
+   "span.chip.kind: Alder home",
+   "span.at: Updated Tue, Oct 20, 12:00 PM",
+   "span.subject: Notes for the lab",
+   "span.meta: 1 detailed document · 0 diagrams · cv/notes"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "documents/324b8848c9": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#documents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "copy:324b8848c9",
+    "button",
+    null,
+    true,
+    ""
+   ],
+   [
+    "a",
+    "#documents/324b8848c9/part.md",
+    "docf:324b8848c9:part.md",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Documents",
+   "span: ›",
+   "span: Notes for the lab",
+   "h1: Notes for the lab",
+   "p.meta: Alder's project · Alder home · cv/notes/MASTER.md · updated Tue, Oct 20, 12:00 PM",
+   "button: Copy MASTER.md",
+   "p.meta: Reading MASTER.md…",
+   "h2.label: Detailed documents",
+   "a: A part",
+   "span.meta: part.md · Tue, Oct 20, 12:00 PM"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "documents/324b8848c9/not-listed.md": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#documents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#documents/324b8848c9",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Documents",
+   "span: ›",
+   "a: Notes for the lab",
+   "span: ›",
+   "span: not-listed.md",
+   "h1: not-listed.md",
+   "p.meta: Alder's project · Alder home · cv/notes/not-listed.md · updated Tue, Oct 20, 12:00 PM",
+   "p.empty: This file is not one listed in Notes for the lab's folder."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "documents/324b8848c9/part.md": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#documents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#documents/324b8848c9",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Documents",
+   "span: ›",
+   "a: Notes for the lab",
+   "span: ›",
+   "span: A part",
+   "h1: A part",
+   "p.meta: Alder's project · Alder home · cv/notes/part.md · updated Tue, Oct 20, 12:00 PM",
+   "p.meta: Reading part.md…"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "documents/no-such-document": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#documents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Documents",
+   "span: ›",
+   "span: no-such-document",
+   "h1: No such document",
+   "p.sub: No document of yours has this id now."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "drawer agent {\"id\":\"1cd5924af9\"}": {
+  "body": [
+   "dt: Groups",
+   "dd: crew",
+   "dt: Emails",
+   "dd: cedar@crew.test",
+   "dt: Home",
+   "dd.mono: /fixture/base/cedar",
+   "h3.label: Works in",
+   "a: Cedar home",
+   "span.soft: its home; listed in .identity as cedar@crew.test",
+   "h3.label: Waiting",
+   "p.empty: Nothing from Cedar waits for your word; 1 card in all.",
+   "h3.label: Documents",
+   "p.empty: No documents in Cedar's cv folder.",
+   "h3.label: Rules",
+   "p.soft: No environment of its own; it reads the shared ones.",
+   "button.link: Open Cedar's rules"
+  ],
+  "controls": [
+   [
+    "a",
+    "#projects/38732f6b71",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    null,
+    "button",
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Agent",
+  "title": "Cedar"
+ },
+ "drawer agent {\"id\":\"406b5dcbb6\"}": {
+  "body": [
+   "dt: Groups",
+   "dd: crew",
+   "dt: Emails",
+   "dd: alder@crew.test",
+   "dt: Home",
+   "dd.mono: /fixture/base/alder",
+   "h3.label: Works in",
+   "a: lab",
+   "span.soft: listed in .identity as alder@crew.test",
+   "a: Alder home",
+   "span.soft: its home; listed in .identity as alder@crew.test",
+   "h3.label: Waiting",
+   "button.link.mono: A-20261001-100000",
+   "span: Title A-20261001-100000",
+   "span.meta: Thu, Oct 1, 09:00 AM",
+   "h3.label: Documents",
+   "a: Notes for the lab",
+   "span.meta: cv/notes · Tue, Oct 20, 12:00 PM",
+   "h3.label: Rules",
+   "p.soft: Its own: alder-seat. Every other environment is shared.",
+   "button.link: Open Alder's rules"
+  ],
+  "controls": [
+   [
+    "a",
+    "#projects/c3238d3675",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/46e35c875d",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    null,
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#documents/324b8848c9",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    null,
+    "button",
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Agent",
+  "title": "Alder"
+ },
+ "drawer agent {\"id\":\"932a3142a1\"}": {
+  "body": [
+   "dt: Groups",
+   "dd: crew",
+   "dt: Emails",
+   "dd: birch@crew.test",
+   "dt: Home",
+   "dd.mono: /fixture/base/birch",
+   "h3.label: Works in",
+   "a: lab",
+   "span.soft: listed in .identity as birch@crew.test",
+   "a: Birch home",
+   "span.soft: its home",
+   "h3.label: Waiting",
+   "button.link.mono: B-20261002-090000",
+   "span: Title B-20261002-090000",
+   "span.meta: Fri, Oct 2, 08:00 AM",
+   "h3.label: Documents",
+   "p.empty: No documents in Birch's cv folder.",
+   "h3.label: Rules",
+   "p.soft: No environment of its own; it reads the shared ones.",
+   "button.link: Open Birch's rules"
+  ],
+  "controls": [
+   [
+    "a",
+    "#projects/c3238d3675",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/44e76de7db",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    null,
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    null,
+    "button",
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Agent",
+  "title": "Birch"
+ },
+ "drawer agent {\"name\":\"Nobody\"}": {
+  "body": [
+   "p.empty: This agent is not in your seats file now."
+  ],
+  "controls": [],
+  "kind": "Agent",
+  "title": "Nobody"
+ },
+ "drawer docs {\"project\":\"38732f6b71\"}": {
+  "body": [
+   "p.soft: No documents here."
+  ],
+  "controls": [],
+  "kind": "Documents",
+  "title": "Cedar home"
+ },
+ "drawer docs {\"project\":\"44e76de7db\"}": {
+  "body": [
+   "p.soft: No documents here."
+  ],
+  "controls": [],
+  "kind": "Documents",
+  "title": "Birch home"
+ },
+ "drawer docs {\"project\":\"46e35c875d\"}": {
+  "body": [
+   "p.soft: 1 document in Alder home, each a cv folder holding a MASTER.md. Open one to read it here.",
+   "a: Notes for the lab",
+   "p.meta: Alder · cv/notes · updated Tue, Oct 20, 12:00 PM",
+   "a: A part",
+   "span.meta: · part.md · Tue, Oct 20, 12:00 PM"
+  ],
+  "controls": [
+   [
+    "a",
+    "#documents/324b8848c9",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#documents/324b8848c9/part.md",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Documents",
+  "title": "Alder home"
+ },
+ "drawer docs {\"project\":\"c3238d3675\"}": {
+  "body": [
+   "p.soft: No documents here."
+  ],
+  "controls": [],
+  "kind": "Documents",
+  "title": "lab"
+ },
+ "drawer gates {\"project\":\"38732f6b71\"}": {
+  "body": [
+   "span.mono: /fixture/base/cedar",
+   "span.bad: open (read)",
+   "span.bad: stranded (read)",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "th: Act",
+   "th: State",
+   "th: Hook",
+   "th: Note",
+   "td: ordinary commit",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-commit",
+   "td: git merge --no-ff",
+   "td.bad: open (read)",
+   "td.mono: needs commit-msg",
+   "td: git am",
+   "td.bad: open (read)",
+   "td.mono: needs applypatch-msg or pre-applypatch",
+   "td: git push",
+   "td.bad: open (read)",
+   "td.mono: needs pre-push",
+   "p: core.hooksPath is , set in the local settings: .",
+   "span.mono: chain",
+   "span.mono: /fixture/base/cedar/.git/config line 3",
+   "p.soft: Hooks run from .",
+   "span.mono: /fixture/base/cedar/chain",
+   "p.soft: .identity names 1 committer.",
+   "span.mono: /fixture/base/cedar/.identity",
+   "p.soft: Hook files: executable bit not checked on Windows.",
+   "p.meta: Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "p.bad: Stranded (read): pre-push exists in /fixture/base/cedar/hooks, where git does not look.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/cedar/.git/config",
+   "a: Open Cedar home"
+  ],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/cedar",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/38732f6b71",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Gates",
+  "title": "Cedar home"
+ },
+ "drawer gates {\"project\":\"44e76de7db\"}": {
+  "body": [
+   "span.mono: /fixture/base/birch",
+   "span.bad: checks nothing (read)",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "th: Act",
+   "th: State",
+   "th: Hook",
+   "th: Note",
+   "td: ordinary commit",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-commit",
+   "td: git merge --no-ff",
+   "td: has a hook (read; not tested)",
+   "td.mono: commit-msg",
+   "td: git am",
+   "td: has a hook (read; not tested)",
+   "td.mono: applypatch-msg",
+   "td: git push",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-push",
+   "p: core.hooksPath is , set in the local settings: .",
+   "span.mono: chain",
+   "span.mono: /fixture/base/birch/.git/config line 3",
+   "p.soft: Hooks run from .",
+   "span.mono: /fixture/base/birch/chain",
+   "p.bad: .identity names 0 committers, so a hook that checks it lets every commit through.",
+   "span.mono: /fixture/base/birch/.identity",
+   "p.soft: Hook files: executable bit not checked on Windows.",
+   "p.meta: Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/birch/.git/config",
+   "a: Open Birch home"
+  ],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/birch",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/44e76de7db",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Gates",
+  "title": "Birch home"
+ },
+ "drawer gates {\"project\":\"46e35c875d\"}": {
+  "body": [
+   "span.mono: /fixture/base/alder",
+   "span.soft: a hook for each act, identity named (read; not tested)",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "th: Act",
+   "th: State",
+   "th: Hook",
+   "th: Note",
+   "td: ordinary commit",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-commit",
+   "td: git merge --no-ff",
+   "td: has a hook (read; not tested)",
+   "td.mono: commit-msg",
+   "td: git am",
+   "td: has a hook (read; not tested)",
+   "td.mono: applypatch-msg",
+   "td: git push",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-push",
+   "p: core.hooksPath is , set in the local settings: .",
+   "span.mono: chain",
+   "span.mono: /fixture/base/alder/.git/config line 3",
+   "p.soft: Hooks run from .",
+   "span.mono: /fixture/base/alder/chain",
+   "p.soft: .identity names 1 committer.",
+   "span.mono: /fixture/base/alder/.identity",
+   "p.soft: Hook files: executable bit not checked on Windows.",
+   "p.meta: Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/alder/.git/config",
+   "a: Open Alder home"
+  ],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/alder",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/46e35c875d",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Gates",
+  "title": "Alder home"
+ },
+ "drawer gates {\"project\":\"c3238d3675\"}": {
+  "body": [
+   "span.mono: /fixture/base/lab",
+   "span.soft: a hook for each act, identity named (read; not tested)",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "th: Act",
+   "th: State",
+   "th: Hook",
+   "th: Note",
+   "td: ordinary commit",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-commit",
+   "td: git merge --no-ff",
+   "td: has a hook (read; not tested)",
+   "td.mono: commit-msg",
+   "td: git am",
+   "td: has a hook (read; not tested)",
+   "td.mono: applypatch-msg",
+   "td: git push",
+   "td: has a hook (read; not tested)",
+   "td.mono: pre-push",
+   "p: core.hooksPath is , set in the local settings: .",
+   "span.mono: chain",
+   "span.mono: /fixture/base/lab/.git/config line 3",
+   "p.soft: Hooks run from .",
+   "span.mono: /fixture/base/lab/chain",
+   "p.soft: .identity names 2 committers.",
+   "span.mono: /fixture/base/lab/.identity",
+   "p.soft: Hook files: executable bit not checked on Windows.",
+   "p.meta: Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/lab/.git/config",
+   "a: Open lab"
+  ],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/lab",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "kind": "Gates",
+  "title": "lab"
+ },
+ "drawer rules {\"agent\":\"Alder\"}": {
+  "body": [
+   "p.soft: 2 rules in 2 environments: 1 written (50%), 1 checked (50%), 0 guarded (0%).",
+   "p.meta: Its own environment first (its name begins with Alder's name), then the shared ones.",
+   "p.meta: How firmly each is held: written, its words alone; checked, a correction kept as a regression case names it; guarded, a checker that runs outside this page recorded both its must-pass and its must-refuse arm passing, on these words and the files as they are now; guarded once, such a record that has gone stale since.",
+   "p.meta: Your sources file names no run-record folder, so no rule is guarded. A checker your guards file names, or a guard a card mentions, is shown as a claim and counts for nothing.",
+   "p.env-head: alder-seat",
+   "p.meta: alder-seat · version 1.0.0 · ratified · ratified by pat",
+   "p.label.kind-head: distinction · 1",
+   "p: Keep answers short.",
+   "p.meta: ·",
+   "span.mono: al.short",
+   "span.soft: written",
+   "span: · (no provenance)",
+   "li: Its words alone: no regression case names it and no run record guards it.",
+   "p.env-head: core",
+   "p.meta: core · version 1.0.0 · ratified · ratified by pat · shared",
+   "p.label.kind-head: ruling · 1",
+   "p: Ask before you act on a guess.",
+   "p.meta: ·",
+   "span.mono: core.ask-first",
+   "span.goldtext: checked",
+   "li: Checked by C-1 (kept in core)."
+  ],
+  "controls": [],
+  "kind": "Rules",
+  "title": "Alder's rules"
+ },
+ "drawer rules {\"agent\":\"Birch\"}": {
+  "body": [
+   "p.soft: 2 rules in 2 environments: 1 written (50%), 1 checked (50%), 0 guarded (0%).",
+   "p.meta: It has no environment of its own; these are the shared ones.",
+   "p.meta: How firmly each is held: written, its words alone; checked, a correction kept as a regression case names it; guarded, a checker that runs outside this page recorded both its must-pass and its must-refuse arm passing, on these words and the files as they are now; guarded once, such a record that has gone stale since.",
+   "p.meta: Your sources file names no run-record folder, so no rule is guarded. A checker your guards file names, or a guard a card mentions, is shown as a claim and counts for nothing.",
+   "p.env-head: core",
+   "p.meta: core · version 1.0.0 · ratified · ratified by pat · shared",
+   "p.label.kind-head: ruling · 1",
+   "p: Ask before you act on a guess.",
+   "p.meta: ·",
+   "span.mono: core.ask-first",
+   "span.goldtext: checked",
+   "li: Checked by C-1 (kept in core)."
+  ],
+  "controls": [],
+  "kind": "Rules",
+  "title": "Birch's rules"
+ },
+ "drawer rules {\"agent\":\"Cedar\"}": {
+  "body": [
+   "p.soft: 2 rules in 2 environments: 1 written (50%), 1 checked (50%), 0 guarded (0%).",
+   "p.meta: It has no environment of its own; these are the shared ones.",
+   "p.meta: How firmly each is held: written, its words alone; checked, a correction kept as a regression case names it; guarded, a checker that runs outside this page recorded both its must-pass and its must-refuse arm passing, on these words and the files as they are now; guarded once, such a record that has gone stale since.",
+   "p.meta: Your sources file names no run-record folder, so no rule is guarded. A checker your guards file names, or a guard a card mentions, is shown as a claim and counts for nothing.",
+   "p.env-head: core",
+   "p.meta: core · version 1.0.0 · ratified · ratified by pat · shared",
+   "p.label.kind-head: ruling · 1",
+   "p: Ask before you act on a guess.",
+   "p.meta: ·",
+   "span.mono: core.ask-first",
+   "span.goldtext: checked",
+   "li: Checked by C-1 (kept in core)."
+  ],
+  "controls": [],
+  "kind": "Rules",
+  "title": "Cedar's rules"
+ },
+ "drawer rules {}": {
+  "body": [
+   "p.soft: 2 rules in 2 environments: 1 written (50%), 1 checked (50%), 0 guarded (0%).",
+   "p.meta: How firmly each is held: written, its words alone; checked, a correction kept as a regression case names it; guarded, a checker that runs outside this page recorded both its must-pass and its must-refuse arm passing, on these words and the files as they are now; guarded once, such a record that has gone stale since.",
+   "p.meta: Your sources file names no run-record folder, so no rule is guarded. A checker your guards file names, or a guard a card mentions, is shown as a claim and counts for nothing.",
+   "p.env-head: alder-seat",
+   "p.meta: alder-seat · version 1.0.0 · ratified · ratified by pat",
+   "p.label.kind-head: distinction · 1",
+   "p: Keep answers short.",
+   "p.meta: ·",
+   "span.mono: al.short",
+   "span.soft: written",
+   "span: · (no provenance)",
+   "li: Its words alone: no regression case names it and no run record guards it.",
+   "p.env-head: core",
+   "p.meta: core · version 1.0.0 · ratified · ratified by pat · shared",
+   "p.label.kind-head: ruling · 1",
+   "p: Ask before you act on a guess.",
+   "p.meta: ·",
+   "span.mono: core.ask-first",
+   "span.goldtext: checked",
+   "li: Checked by C-1 (kept in core)."
+  ],
+  "controls": [],
+  "kind": "Rules",
+  "title": "Your rules"
+ },
+ "frame": {
+  "count": [
+   true,
+   "0 file problems"
+  ],
+  "gaming": [
+   true,
+   ""
+  ],
+  "tabs": [
+   [
+    "",
+    null,
+    "Waiting, 2 cards"
+   ],
+   [
+    "",
+    null,
+    null
+   ],
+   [
+    "",
+    null,
+    null
+   ],
+   [
+    "Hollow",
+    null,
+    null
+   ],
+   [
+    "",
+    null,
+    null
+   ]
+  ]
+ },
+ "map/": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "map:sectors",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/85ab23f1e0",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/7ba4bdaeb7",
+    "node:7ba4bdaeb7",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/348e73dced",
+    "node:348e73dced",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/5bdd860bb5",
+    "node:5bdd860bb5",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Hollow",
+   "p.sub: The map: 3 places and 2 edges, measured Sep 24, 2026.",
+   "summary: 2 sectors in the map file",
+   "span (folded): One",
+   "span.meta (folded): · 2 places · The first",
+   "span (folded): Two",
+   "span.meta (folded): · 1 place · The second",
+   "h2.label: · 3 environments",
+   "a: crew",
+   "span.name: alder",
+   "span.kind: home of Alder · 2 projects",
+   "span.marks: 2 cards waiting",
+   "span.name: birch",
+   "span.kind: home of Birch · 2 projects",
+   "span.marks: 1 card waiting",
+   "span.marks.bad: 1 worktree below: 1 checks nothing (read)",
+   "span.name: cedar",
+   "span.kind: home of Cedar · 1 project",
+   "span.marks.bad: 1 worktree below: 1 open (read)",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "map/348e73dced": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#hollow/849880b792",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/85ab23f1e0",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "at:932a3142a1",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/44e76de7db",
+    "pt:44e76de7db",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "pt:c3238d3675",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Hollow",
+   "span: ›",
+   "a: crew",
+   "span: ›",
+   "span: birch",
+   "h1: birch",
+   "p.sub: An environment: Birch's home.",
+   "p.meta: /fixture/base/birch",
+   "h2.label: Members",
+   "span.name: Birch",
+   "span.kind: agent · works in 2 projects",
+   "span.marks: 1 card waiting",
+   "h2.label: Works in",
+   "span.name: Birch home",
+   "span.kind: its home · 1 worktree",
+   "span.marks.bad: 1 worktree: 1 checks nothing (read)",
+   "span.name: lab",
+   "span.kind: project · 1 worktree",
+   "span.marks: 1 card waiting",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "map/5bdd860bb5": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#hollow/849880b792",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/85ab23f1e0",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "at:1cd5924af9",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/38732f6b71",
+    "pt:38732f6b71",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Hollow",
+   "span: ›",
+   "a: crew",
+   "span: ›",
+   "span: cedar",
+   "h1: cedar",
+   "p.sub: An environment: Cedar's home.",
+   "p.meta: /fixture/base/cedar",
+   "h2.label: Members",
+   "span.name: Cedar",
+   "span.kind: agent · works in 1 project",
+   "span.marks.quiet: nothing waiting",
+   "h2.label: Works in",
+   "span.name: Cedar home",
+   "span.kind: its home · 1 worktree",
+   "span.marks.bad: 1 worktree: 1 open (read)",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "map/7ba4bdaeb7": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#hollow/849880b792",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/85ab23f1e0",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "at:406b5dcbb6",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/46e35c875d",
+    "pt:46e35c875d",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "pt:c3238d3675",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Hollow",
+   "span: ›",
+   "a: crew",
+   "span: ›",
+   "span: alder",
+   "h1: alder",
+   "p.sub: An environment: Alder's home.",
+   "p.meta: /fixture/base/alder",
+   "h2.label: Members",
+   "span.name: Alder",
+   "span.kind: agent · works in 2 projects",
+   "span.marks: 1 card waiting",
+   "h2.label: Works in",
+   "span.name: Alder home",
+   "span.kind: its home · 1 worktree",
+   "span.marks.quiet: nothing waiting; no gate found broken (read)",
+   "span.name: lab",
+   "span.kind: project · 1 worktree",
+   "span.marks: 1 card waiting",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "map/849880b792": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "map:sectors",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/85ab23f1e0",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/7ba4bdaeb7",
+    "node:7ba4bdaeb7",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/348e73dced",
+    "node:348e73dced",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/5bdd860bb5",
+    "node:5bdd860bb5",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Hollow",
+   "p.sub: The map: 3 places and 2 edges, measured Sep 24, 2026.",
+   "summary: 2 sectors in the map file",
+   "span (folded): One",
+   "span.meta (folded): · 2 places · The first",
+   "span (folded): Two",
+   "span.meta (folded): · 1 place · The second",
+   "h2.label: · 3 environments",
+   "a: crew",
+   "span.name: alder",
+   "span.kind: home of Alder · 2 projects",
+   "span.marks: 2 cards waiting",
+   "span.name: birch",
+   "span.kind: home of Birch · 2 projects",
+   "span.marks: 1 card waiting",
+   "span.marks.bad: 1 worktree below: 1 checks nothing (read)",
+   "span.name: cedar",
+   "span.kind: home of Cedar · 1 project",
+   "span.marks.bad: 1 worktree below: 1 open (read)",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "map/85ab23f1e0": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#hollow/849880b792",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/7ba4bdaeb7",
+    "node:7ba4bdaeb7",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/348e73dced",
+    "node:348e73dced",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#hollow/5bdd860bb5",
+    "node:5bdd860bb5",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Hollow",
+   "span: ›",
+   "span: crew",
+   "h1: crew",
+   "p.sub: A group of 3 agents, in 3 environments.",
+   "h2.label: Environments",
+   "span.name: alder",
+   "span.kind: home of Alder · 2 projects",
+   "span.marks: 2 cards waiting",
+   "span.name: birch",
+   "span.kind: home of Birch · 2 projects",
+   "span.marks: 1 card waiting",
+   "span.marks.bad: 1 worktree below: 1 checks nothing (read)",
+   "span.name: cedar",
+   "span.kind: home of Cedar · 1 project",
+   "span.marks.bad: 1 worktree below: 1 open (read)",
+   "p.meta.legend: a card waits for your word belowa gate below is off, open, stranded or checks nothing, from a static read"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects/c3238d3675",
+    "p:c3238d3675",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pa:c3238d3675:406b5dcbb6",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pa:c3238d3675:932a3142a1",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pg:c3238d3675",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/46e35c875d",
+    "p:46e35c875d",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pa:46e35c875d:406b5dcbb6",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pg:46e35c875d",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pd:46e35c875d",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/44e76de7db",
+    "p:44e76de7db",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pa:44e76de7db:932a3142a1",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pg:44e76de7db",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#projects/38732f6b71",
+    "p:38732f6b71",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pa:38732f6b71:1cd5924af9",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pg:38732f6b71",
+    "button",
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "h1: Projects",
+   "p.sub: 4 projects from your seats file, with 4 worktrees. 2 of 6 cards belong to one.",
+   "p.meta: Gate states come from a static read of git's own files: it can say a gate is reachable, never that it still refuses. Each is marked (read).",
+   "span.label: Project",
+   "span.label: Agents",
+   "span.label: Gates, at their worst",
+   "span.label: Waiting",
+   "span.label: Documents",
+   "a: lab",
+   "div.ppath: /fixture/base/lab",
+   "button.chip.seat: Alder",
+   "button.chip.seat: Birch",
+   "span.w: a hook for each act, identity named (read; not tested)",
+   "span.meta: 1 worktree",
+   "span.goldtext: 1 waiting",
+   "span.meta: 2 cards in all",
+   "span.none: –",
+   "a: Alder home",
+   "div.ppath: /fixture/base/alder",
+   "button.chip.seat: Alder",
+   "span.w: a hook for each act, identity named (read; not tested)",
+   "span.meta: 1 worktree",
+   "span.none: –",
+   "button.link: 1 document",
+   "a: Birch home",
+   "div.ppath: /fixture/base/birch",
+   "button.chip.seat: Birch",
+   "span.w.bad: checks nothing (read)",
+   "span.meta: 1 of 1 worktree",
+   "span.none: –",
+   "span.none: –",
+   "a: Cedar home",
+   "div.ppath: /fixture/base/cedar",
+   "button.chip.seat: Cedar",
+   "span.w.bad: open (read)",
+   "span.meta: 1 of 1 worktree",
+   "span.none: –",
+   "span.none: –"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/38732f6b71": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pp:1cd5924af9",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "wt:/fixture/base/cedar",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/cedar",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Projects",
+   "span: ›",
+   "span: Cedar home",
+   "h1: Cedar home",
+   "p.sub: The home of Cedar.",
+   "p.meta: /fixture/base/cedar",
+   "h2.label: Agents",
+   "button.chip.seat: Cedar",
+   "span.soft: its home; listed in .identity as cedar@crew.test",
+   "h2.label: Gates",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "span.mono (folded): main worktree",
+   "span.bad (folded): open (read)",
+   "span.bad (folded): stranded (read)",
+   "th (folded): Act",
+   "th (folded): State",
+   "th (folded): Hook",
+   "th (folded): Note",
+   "td (folded): ordinary commit",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-commit",
+   "td (folded): git merge --no-ff",
+   "td.bad (folded): open (read)",
+   "td.mono (folded): needs commit-msg",
+   "td (folded): git am",
+   "td.bad (folded): open (read)",
+   "td.mono (folded): needs applypatch-msg or pre-applypatch",
+   "td (folded): git push",
+   "td.bad (folded): open (read)",
+   "td.mono (folded): needs pre-push",
+   "p (folded): core.hooksPath is , set in the local settings: .",
+   "span.mono (folded): chain",
+   "span.mono (folded): /fixture/base/cedar/.git/config line 3",
+   "p.soft (folded): Hooks run from .",
+   "span.mono (folded): /fixture/base/cedar/chain",
+   "p.soft (folded): .identity names 1 committer.",
+   "span.mono (folded): /fixture/base/cedar/.identity",
+   "p.soft (folded): Hook files: executable bit not checked on Windows.",
+   "p.meta (folded): Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "p.bad (folded): Stranded (read): pre-push exists in /fixture/base/cedar/hooks, where git does not look.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/cedar/.git/config",
+   "h2.label: Cards",
+   "p.empty: No card is placed in this project. A card belongs here when it runs in this folder or names it.",
+   "h2.label: Documents",
+   "p.empty: No documents. A folder cv/<project>/ holding a MASTER.md in an agent's home shows here."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/44e76de7db": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pp:932a3142a1",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "wt:/fixture/base/birch",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/birch",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Projects",
+   "span: ›",
+   "span: Birch home",
+   "h1: Birch home",
+   "p.sub: The home of Birch.",
+   "p.meta: /fixture/base/birch",
+   "h2.label: Agents",
+   "button.chip.seat: Birch",
+   "span.soft: its home",
+   "h2.label: Gates",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "span.mono (folded): main worktree",
+   "span.bad (folded): checks nothing (read)",
+   "th (folded): Act",
+   "th (folded): State",
+   "th (folded): Hook",
+   "th (folded): Note",
+   "td (folded): ordinary commit",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-commit",
+   "td (folded): git merge --no-ff",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): commit-msg",
+   "td (folded): git am",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): applypatch-msg",
+   "td (folded): git push",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-push",
+   "p (folded): core.hooksPath is , set in the local settings: .",
+   "span.mono (folded): chain",
+   "span.mono (folded): /fixture/base/birch/.git/config line 3",
+   "p.soft (folded): Hooks run from .",
+   "span.mono (folded): /fixture/base/birch/chain",
+   "p.bad (folded): .identity names 0 committers, so a hook that checks it lets every commit through.",
+   "span.mono (folded): /fixture/base/birch/.identity",
+   "p.soft (folded): Hook files: executable bit not checked on Windows.",
+   "p.meta (folded): Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/birch/.git/config",
+   "h2.label: Cards",
+   "p.empty: No card is placed in this project. A card belongs here when it runs in this folder or names it.",
+   "h2.label: Documents",
+   "p.empty: No documents. A folder cv/<project>/ holding a MASTER.md in an agent's home shows here."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/46e35c875d": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pp:406b5dcbb6",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "wt:/fixture/base/alder",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/alder",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#documents/324b8848c9",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#documents/324b8848c9/part.md",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "a: Projects",
+   "span: ›",
+   "span: Alder home",
+   "h1: Alder home",
+   "p.sub: The home of Alder.",
+   "p.meta: /fixture/base/alder",
+   "h2.label: Agents",
+   "button.chip.seat: Alder",
+   "span.soft: its home; listed in .identity as alder@crew.test",
+   "h2.label: Gates",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "span.mono (folded): main worktree",
+   "span.soft (folded): a hook for each act, identity named (read; not tested)",
+   "th (folded): Act",
+   "th (folded): State",
+   "th (folded): Hook",
+   "th (folded): Note",
+   "td (folded): ordinary commit",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-commit",
+   "td (folded): git merge --no-ff",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): commit-msg",
+   "td (folded): git am",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): applypatch-msg",
+   "td (folded): git push",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-push",
+   "p (folded): core.hooksPath is , set in the local settings: .",
+   "span.mono (folded): chain",
+   "span.mono (folded): /fixture/base/alder/.git/config line 3",
+   "p.soft (folded): Hooks run from .",
+   "span.mono (folded): /fixture/base/alder/chain",
+   "p.soft (folded): .identity names 1 committer.",
+   "span.mono (folded): /fixture/base/alder/.identity",
+   "p.soft (folded): Hook files: executable bit not checked on Windows.",
+   "p.meta (folded): Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/alder/.git/config",
+   "h2.label: Cards",
+   "p.empty: No card is placed in this project. A card belongs here when it runs in this folder or names it.",
+   "h2.label: Documents",
+   "a: Notes for the lab",
+   "p.meta: Alder · cv/notes · updated Tue, Oct 20, 12:00 PM",
+   "a: A part",
+   "span.meta: · part.md · Tue, Oct 20, 12:00 PM"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/c3238d3675": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "pp:406b5dcbb6",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "pp:932a3142a1",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "wt:/fixture/base/lab",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "files:/fixture/base/lab",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-080000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-080000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "output:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Projects",
+   "span: ›",
+   "span: lab",
+   "h1: lab",
+   "p.sub: 2 agents work here.",
+   "p.meta: /fixture/base/lab",
+   "h2.label: Agents",
+   "button.chip.seat: Alder",
+   "span.soft: listed in .identity as alder@crew.test",
+   "button.chip.seat: Birch",
+   "span.soft: listed in .identity as birch@crew.test",
+   "h2.label: Gates",
+   "p.meta: From a static read of git's own files: it can say a gate is reachable, never that it still refuses.",
+   "span.mono (folded): main worktree",
+   "span.soft (folded): a hook for each act, identity named (read; not tested)",
+   "th (folded): Act",
+   "th (folded): State",
+   "th (folded): Hook",
+   "th (folded): Note",
+   "td (folded): ordinary commit",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-commit",
+   "td (folded): git merge --no-ff",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): commit-msg",
+   "td (folded): git am",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): applypatch-msg",
+   "td (folded): git push",
+   "td (folded): has a hook (read; not tested)",
+   "td.mono (folded): pre-push",
+   "p (folded): core.hooksPath is , set in the local settings: .",
+   "span.mono (folded): chain",
+   "span.mono (folded): /fixture/base/lab/.git/config line 3",
+   "p.soft (folded): Hooks run from .",
+   "span.mono (folded): /fixture/base/lab/chain",
+   "p.soft (folded): .identity names 2 committers.",
+   "span.mono (folded): /fixture/base/lab/.identity",
+   "p.soft (folded): Hook files: executable bit not checked on Windows.",
+   "p.meta (folded): Read at 2026-10-20T12:00:00Z; a later edit is not in it.",
+   "summary: 1 settings file read",
+   "li (folded): local: /fixture/base/lab/.git/config",
+   "h2.label: Cards",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Decision",
+   "button.id: B-20261002-090000",
+   "time.at: Fri, Oct 2, 08:00 AM",
+   "h2.card-title: Title B-20261002-090000",
+   "p.why: It touches /fixture/base/lab/notes, as A-20261001-100000 did.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Birch's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites A-20261001-100000, which this card cites",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Command",
+   "button.id: B-20261002-080000",
+   "time.at: Fri, Oct 2, 07:00 AM",
+   "h2.card-title: Title B-20261002-080000",
+   "p.why: because",
+   "dt: What it does",
+   "dd: prints one",
+   "dt: Undo",
+   "dd: nothing to undo",
+   "dt: Runs in",
+   "dd.mono: /fixture/base/lab",
+   "pre.command: Write-Output 1",
+   "p.status: Ran Fri, Oct 2, 08:05 AM, and finished cleanly.",
+   "summary: Output",
+   "pre.command.out (folded): 1",
+   "summary: Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "h2.label: Documents",
+   "p.empty: No documents. A folder cv/<project>/ holding a MASTER.md in an agent's home shows here."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "projects/no-such-project": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#projects",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Projects",
+   "span: ›",
+   "span: no-such-project",
+   "h1: No such project",
+   "p.sub: No project in your seats file has this id now."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/t/a5db1dcb5022",
+    "thread:a5db1dcb5022",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/3162bcdb79ab",
+    "thread:3162bcdb79ab",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/13b1cdafd947",
+    "thread:13b1cdafd947",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/e6e8d0cf47d7",
+    "thread:e6e8d0cf47d7",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/d7aac8735973",
+    "thread:d7aac8735973",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Record",
+   "p.sub: 5 decisions in 5 threads, newest first. Your words are kept as you gave them.",
+   "p.meta: From /fixture/register.jsonl, with its notes.",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "span.subject: subject of J-20991002-4",
+   "span.meta: 1 decision · now in force · to Alder · Oct 2, 2099",
+   "span.subject: subject of J-20991002-3",
+   "span.meta: 1 decision · now parked · to Alder · Oct 2, 2099",
+   "span.subject: subject of J-20991001-10",
+   "span.meta: 1 decision · now superseded · to Alder · Oct 1, 2099",
+   "span.subject: subject of J-20991001-2",
+   "span.meta: 1 decision · now in force · to Alder · Oct 1, 2099",
+   "span.subject: subject of J-20991001-1",
+   "span.meta: 1 decision · now in force · to Alder · Oct 1, 2099",
+   "p.empty (hidden): No decision has this status."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/ parked": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/t/3162bcdb79ab",
+    "thread:3162bcdb79ab",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Record",
+   "p.sub: 5 decisions in 5 threads, newest first. Your words are kept as you gave them.",
+   "p.meta: From /fixture/register.jsonl, with its notes.",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "span.subject: subject of J-20991002-3",
+   "span.meta: 1 decision · now parked · to Alder · Oct 2, 2099",
+   "p.empty (hidden): No decision has this status."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/ searched": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1: Record",
+   "p.sub: 5 decisions in 5 threads, newest first. Your words are kept as you gave them.",
+   "p.meta: From /fixture/register.jsonl, with its notes.",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991001-1",
+   "p.meta: · Oct 1, 2099 ·  · to Alder",
+   "a.mono: J-20991001-1",
+   "span.state-word: in force",
+   "blockquote.words: A-20261001-100000 1.",
+   "p.empty (hidden): No decision's words match “first”."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-20991001-1": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/d7aac8735973",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "a: subject of J-20991001-1",
+   "span: ›",
+   "span: J-20991001-1",
+   "h1: J-20991001-1",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991001-1",
+   "h2.label: Your words, whole",
+   "blockquote.words: A-20261001-100000 1.",
+   "dt: Status",
+   "span.state-word: in force",
+   "dt: Date",
+   "dd: Oct 1, 2099",
+   "dt: To",
+   "dd: Alder",
+   "dt: Written down",
+   "span.mono: box at commit abc1234, NOTES.md, line 7",
+   "dt: Recorded by",
+   "dd: Ben · Oct 1, 2099",
+   "h2.label: The scribe's reading",
+   "p.meta: An agent's one-line reading of your words, not your words.",
+   "p.soft: reading of J-20991001-1",
+   "p.label: Note (the scribe's, not a decision of yours)",
+   "p.soft: more of the offer",
+   "blockquote.words: the first one",
+   "p.pin: box at commit abc1234, NOTES.md, line 3 to 4"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-20991001-10": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/13b1cdafd947",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991002-4",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "a: subject of J-20991001-10",
+   "span: ›",
+   "span: J-20991001-10",
+   "h1: J-20991001-10",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991001-10",
+   "h2.label: Your words, whole",
+   "blockquote.words: Nothing yet.",
+   "dt: Status",
+   "dd: (stored as in force)",
+   "span.state-word.quiet: superseded",
+   "dt: Date",
+   "dd: Oct 1, 2099",
+   "dt: To",
+   "dd: Alder",
+   "dt: Written down",
+   "span.mono: box at commit abc1234, NOTES.md, line 7",
+   "dt: Recorded by",
+   "dd: Ben · Oct 1, 2099",
+   "span.bad: Superseded by",
+   "a: J-20991002-4",
+   "p.label: Superseded by J-20991002-4, Oct 2, 2099",
+   "blockquote.words: Later, this instead.",
+   "h2.label: The scribe's reading",
+   "p.meta: An agent's one-line reading of your words, not your words.",
+   "p.soft: reading of J-20991001-10"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-20991001-2": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/e6e8d0cf47d7",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "a: subject of J-20991001-2",
+   "span: ›",
+   "span: J-20991001-2",
+   "h1: J-20991001-2",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991001-2",
+   "h2.label: Your words, whole",
+   "blockquote.words: B-20261002-090000-2 2.",
+   "dt: Status",
+   "span.state-word: in force",
+   "dt: Date",
+   "dd: Oct 1, 2099",
+   "dt: To",
+   "dd: Alder",
+   "dt: Written down",
+   "span.mono: box at commit abc1234, NOTES.md, line 7",
+   "dt: Recorded by",
+   "dd: Ben · Oct 1, 2099",
+   "h2.label: The scribe's reading",
+   "p.meta: An agent's one-line reading of your words, not your words.",
+   "p.soft: reading of J-20991001-2"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-20991002-3": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/3162bcdb79ab",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "a: subject of J-20991002-3",
+   "span: ›",
+   "span: J-20991002-3",
+   "h1: J-20991002-3",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991002-3",
+   "h2.label: Your words, whole",
+   "blockquote.words: Not now.",
+   "dt: Status",
+   "span.state-word.quiet: parked",
+   "dt: Date",
+   "dd: Oct 2, 2099",
+   "dt: To",
+   "dd: Alder",
+   "dt: Written down",
+   "span.mono: box at commit abc1234, NOTES.md, line 7",
+   "dt: Recorded by",
+   "dd: Ben · Oct 2, 2099",
+   "p.meta: A hold: its words are above, whole, and its time anchor is the date. The register keeps no separate field for what it stops or who lifts it; your words say it.",
+   "h2.label: The scribe's reading",
+   "p.meta: An agent's one-line reading of your words, not your words.",
+   "p.soft: reading of J-20991002-3"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-20991002-4": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/t/a5db1dcb5022",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991001-10",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "a: subject of J-20991002-4",
+   "span: ›",
+   "span: J-20991002-4",
+   "h1: J-20991002-4",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.subject: subject of J-20991002-4",
+   "h2.label: Your words, whole",
+   "blockquote.words: Later, this instead.",
+   "dt: Status",
+   "span.state-word: in force",
+   "dt: Date",
+   "dd: Oct 2, 2099",
+   "dt: To",
+   "dd: Alder",
+   "dt: Written down",
+   "span.mono: box at commit abc1234, NOTES.md, line 7",
+   "dt: Recorded by",
+   "dd: Ben · Oct 2, 2099",
+   "span: Supersedes",
+   "a: J-20991001-10",
+   "h2.label: The scribe's reading",
+   "p.meta: An agent's one-line reading of your words, not your words.",
+   "p.soft: reading of J-20991002-4"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/J-404": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: J-404",
+   "h1: No such decision",
+   "p.sub: No decision in your register has the id J-404 now.",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/t/13b1cdafd947": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991001-10",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991002-4",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: subject of J-20991001-10",
+   "h1: subject of J-20991001-10",
+   "p.sub: 1 decision · now superseded · to Alder · Oct 1, 2099",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.meta: · Oct 1, 2099 ·  (stored as in force) · to Alder",
+   "a.mono: J-20991001-10",
+   "span.state-word.quiet: superseded",
+   "blockquote.words: Nothing yet.",
+   "span.bad: Superseded by",
+   "a: J-20991002-4"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/t/3162bcdb79ab": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991002-3",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: subject of J-20991002-3",
+   "h1: subject of J-20991002-3",
+   "p.sub: 1 decision · now parked · to Alder · Oct 2, 2099",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.meta: · Oct 2, 2099 ·  · to Alder",
+   "a.mono: J-20991002-3",
+   "span.state-word.quiet: parked",
+   "blockquote.words: Not now."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/t/a5db1dcb5022": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991002-4",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-10",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: subject of J-20991002-4",
+   "h1: subject of J-20991002-4",
+   "p.sub: 1 decision · now in force · to Alder · Oct 2, 2099",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.meta: · Oct 2, 2099 ·  · to Alder",
+   "a.mono: J-20991002-4",
+   "span.state-word: in force",
+   "blockquote.words: Later, this instead.",
+   "span: Supersedes",
+   "a: J-20991001-10"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/t/d7aac8735973": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: subject of J-20991001-1",
+   "h1: subject of J-20991001-1",
+   "p.sub: 1 decision · now in force · to Alder · Oct 1, 2099",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.meta: · Oct 1, 2099 ·  · to Alder",
+   "a.mono: J-20991001-1",
+   "span.state-word: in force",
+   "blockquote.words: A-20261001-100000 1."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "record/t/e6e8d0cf47d7": {
+  "bar": [],
+  "barControls": [],
+  "controls": [
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "input",
+    null,
+    "search:record",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "facet:all",
+    "button",
+    "true",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:in force",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:parked",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "facet:superseded",
+    "button",
+    "false",
+    null,
+    "click"
+   ],
+   [
+    "a",
+    "#record/J-20991001-2",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "a: Record",
+   "span: ›",
+   "span: subject of J-20991001-2",
+   "h1: subject of J-20991001-2",
+   "p.sub: 1 decision · now in force · to Alder · Oct 1, 2099",
+   "button: All",
+   "span.n: 5",
+   "button: In force",
+   "span.n: 3",
+   "button: Parked",
+   "span.n: 1",
+   "button: Superseded",
+   "span.n: 1",
+   "p.meta: · Oct 1, 2099 ·  · to Alder",
+   "a.mono: J-20991001-2",
+   "span.state-word: in force",
+   "blockquote.words: B-20261002-090000-2 2."
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "waiting/": {
+  "bar": [
+   "span.say: 2 cards wait for your word, newest first.",
+   "button.toggle.small: By project"
+  ],
+  "barControls": [
+   [
+    "input",
+    null,
+    "search:waiting",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "byproject",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "controls": [
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-100000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:parked",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:done",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1.sr-only: Waiting",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Decision",
+   "button.id: B-20261002-090000",
+   "time.at: Fri, Oct 2, 08:00 AM",
+   "h2.card-title: Title B-20261002-090000",
+   "p.why: It touches /fixture/base/lab/notes, as A-20261001-100000 did.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Birch's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites A-20261001-100000, which this card cites",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Decision",
+   "button.id: A-20261001-100000",
+   "time.at: Thu, Oct 1, 09:00 AM",
+   "h2.card-title: Title A-20261001-100000",
+   "p.why: We agreed this in J-20991001-1, as before.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Alder's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites this card",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "summary: Parked 1",
+   "summary: Done 3"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "waiting/ problems open": {
+  "bar": [
+   "span.say: 2 cards wait for your word, newest first.",
+   "button.toggle.small: By project"
+  ],
+  "barControls": [
+   [
+    "input",
+    null,
+    "search:waiting",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "byproject",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "controls": [
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-100000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:parked",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:done",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1.sr-only: Waiting",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Decision",
+   "button.id: B-20261002-090000",
+   "time.at: Fri, Oct 2, 08:00 AM",
+   "h2.card-title: Title B-20261002-090000",
+   "p.why: It touches /fixture/base/lab/notes, as A-20261001-100000 did.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Birch's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites A-20261001-100000, which this card cites",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Decision",
+   "button.id: A-20261001-100000",
+   "time.at: Thu, Oct 1, 09:00 AM",
+   "h2.card-title: Title A-20261001-100000",
+   "p.why: We agreed this in J-20991001-1, as before.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Alder's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites this card",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "summary: Parked 1",
+   "summary: Done 3"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "waiting/ searched": {
+  "bar": [
+   "span.say: 2 cards wait for your word, newest first. 1 of them matches.",
+   "button.toggle.small: By project"
+  ],
+  "barControls": [
+   [
+    "input",
+    null,
+    "search:waiting",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "byproject",
+    "button",
+    "false",
+    null,
+    "click"
+   ]
+  ],
+  "controls": [
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-100000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    true,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:parked",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    true,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:done",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-110000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-110000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-110000",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1.sr-only: Waiting",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Decision",
+   "button.id: A-20261001-100000",
+   "time.at: Thu, Oct 1, 09:00 AM",
+   "h2.card-title: Title A-20261001-100000",
+   "p.why: We agreed this in J-20991001-1, as before.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Alder's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites this card",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "summary: Parked 0 of 1",
+   "p.shelf-note: 1 decision is parked in your register: .",
+   "a: see them in the Record",
+   "summary: Done 1 of 3",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Command",
+   "button.id: A-20261001-110000",
+   "time.at: Thu, Oct 1, 10:00 AM",
+   "h2.card-title: Title A-20261001-110000",
+   "p.why: because",
+   "dt: What it does",
+   "dd: prints one",
+   "dt: Undo",
+   "dd: nothing to undo",
+   "pre.command: Write-Output 1",
+   "p.closed: Closed Thu, Oct 1, 11:00 AM: done by hand",
+   "summary: Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ },
+ "waiting/ shelves open, by project": {
+  "bar": [
+   "span.say: 2 cards wait for your word, newest first.",
+   "button.toggle.small: By project"
+  ],
+  "barControls": [
+   [
+    "input",
+    null,
+    "search:waiting",
+    "search",
+    null,
+    null,
+    "input"
+   ],
+   [
+    "button",
+    null,
+    "byproject",
+    "button",
+    "true",
+    null,
+    "click"
+   ]
+  ],
+  "controls": [
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-090000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-090000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-100000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-100000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-1",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    true,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:parked",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Cedar/C-20261003-070000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Cedar/C-20261003-070000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Cedar/C-20261003-070000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991002-3",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record",
+    null,
+    null,
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    true,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "shelf:done",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-090000-2",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-090000-2",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-090000-2",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#record/J-20991001-2",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Birch/B-20261002-080000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Birch/B-20261002-080000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "output:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "a",
+    "#projects/c3238d3675",
+    "proj:Birch/B-20261002-080000",
+    null,
+    null,
+    null,
+    ""
+   ],
+   [
+    "button",
+    null,
+    "seat:Alder/A-20261001-110000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "button",
+    null,
+    "id:Alder/A-20261001-110000",
+    "button",
+    null,
+    null,
+    "click"
+   ],
+   [
+    "details",
+    null,
+    null,
+    null,
+    null,
+    false,
+    "toggle"
+   ],
+   [
+    "summary",
+    null,
+    "more:Alder/A-20261001-110000",
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
+  "place": [
+   "h1.sr-only: Waiting",
+   "h2.label.group-head: lab · 1",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Decision",
+   "button.id: B-20261002-090000",
+   "time.at: Fri, Oct 2, 08:00 AM",
+   "h2.card-title: Title B-20261002-090000",
+   "p.why: It touches /fixture/base/lab/notes, as A-20261001-100000 did.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Birch's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites A-20261001-100000, which this card cites",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "h2.label.group-head: Not in a project · 1",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Decision",
+   "button.id: A-20261001-100000",
+   "time.at: Thu, Oct 1, 09:00 AM",
+   "h2.card-title: Title A-20261001-100000",
+   "p.why: We agreed this in J-20991001-1, as before.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.where: Answer in Alder's chat: paste the ID, then your decision. Park it from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites this card",
+   "a.mono (folded): J-20991001-1",
+   "blockquote.words (folded): A-20261001-100000 1.",
+   "summary: Parked 1",
+   "button.chip.seat: Cedar",
+   "span.chip.kind: Decision",
+   "button.id: C-20261003-070000",
+   "time.at: Sat, Oct 3, 06:00 AM",
+   "h2.card-title: Title C-20261003-070000",
+   "p.why: See J-20991002-3.",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.park: Parked Sat, Oct 3, 08:00 AM. Cedar holds it until you bring it back from your inbox.",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Cedar",
+   "span.tip (folded): Acts: Cedar",
+   "p.meta (folded): · Oct 2, 2099 · parked · this card cites it",
+   "a.mono (folded): J-20991002-3",
+   "blockquote.words (folded): Not now.",
+   "p.shelf-note: 1 decision is parked in your register: .",
+   "a: see them in the Record",
+   "summary: Done 3",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Decision",
+   "button.id: B-20261002-090000-2",
+   "time.at: Fri, Oct 2, 08:30 AM",
+   "h2.card-title: Title B-20261002-090000-2",
+   "p.why: because",
+   "p.question: Which?",
+   "li: first (my pick)",
+   "li: second",
+   "p.closed: Closed Fri, Oct 2, 09:00 AM: answered",
+   "summary: Your earlier words (1) · Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "p.meta (folded): · Oct 1, 2099 · in force · cites this card",
+   "a.mono (folded): J-20991001-2",
+   "blockquote.words (folded): B-20261002-090000-2 2.",
+   "button.chip.seat: Birch",
+   "span.chip.kind: Command",
+   "button.id: B-20261002-080000",
+   "time.at: Fri, Oct 2, 07:00 AM",
+   "h2.card-title: Title B-20261002-080000",
+   "p.why: because",
+   "dt: What it does",
+   "dd: prints one",
+   "dt: Undo",
+   "dd: nothing to undo",
+   "dt: Runs in",
+   "dd.mono: /fixture/base/lab",
+   "pre.command: Write-Output 1",
+   "p.status: Ran Fri, Oct 2, 08:05 AM, and finished cleanly.",
+   "summary: Output",
+   "pre.command.out (folded): 1",
+   "summary: Asks, acts, project",
+   "p.who (folded): ··",
+   "span.tip (folded): Asks: Birch",
+   "span.tip (folded): Acts: Birch",
+   "a.chip (folded): lab",
+   "button.chip.seat: Alder",
+   "span.chip.kind: Command",
+   "button.id: A-20261001-110000",
+   "time.at: Thu, Oct 1, 10:00 AM",
+   "h2.card-title: Title A-20261001-110000",
+   "p.why: because",
+   "dt: What it does",
+   "dd: prints one",
+   "dt: Undo",
+   "dd: nothing to undo",
+   "pre.command: Write-Output 1",
+   "p.closed: Closed Thu, Oct 1, 11:00 AM: done by hand",
+   "summary: Asks, acts",
+   "p.who (folded): ·",
+   "span.tip (folded): Asks: Alder",
+   "span.tip (folded): Acts: Alder"
+  ],
+  "problems": [],
+  "problemsHidden": true
+ }
+}

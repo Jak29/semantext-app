@@ -499,14 +499,15 @@ HOOK = {"name": "pre-write hook", "rules": ["core.a"], "must_pass": "a short ans
         "must_refuse": ["a long answer is refused"], "where": "hooks/pre-write"}
 
 
-def test_the_word_guards_is_read_too_and_only_a_named_checker_guards(tmp_path):
+def test_the_word_guards_is_read_too_and_a_named_checker_is_listed_but_earns_nothing(tmp_path):
     put(tmp_path, "core", doc("core", [rule("core.a", guards=["a hook"], provenance={"cases": ["C-1"]})],
                               [case("C-1")]))
     [r] = read(tmp_path)["environments"][0]["rules"]
     assert r["held"] == "checked" and r["guards"] == ["a hook"]          # the card's claim alone: checked, no more
     out = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, HOOK)})
     [r] = out["environments"][0]["rules"]
-    assert r["held"] == "guarded" and r["cases"] == [{"id": "C-1", "kept_in": ["core"]}]   # guarded outranks checked
+    # the guards file names a checker; only a run record makes a rule guarded (test_sources_runs.py)
+    assert r["held"] == "checked" and r["cases"] == [{"id": "C-1", "kept_in": ["core"]}]
     assert r["checkers"] == [{"name": "pre-write hook", "must_pass": ["a short answer is written"],
                               "must_refuse": ["a long answer is refused"], "where": "hooks/pre-write",
                               "where_exists": False, "where_note": None}]   # must-refuse: not there is never "there"
@@ -602,12 +603,12 @@ def test_counts_add_up_per_environment_and_in_total(tmp_path):
                               [case("C-1"), case("C-2")]))
     put(tmp_path, "desk-seat", doc("desk-seat", [rule("desk-seat.x")]))
     out = read(tmp_path)
-    assert envs(out)["core"]["counts"] == {"rules": 4, "candidates": 1, "written": 3, "checked": 1, "guarded": 0,
-                                           "cases": 2}
-    assert out["counts"] == {"environments": 2, "rules": 5, "candidates": 1, "written": 4, "checked": 1, "guarded": 0,
-                             "cases": 2}
-    guarded = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, {**HOOK, "rules": ["core.c"]})})
-    assert envs(guarded)["core"]["counts"]["guarded"] == 1 and guarded["counts"]["written"] == 3
+    assert envs(out)["core"]["counts"] == {"rules": 4, "candidates": 1, "written": 3, "checked": 1, "guarded_once": 0,
+                                           "guarded": 0, "cases": 2}
+    assert out["counts"] == {"environments": 2, "rules": 5, "candidates": 1, "written": 4, "checked": 1,
+                             "guarded_once": 0, "guarded": 0, "cases": 2}
+    named = rules.load({"cards": str(tmp_path), "guards": guards_file(tmp_path, {**HOOK, "rules": ["core.c"]})})
+    assert envs(named)["core"]["counts"]["guarded"] == 0 and named["counts"]["written"] == 4   # a name is no record
 
 
 # ---------------------------------------------------------------- what an environment inherits

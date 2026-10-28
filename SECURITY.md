@@ -65,6 +65,11 @@ This page says what it touches, how it protects you, what it does not protect ag
   stalls for 10 seconds.
 - **The page's own code:** it builds all rule text with safe DOM calls, with no `innerHTML` and no `eval`, so a rule
   cannot inject a script into the page. A test fails if such a call appears.
+- **The v2 page's policy:** `/v2` and every file beside it carry a Content-Security-Policy: scripts and styles only
+  from this server's own files (`script-src 'self'; style-src 'self'`, no `'unsafe-inline'` for either since api
+  0.2), reads only back to this server, images only the `blob:` URLs a diagram is shown through, and no framing. A
+  test fails if a module or the page sets an inline style or holds an inline script. A document (an SVG) is served
+  with its own policy (`default-src 'none'; style-src 'unsafe-inline'; sandbox`) and shown only through `<img>`.
 
 ## Rule files
 
@@ -153,6 +158,80 @@ This page says what it touches, how it protects you, what it does not protect ag
 - **Secrets are refused.** A request that looks like it carries a key, a token or a password, in any of its fields, is
   not filed.
 
+## Plug-ins
+
+- **What one is.** A plug-in is a source (a reader of your files), a place (a part of the page) or a checker, offered
+  by a Python package you installed, through an entry point in the group `semantext.plugins`. Nothing is fetched, and
+  no folder of loose scripts is loaded. `semantext plugins` lists every plug-in, built-in or not, with the package it
+  came from and whether it is on. The built-in parts are registered the same way. A built-in is told apart by being
+  the package's own code, flagged when the package registers it, never by a name: an installed package called
+  `built-in` is an outside plug-in like any other, held to every guard below.
+- **Installed is not on.** A package's plug-in is loaded only when you have turned it on, and only at the version you
+  turned on: an upgrade turns it off until you turn it on again. What is on is kept in `plugins.json` in your home.
+- **Turning one on is typed at your console.** `semantext plugins enable <kind>.<name>` refuses in an agent's shell
+  (the same markers as answering) and anywhere that is not an interactive console, and asks you to type the plug-in's
+  name back. **This bars an agent that follows the rules. It is no bar against one that does not:** a program
+  running as you can open a console and type the name, or write `plugins.json` itself. A known limit, decided.
+  Turning a plug-in off (`disable`) is not held to the console, since it takes reach away.
+- **Where plug-ins run.** The page's server and the command line load them. The card hook loads none: it never imports
+  the registry, and a test pins the modules it imports.
+- **A plug-in holds the whole process's reach.** It runs in the same Python process as the page or the command line,
+  so it can read and write what they can, start a process, or change any function, the checks on whose words a
+  message carries included. Semantext's laws (read only, start no process, set your text as text) are checked on a
+  plug-in's code path, never inherited, and the conformance kits that will check them are not built yet
+  (`semantext plugins check` says so, and exits 1). A plug-in is code you chose to install: install only what you
+  would run yourself.
+- **A plug-in that fails** to load, offers the wrong shape, takes a built-in's name, has an attribute that raises when
+  read, or is declared under one `<kind>.<name>` by two packages (then neither loads) is not loaded, and the page and
+  `semantext plugins` show it as a problem. Its attributes are read once, at load; after that the kernel reads only
+  that copy. One that stops while being read, raises SystemExit, or answers over the caps (200 problems, 300
+  characters a field, 2 MB of JSON, 8 MB for every outside answer of one page together) costs only its own part of
+  the page. Your own Ctrl-C is never caught.
+- **A late plug-in is not stopped.** Each call into an outside plug-in (a read, a build, a document's resolve and
+  check, and the import that loads it) has a time budget, 5 s unless `SEMANTEXT_PLUGIN_SECONDS` says otherwise,
+  counted from when it starts to run; a call waiting for one of its plug-in's 4 turns waits at most that long again,
+  and is late without running. At most 8 calls of one plug-in, and 32 of every plug-in together, wait in line; one
+  more is refused at once. A call that is late is a problem and its answer is not used, but **a thread cannot be
+  killed**: the call goes on in the background, with the process's whole reach, until it returns or the server stops.
+  One plug-in holds at most 4 such calls, and at most 16 threads of every plug-in's calls are alive at once, late or
+  not, so no more than 16 can hang; while 16 hang every plug-in's call is refused until one returns. The page and
+  `semantext plugins` name the plug-ins holding them.
+- **An outside place reads a copy.** It is given a copy of every source's answer, so it cannot change what the page or
+  another place reads. It is still code in the process (above).
+- **What `semantext plugins` prints** has every control character and escape sequence taken out first, so a package's
+  name or version cannot move or rewrite your console.
+- **Closed places.** The sources file may list folders under `"closed"`, or name a closures file of your own
+  (`"closures_file"`, a full path, and `"closures_key"`, the key in it holding the list; `"closed"` when not given);
+  the two lists merge. `semantext.api.is_closed_place` says whether a path is in one of them, also through a link,
+  for any part that asks. **Until your closures are named, every path is closed to a plug-in:** with no `"closed"` key
+  and no closures file (or no sources file), `semantext.api.closures_known()` is false, `is_closed_place` says true
+  for every path, and `semantext plugins enable` refuses with "name your closed places first". An empty list is a
+  statement that nothing is closed. A list or closures file that cannot be read, is over 1 MB, holds anything but full
+  paths, or names its key twice, is unknown in the same way. The built-in readers keep their rule: with nothing named
+  they close nothing (no roots are named either, so they read nothing), and what cannot be read closes everything.
+  These are files an agent can edit, like the rest of the sources file, and a plug-in that does not ask is not
+  stopped.
+  A Windows path written with the `\\?\` prefix (or `\\?\UNC\`, with either slash) is judged as the path it names; before
+  api 0.2 such a spelling of a file in a closed folder compared open.
+- **Page modules are unrestricted code in the page.** An outside place may ship one ES module, served only from its
+  own distribution's listed files, only once you turned the place on. The page's policy stops it loading anything from
+  another site, and the text-only helpers it is handed (`h`, `text`) make setting text as text the easy path. **They
+  are not a sandbox:** the module runs with the page's whole reach, as the plug-in's Python runs with the process's.
+  **So a page module can act as you on the page:** answer requests, teach or change rules, and change settings,
+  since it can send everything the page sends. A change whose `Referer` is a module's path, or that a browser marks
+  as anything but a plain fetch, is refused; a module calling `fetch()` from inside the page is not told apart by
+  that. Running each module in a sandboxed frame of its own is designed, not built (`docs/page-module-sandbox.md`).
+- **Documents by row.** An outside place may serve its own files to the page at `/api/v2/doc/<place>/<row_id>`. The
+  row id is letters, digits, `-` and `_`, checked before anything is looked up; the path comes only from the place's
+  own `resolve`, and at serve time it must lie, as it leads now (links resolved, the `\\?\` prefix off), inside a named
+  root and outside every closed place (`semantext.api.inside_roots`, the same judgement plug-ins are given). The bytes
+  are read once (at most 4 MB) and exactly those go to the place's `check_bytes`. **A known limit:** the check and the
+  open are two steps, so a folder swapped for a link between them is not seen.
+- **Run records** are what a checker says, never re-run. A record whose own `outcome` is `failed` or `not proved` is
+  never guarded, whatever its counts say; an outcome the reader does not know refuses the record.
+- **The plug-in surface is `semantext.api`, version 0.2**, experimental until each kind has a plug-in that is not a
+  built-in. Nothing else in the package is public. What 0.2 added and changed is in the module's own docstring.
+
 ## What Semantext does not protect against
 
 - **Anything that can already act as you.** Malware, or another account with your permissions, can read and change your
@@ -169,7 +248,12 @@ This page says what it touches, how it protects you, what it does not protect ag
 - **An agent that edits your files directly.** The same holds for your rules and your settings. The gates stop an
   agent changing them through Semantext, by habit or by accident. A program running as you can still write the rule
   files or `settings.json`, unset the variables, open a console, or set another session's id. A rule written into a
-  file by hand carries no agent's name, and Semantext does not yet mark such rules on the card.
+  file by hand carries no agent's name. When its file holds none of the provenance Semantext writes, the card counts
+  such rules in one line ("N rules are hand-written (no provenance)", one line however many, so the card stays under
+  the hook's limit) and the page marks each; a program that writes a provenance into the file by hand is not caught.
+  In a folder of ratified environments a rule with no provenance is counted in one line under its environment on the
+  card, and marked in the reference and the Rules drawer: those files cannot tell a rule typed in by hand from one
+  ratified without a record.
 - **Reading a session's role from its commands is a heuristic.** `envhook` takes a session's role from the latest
   command that runs a program with the declaring flag outside quoted text. It reads PowerShell and bash quoting well
   enough for ordinary commands, not completely. Known shapes it reads wrong: a `$( )` holding its own double quotes
@@ -185,20 +269,37 @@ This page says what it touches, how it protects you, what it does not protect ag
 - **A change's evidence digest is an oracle, kept where it confirms nothing new.** "Current" or "stale" tells whether
   a file's bytes match a guess. So the page digests only files inside the filing agent's own home and the projects
   bound to it, never through a link or junction below that folder, never a hard link, an alternate stream, a device
-  or short (8.3) name. Two layers decide which files those are. First, evidence is a document, a script or source
-  text, by its kind (`.md`, `.txt`, `.json`, `.jsonl`, `.yaml`, `.yml`, `.toml`, `.py`, `.ts`, `.tsx`, `.js`, `.mjs`,
-  `.cs`, `.rs`, `.lean`, `.svg`, `.csv`, `.sh`, `.ps1`, `.bat`, `.cmd`, `.html`, `.css`, `.xml`, `.cfg`, `.ini`,
-  `.go`, `.java`, `.c`, `.h`, `.hpp`, `.cpp`, `.log`, and the files `LICENSE`, `Makefile`, `Dockerfile`, `README`,
-  `.gitignore`, `.gitattributes` and `.editorconfig`), and nothing else. Those kinds are where secrets live too, so
-  the second layer carries the weight: no part of the path, taken whole and in any case, may be named like a secret
-  (the list is `SECRET_NAMES` in `semantext/sources/change.py`: `.env*`, key and certificate files, `credentials*`,
-  `wallet*`, `vault*`, `secret`/`secrets` and `*_secret*`, `token`/`tokens` and `*_token*`, `password*`, `seed`,
-  `mnemonic*`, `*api_key*`, `key.*`, `settings.local.json`, `hosts.yml` under a `gh` folder, the folders `.ssh*`,
-  `.kube`, `.docker`, `.aws`, `.gnupg` and `*kaggle*`, and more). The trade-off, stated: "token" and "secret" are
-  matched as whole words, so `tokenizer.py` and `secretary.md` stay evidence, while `wallet*`, `vault*` and `.ssh*`
-  also refuse a few honest names (`wallets.md`, `vault_notes.md`, `tokens.md`). A secret kept under an ordinary name
-  of an evidence kind can still be digested; the home and project limit is what keeps that from telling the agent
-  anything it could not read. An absent file is "unknown", never a match. At most 50 files a record and 200 records
+  or short (8.3) name. Which files are evidence is decided by structure, not by name
+  (`semantext/sources/evidence_gitindex.py`): a file is evidence only when the git repository that holds it (the
+  nearest `.git` folder, searched up to the root, and above it only while still inside one of the agent's roots)
+  lists it in its index as an ordinary file at stage 0. **The premise, stated plainly: evidence is what the project's
+  index lists, and an agent can write the index** (`git add -f .env` lists `.env` with no commit; an agent can write
+  objects and commits too). So no reading of the repository is a boundary against an agent that breaks rules: this
+  policy chooses relevant files for a digest to confirm, it is not a defence against such an agent. This is the
+  chosen way of the two built (see `docs/evidence-ways.md`); revisit in a later review if it needs more guards. The
+  repository must be a real one: `.git/HEAD` a plain file holding a commit id of the right length, or naming a ref
+  git would write (no `..`, no part starting with a dot, no `.lock`) that exists, as a loose ref file under
+  `.git/refs` holding a commit id or as a line of `.git/packed-refs`. So a hand-built index in a plain folder admits
+  nothing, nor one beside a hand-written HEAD naming a ref that is not there; a branch with no commit yet is
+  "unknown" too. It is still a test of text and files: a forger who writes the ref too is admitted, as the premise
+  says. The index is read in pure Python; nothing runs git. Untracked and ignored files, files of a
+  repository whose `.git` is a file (a linked worktree or a submodule) or a link, a repository whose top is above
+  every root, and an index that is sparse, split, over 64 MB, a hard link, of a version other than 2, 3 or 4, or
+  whose checksum does not match, are all "unknown". A short name belt refuses listed names that are almost never
+  honest, with a reason: keys and key stores (`*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `id_rsa*`, `id_ed25519*`,
+  `id_ecdsa*`, `id_dsa*`), credential folders (`.ssh*`, `.aws`, `.gnupg`, `.kube`), credential dotfiles (`.env*`,
+  `.npmrc`, `.netrc`, `.pgpass`, `.git-credentials`), and secret, token, wallet, vault, password and credentials as
+  their own word; words honest as a note or code (`key`, `auth`, `env`, `seed`) are refused only as data (`.json`,
+  `.txt`, `.yaml` and the like). On the audit's lists, tracked: all 89 secret names refused, none of its 60 honest
+  names (`tokenizer.py`, `tokens.md`, `wallets.md`, `keys.py`, `key.md`, `password_policy.md`,
+  `credentials_policy.md` digest). Its stated cost: a few common names the audit found holding secrets are refused
+  even when honest (`app.log`, `server.log`, `access.log`, `appsettings.json`, `settings.xml`, `known_hosts`,
+  `session.json`). The full old list stays in `semantext/sources/evidence.py`, off, because it refused
+  honest files (`password_policy.md`, `keys.py`) and never kept up with new secret names. A secret listed under any
+  other name is evidence, like any listed file. The HEAD, ref and packed-refs files are each read through one handle
+  checked against the file as examined; the packed-refs bytes count against the read budget. The index's bytes count
+  against the read budget when it is read, and a parsed index is kept in memory for 60 seconds, keyed by its path,
+  size, modification time and file id. An absent file is "unknown", never a match. At most 50 files a record and 200 records
   an agent are digested in one page build, and at most 256 MB is read across all evidence in one build; past those,
   a record says "not checked: over the cap" or "not checked: over the read budget". Each file's digest is kept in memory
   (never on disk) for 60 seconds, keyed by its path, size, modification time, file id and its first and last 4 KB.
@@ -214,6 +315,16 @@ This page says what it touches, how it protects you, what it does not protect ag
   through, and each amounts to the agent writing the lines itself: a home folder that is itself a junction to another
   agent's home shows that agent's records under this one (the home is the seats file's to name), and a hard link made
   in the moment between the check and the read is read once.
+- **A clock far ahead, then corrected, costs `undo_last` its order for a while.** Kept versions are named by the time
+  in UTC, never below a name already in the history folder, and a name more than two days ahead of now is ignored
+  (1.2.2), so a planted name dated 2099 cannot stop saving or pin later names. The price of that bound, stated: a
+  clock that ran more than two days ahead and was then corrected leaves its versions named in the future. They are
+  ignored as a floor, so the next versions get the real (earlier) time, and the future-named ones still sort as the
+  newest: `undo_last` restores one of them, an older version than the last one kept, until the real time passes their
+  names. A name up to two days ahead (a clock a day fast, or a local time east of UTC) does count: every later name is
+  held just past it, at that future time, for as long as the clock is behind it. The order is kept then, so
+  `undo_last` restores the right version, but the names show a time that has not come yet. Nothing is lost either way:
+  every version stays in the folder.
 - **A guarded rule's checker path is looked up only when it is local.** The page says whether the `where` a guards
   file gives for a checker is there now. A `where` that starts with two slashes (a share, `\\?\` or `\\.\`) or holds
   a colon past a drive letter is never looked up, so building the page makes no network connection for a local drive;
@@ -230,5 +341,5 @@ do not open a public issue for a security problem.
 
 | Version | Supported |
 |---|---|
-| 1.0.x | yes |
-| 0.1.x | no |
+| 1.3.x | yes |
+| 1.2.x and older | no |

@@ -20,8 +20,10 @@ GATED = "\thooksPath = chain\n"
 
 
 def touch(path: Path, text: str = "") -> Path:
+    """A file, made executable: on POSIX the gates reader, as git, ignores a hook without the bit."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="")
+    path.chmod(0o755)
     return path
 
 
@@ -403,7 +405,7 @@ def test_projects_add_up(world):
     assert rows["Birch home"]["gates"]["worst"] == "checks nothing"
     assert rows["Cedar home"]["gates"]["worktrees"][0]["words"] == ["open", "stranded"]
     # must-refuse: a gated repository is not called broken, and its worst is its one state
-    assert rows["lab"]["gates"]["worst"] == "gated, identity declared" and rows["lab"]["gates"]["broken"] == 0
+    assert rows["lab"]["gates"]["worst"] == gates.ARMED_WORDS and rows["lab"]["gates"]["broken"] == 0
     assert [d["slug"] for d in p["documents"]] == ["notes"] and rows["Alder home"]["documents"] == [
         p["documents"][0]["id"]]
     assert p["documents"][0]["docs"][0]["title"] == "A part"
@@ -426,3 +428,25 @@ def test_the_status_line_says_what_waits_or_what_holds(world):
     assert view.status_line() == "nothing waiting · 3 decisions in force"
     world.write_config(seats=None)   # must-refuse: with no seats file there is nothing to say
     assert view.status_line() == view.UNAVAILABLE
+
+
+@pytest.mark.parametrize("tree, said", [
+    pytest.param({"words": ["a hook for each act, identity named"], "verdicts": [{"stranded": ["pre-commit"]}]},
+                 "1 worktree in 1 repo is stranded", id="must-refuse: a stranded tree is named"),
+    pytest.param({"words": ["a hook for each act, identity named", "a word no reader wrote"]},
+                 "every worktree has a hook for each act", id="must-pass: the all-clear is still the worst"),
+    pytest.param({"words": ["a word no reader wrote"]}, "1 worktree could not be read",
+                 id="must-refuse: a word the line cannot say is counted as unread"),
+    pytest.param({"words": ["a hook for each act, identity named"]}, "every worktree has a hook for each act",
+                 id="must-pass: all gated"),
+])
+def test_the_gates_line_never_gives_the_all_clear_over_a_stranded_worktree(tree, said):
+    # review of 1.2.2, V1: holds() said only off, checks nothing and open, so a stranded tree read as all gated
+    from types import SimpleNamespace
+    src = SimpleNamespace(got={"record": {"off": True},
+                               "gates": {"repos": [{"root": "/r", "worktrees": [{"path": "/r/a", **tree}]}]}},
+                          problems=[])
+    text = view.holds(src)["text"]
+    assert said in text, text
+    if "hook for each act" not in said:
+        assert "every worktree has a hook" not in text

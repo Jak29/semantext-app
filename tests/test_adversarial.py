@@ -187,7 +187,11 @@ def test_the_hook_keeps_the_prompt_exactly(adv_store, adv_home):
     """What is heard is what was sent, whatever the machine's own code page."""
     adv_store.set_option("hear_prompts", True)
     prompt = "café naïve ☃"
-    r = run_cli(adv_home, "hook", stdin=json.dumps({"prompt": prompt}, ensure_ascii=False).encode("utf-8"))
+    t = adv_home / "t.jsonl"     # only words the tool's own record calls the user's are kept
+    t.write_text(json.dumps({"type": "user", "turnOrigin": "human", "message": {"content": prompt}},
+                            ensure_ascii=False) + "\n", encoding="utf-8")
+    r = run_cli(adv_home, "hook", stdin=json.dumps({"prompt": prompt, "transcript_path": str(t)},
+                                                   ensure_ascii=False).encode("utf-8"))
     assert r.returncode == 0
     heard = Heard(adv_home).items(adv_store.state()["active"])
     assert heard and heard[-1]["text"] == prompt, f"heard {heard[-1]['text'] if heard else None!r}"

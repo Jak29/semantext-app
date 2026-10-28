@@ -45,7 +45,7 @@ from pathlib import Path, PurePath
 from typing import NamedTuple
 
 from .. import jsonread
-from . import MAX_LINE, problem
+from . import MAX_LINE, problem, under
 
 MAX_SEATS = 4 * 1024 * 1024   # a seats file over this is a mistake, not a list of seats
 MAX_IDENTITY = 1024 * 1024    # likewise for an .identity file
@@ -168,23 +168,15 @@ def _unfit(text: str) -> bool:
 
 
 def _under(base: str | None, rel, source, what: str, problems: list) -> str | None:
-    """A folder as the seats file writes it, in full: the base joined with a path that does not step out with "..".
-    None, with the reason, when it cannot be."""
-    if not isinstance(rel, str) or not rel.strip():
-        problems.append(problem(source, None, "bad-path", f"{what} has no path"))
-        return None
-    if _unfit(rel):
+    """A folder as the seats file writes it, in full: the base joined with a path that stays under it (sources.under,
+    the one join the gates reader makes too). None, with the reason, when it cannot be."""
+    if isinstance(rel, str) and rel.strip() and _unfit(rel):
         problems.append(problem(source, None, "bad-path", f"{what}: a path may not hold a control character"))
         return None
-    if ".." in re.split(r"[\\/]", rel):
-        problems.append(problem(source, None, "bad-path", f"{what}: a path may not step out with '..': {rel}"))
-        return None
-    full = Path(base) / rel.strip() if base else Path(rel.strip())
-    if not full.is_absolute():
-        problems.append(problem(source, None, "bad-path", f"{what}: {rel} is not a full path, and the seats file "
-                                f"gives no base folder to put it under"))
-        return None
-    return str(full)
+    full, why = under(base, rel)
+    if full is None:
+        problems.append(problem(source, None, "bad-path", f"{what} {why}" if why == "has no path" else f"{what}: {why}"))
+    return full
 
 
 # ---- reading files --------------------------------------------------------------------------------------------
@@ -197,8 +189,9 @@ def _expand(path) -> Path:
         return Path(path)
 
 
-def _json(path, limit: int, problems: list, what: str):
-    """A JSON file, or None with the reason in problems."""
+def _json(path, limit: int, problems: list, what: str, unique: bool = False):
+    """A JSON file, or None with the reason in problems. With `unique`, a key given twice in one object is refused, as
+    in every file the person keeps settings in (jsonread.loads)."""
     p = _expand(path)
     try:
         if p.stat().st_size > limit:
@@ -210,7 +203,7 @@ def _json(path, limit: int, problems: list, what: str):
         problems.append(problem(p, None, "unreadable", f"{what} cannot be read: {getattr(e, 'strerror', None) or e}"))
         return None
     try:
-        return jsonread.loads(raw.decode("utf-8-sig"))
+        return jsonread.loads(raw.decode("utf-8-sig"), unique=unique)
     except UnicodeDecodeError:
         problems.append(problem(p, None, "encoding", f"{what} is not saved as UTF-8 text"))
     except (ValueError, RecursionError) as e:
@@ -419,15 +412,21 @@ def _project(name: str, root: str, path: str, agents: list[dict], by_email: dict
         problems.append(problem(path, None, "missing-folder", f"the folder of the project {name} does not exist"))
     found, info = _identity(path, problems) if exists else ([], {"path": os.path.join(path, ".identity"),
                                                                  "state": "absent", "entries": 0})
+    # Each kept once, in file order, the repeats found by a set beside each list: before, each line scanned the whole
+    # list, so an .identity under its 1 MB cap took minutes on every page build (the Fable review of 70f2d3c, 4).
     listed: dict[int, list[str]] = {}
+    listed_seen: dict[int, set[str]] = {}
     others: list[dict] = []
+    others_seen: set[tuple[str, str]] = set()
     for who, email in found:
         hit = by_email.get(email.casefold())
         if hit:
             for i in hit:
-                if email not in listed.setdefault(i, []):
-                    listed[i].append(email)
-        elif not any(o["email"].casefold() == email.casefold() and o["name"] == who for o in others):
+                if email not in listed_seen.setdefault(i, set()):
+                    listed_seen[i].add(email)
+                    listed.setdefault(i, []).append(email)
+        elif (email.casefold(), who) not in others_seen:
+            others_seen.add((email.casefold(), who))
             others.append({"name": who, "email": email})
     pid = _node_id("project", key or path)
     members = []
@@ -738,7 +737,7 @@ def _base(value, source, problems: list) -> str | None:
 
 def _seats(path, key: str, group: str | None, out: dict, problems: list) -> None:
     """Fill agents, projects and documents from the seats file, whose path as compared is `key`."""
-    data = _json(path, MAX_SEATS, problems, "the seats file")
+    data = _json(path, MAX_SEATS, problems, "the seats file", unique=True)
     if data is None:
         return
     source = _expand(path)
@@ -759,6 +758,45 @@ def _seats(path, key: str, group: str | None, out: dict, problems: list) -> None
     docs = [d for a in agents if a["home"] for d in _shelf(a, problems)]
     out["documents"] = sorted(docs, key=lambda d: (d["agent"], d["slug"]))
     out["documents"].sort(key=lambda d: d["updated"], reverse=True)
+
+
+def named_roots(cfg: dict) -> tuple[list[dict], list[dict]]:
+    """The seats file's roots as {name, path, kind}, each path in full as this reader resolves it (_under, against the
+    base), and the problems. A "{home}" root gives one row per agent in the group that has a home, under the root's
+    own name and kind, as _projects reads it. A root that names nothing usable is a problem and is left out. For
+    semantext.api.named_roots, so a plug-in judges against the kernel's roots, not its own copy of these rules."""
+    problems: list[dict] = []
+    seats = _setting(cfg if isinstance(cfg, dict) else {}, "seats", problems)
+    if not seats:
+        return [], problems
+    data = _json(seats, MAX_SEATS, problems, "the seats file", unique=True)
+    if not isinstance(data, dict):
+        return [], problems
+    source = _expand(seats)
+    base = _base(data.get("base"), source, problems)
+    roots = data.get("roots")
+    if not isinstance(roots, list):
+        if roots is not None:
+            problems.append(problem(source, None, "shape", "'roots' should be a list of folders"))
+        return [], problems
+    agents = None
+    out: list[dict] = []
+    for n, root in enumerate(roots, 1):
+        if not (isinstance(root, dict) and isinstance(root.get("name"), str) and isinstance(root.get("path"), str)):
+            problems.append(problem(source, None, "bad-root", f"root {n} needs a name and a path"))
+            continue
+        kind = root.get("kind") if isinstance(root.get("kind"), str) else None
+        if root["path"].strip() == "{home}":
+            if agents is None:
+                table = data.get("seats") if isinstance(data.get("seats"), dict) else {}
+                agents = _agents(table, base, source, _key(source) or str(source), _setting(cfg, "group", problems),
+                                 problems)
+            out += [{"name": root["name"], "path": a["home"], "kind": kind} for a in agents if a["home"]]
+            continue
+        path = _under(base, root["path"], source, f"the root {root['name']}", problems)
+        if path:
+            out.append({"name": root["name"], "path": path, "kind": kind})
+    return out, problems
 
 
 def _setting(cfg: dict, key: str, problems: list) -> str | None:

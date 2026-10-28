@@ -383,7 +383,7 @@ const ALIAS = { live: "today", inbox: "decisions" };        // the addresses of 
 const PARENT = { test: "rules", layers: "agents", history: "today" };
 const WORDS = { own: "Your words", agent: "Passed on by another agent", tool: "A tool's notice" };
 const HOW = { bound: "bound by you", observed: "seen by its tool and folder", claimed: "claimed by its shell", fallback: "unnamed" };
-const BASIS = { text: "told by how it opens", transcript: "told by the tool's own record", none: "nothing marked it otherwise", page: "chosen in the test" };
+const BASIS = { text: "told by how it opens", transcript: "told by the tool's own record", none: "nothing marked it otherwise", error: "it could not be read, so the short card went", page: "chosen in the test" };
 
 const envTitle = (name) => ((S.state && S.state.profiles.find(p => p.name === name)) || {}).title || name || "";
 const normName = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9@._-]+/g, "-").replace(/^[-._]+|[-._]+$/g, "");
@@ -1029,11 +1029,15 @@ function place(px, py) {
 function closePop() { const el = $("rulecard"); if (el) el.hidden = true; }
 
 // ---------------------------------------------------------------- the rules, in words
-// Who wrote a rule: Semantext (built in, suggested, a switch), you, or an agent you said add to.
+// Who wrote a rule: Semantext (built in, suggested, a switch), you, or an agent you said add to. A rule with none of
+// the provenance Semantext writes was typed into its file by hand (store.WRITTEN_BY).
+const WRITTEN_BY = ["DEFAULT", "LEARNED", "PROPOSED", "SUGGESTED", "SETTING"];
+const handWritten = (e) => !WRITTEN_BY.includes((e.provenance || {}).type);
 const SOURCE = (e) => {
   const p = e.provenance || {};
   return p.type === "LEARNED" ? "Your words" : p.type === "PROPOSED" ? `Proposed by ${p.by || "an agent"}, added by you`
-    : p.type === "SUGGESTED" ? `Suggested${p.pack ? ": " + p.pack : ""}` : p.type === "SETTING" ? "A switch" : "Came with Semantext";
+    : p.type === "SUGGESTED" ? `Suggested${p.pack ? ": " + p.pack : ""}` : p.type === "SETTING" ? "A switch"
+    : p.type === "DEFAULT" ? "Came with Semantext" : "Hand-written: its file records no provenance, so who wrote it is not known";
 };
 function ruleDetail(e, prof, inPop) {
   const p = e.provenance || {};
@@ -1061,7 +1065,8 @@ function ruleRow(e, prof) {
   return h("li", { class: "rule" + (e.enabled === false ? " off" : "") },
     h("div", { class: "line" },
       h("button", { class: "link st", type: "button", "data-rule": e.id, "aria-expanded": String(open), style: "text-decoration:none;color:inherit;text-align:left" },
-        mine ? h("span", { class: "mine", title: "Your own words" }) : null, e.statement),
+        mine ? h("span", { class: "mine", title: "Your own words" }) : null, e.statement,
+        handWritten(e) ? h("span", { class: "meta", title: "Its file records no provenance" }, " (hand-written)") : null),
       h("button", { class: "switch", role: "switch", "aria-checked": String(e.enabled !== false), "aria-label": "On or off: " + String(e.statement).slice(0, 80), "data-toggle": e.id, "data-prof": prof, type: "button" })),
     open ? ruleDetail(e, prof, false) : null);
 }

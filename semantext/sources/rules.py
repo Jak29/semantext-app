@@ -26,13 +26,23 @@ every alias written out in full the data may come to MAX_EXPANDED characters (8 
 its length). An alias that points back inside what it names never finishes writing out, so it is over every bound.
 A folder or card that is a link is reported and not followed.
 
-How firmly a rule is held is worked out from the cards alone and never guessed. A rule shows the highest of three:
-  written  its words, and nothing that tests or guards them;
-  checked  a correction kept as a test in some card is tied to it, because the rule's provenance names the case
-           (cases: [id]) or the test names the rule (rules: [id]). A case a rule names that no card keeps is listed
-           beside the rule and earns it nothing: an id alone cannot be run against anything;
-  guarded  a checker refuses a break of it: the config's "guards" file names a checker for the rule's id, with what it
-           must let pass and what it must refuse. The page names the checker. Nothing else makes a rule guarded.
+How firmly a rule is held is worked out from the cards and the run records alone and never guessed. A rule shows the
+highest of four:
+  written       its words, and nothing that tests or guards them;
+  checked       a correction kept as a test in some card is tied to it, because the rule's provenance names the case
+                (cases: [id]) or the test names the rule (rules: [id]). A case a rule names that no card keeps is listed
+                beside the rule and earns it nothing: an id alone cannot be run against anything;
+  guarded once  the newest run record of some checker passed both arms for it, but the rule's words, a file it checked
+                or the record's age no longer hold (runs.py says which);
+  guarded       the newest run record of some checker passed both arms for it, on its words and the bytes in place now,
+                within the age bound (runs.py; RUN-RECORD-SCHEMA.md). Nothing else makes a rule guarded: the guards file
+                below names checkers and their arms, and the page shows them, but a list of what should have a record
+                is not a record (the ecosystem review, section 2).
+
+NO_PROVENANCE: a rule in the environment's own entries (no agent's layer) whose `provenance` section is missing or
+empty is marked `no_provenance`. The card cannot say who wrote it: typed into the YAML by hand is the usual way, but a
+rule ratified from a correction whose record was never written looks the same, and `ratified_by` names who ratified
+it, not its source. So the mark says no provenance is recorded, never more.
 
 A card may also record a `guard:` entry on a rule, as text or a list of texts (a bare yes or no, and the words none or
 n/a, record none). That is the card's own claim. It is shown beside the rule, and it earns the rule nothing, since no
@@ -40,8 +50,8 @@ checker is named with the arms that would show it refuses a break.
 
 The guards file is JSON: {"checkers": [{"name": what the checker is, "rules": [rule ids], "must_pass": what it lets
 through, "must_refuse": what it refuses, "where": where it lives (optional)}]}. Each arm is a text or a list of texts,
-and a checker with either arm empty is a problem and guards nothing. This reader does not run a checker; it reads what
-the file says one does.
+and a checker with either arm empty is a problem and is not listed. This reader does not run a checker; it reads what
+the file says one does, and what its run records say it did.
 
 Nothing here starts a process or runs what a card says.
 """
@@ -57,7 +67,7 @@ from pathlib import Path
 import yaml
 
 from .. import jsonread
-from . import problem
+from . import problem, runs
 
 CARD = "SEMANTICS.yaml"
 MAX_CARD = 4 * 1024 * 1024             # bytes in the file; a larger card is a problem, never parsed
@@ -67,7 +77,7 @@ GUARD_KEYS = ("guard", "guards")       # where a card may record what guards a r
 NO_GUARD = {"none", "no", "n/a", "na", "nil", "null", "false", "-"}   # a card saying there is none
 RATIFICATION_FIELDS = ("date", "words", "mode", "record")
 CHANGE_FIELDS = ("version", "date", "what", "ratified_by", "words", "record")
-COUNTED = ("rules", "candidates", "written", "checked", "guarded", "cases")
+COUNTED = ("rules", "candidates", "written", "checked", "guarded_once", "guarded", "cases")
 # The 29 characters read as a space (see the top of this file). The code uses str.split(), which folds exactly these on
 # the Python that runs; a test compares the two over every code point, so a Python that changed them would be caught.
 SPACES = "".join(map(chr, [*range(0x09, 0x0E), *range(0x1C, 0x20), 0x20, 0x85, 0xA0, 0x1680, *range(0x2000, 0x200B),
@@ -308,6 +318,8 @@ def _rule(x, label: str, agent: str | None, bad) -> dict | None:
     if prov is not None and not isinstance(prov, dict):
         bad("bad-field", f"rule {rid}: 'provenance' should be a section")
     prov = prov if isinstance(prov, dict) else {}
+    # No agent layer and no provenance: the file does not say where the rule came from (see NO_PROVENANCE).
+    unrecorded = agent is None and not any(v not in (None, "", [], {}) for v in prov.values())
     ratified_by = _who(x.get("ratified_by"))
     return {
         "id": rid, "kind": _text(x.get("kind")), "words": _squash(words),
@@ -315,7 +327,8 @@ def _rule(x, label: str, agent: str | None, bad) -> dict | None:
         "basis": _text(prov.get("type")), "quote": _text(prov.get("quote")),
         "ratified_by": ratified_by, "candidate": not ratified_by,
         "live": bool(x.get("enabled", True)) and not x.get("archived"),
-        "agent": agent, "relation": _relation(x.get("relation"), rid, bad), "guards": _guards(x),
+        "agent": agent, "no_provenance": unrecorded,
+        "relation": _relation(x.get("relation"), rid, bad), "guards": _guards(x),
         "cases": _ids(prov.get("cases"), f"rule {rid}: the cases in its provenance", bad),   # ids until _tie
     }
 
@@ -455,8 +468,11 @@ def _environment(folder: Path, problems: list[dict]) -> dict | None:
 
 # ---- all the cards --------------------------------------------------------------------------------------------
 def _held(rule: dict) -> str:
-    if rule.get("checkers"):
+    states = {v["state"] for v in rule.get("runs") or []}
+    if "guarded" in states:
         return "guarded"
+    if "stale" in states:
+        return "guarded once"
     return "checked" if any(c["kept_in"] for c in rule["cases"]) else "written"
 
 
@@ -566,23 +582,32 @@ def _index(pairs) -> dict[str, list[str]]:
     return out
 
 
-def _tie(envs: list[dict], problems: list[dict], guards: dict | None = None, guards_file=None) -> None:
-    """Join the cards: which rules each kept correction backs, where each case is kept, which checkers guard each rule,
-    and so how firmly each rule is held. A case counts wherever it is kept, since a rule and the tests for it need not
-    share a file."""
+def _tie(envs: list[dict], problems: list[dict], guards: dict | None = None, guards_file=None,
+         ran: dict | None = None) -> None:
+    """Join the cards: which rules each kept correction backs, where each case is kept, which checkers the guards file
+    names for each rule, what each checker's newest run record earns it, and so how firmly each rule is held. A case
+    counts wherever it is kept, since a rule and the tests for it need not share a file."""
     _name_ties(envs, problems)
     guards = guards or {}
+    ran = ran or {"records": {}, "days": runs.DAYS}
     held_ids = {r["id"] for env in envs for r in env["rules"]}
     for rid in guards:
         if rid not in held_ids:
             problems.append(problem(guards_file or "guards", None, "unknown-rule",
                                     f"a checker names the rule {rid}, which no card holds"))
+    for rid, recs in ran["records"].items():
+        if rid not in held_ids:
+            for rec in recs:
+                problems.append(problem(rec["source"], rec["line"], "unknown-rule",
+                                        f"a run record of {rec['checker']} names the rule {rid}, which no card holds"))
     kept = _index((c["id"], env["name"]) for env in envs for c in env["cases"])
     backs = _index((cid, r["id"]) for env in envs for r in env["rules"] for cid in r["cases"])
     for env in envs:
         for r in env["rules"]:
             r["cases"] = [{"id": cid, "kept_in": list(kept.get(cid, []))} for cid in r["cases"]]
             r["checkers"] = list(guards.get(r["id"], []))
+            r["runs"] = [runs.verdict(rec, r["words"], ran.get("now"), ran["days"])
+                         for rec in ran["records"].get(r["id"], [])]
             r["held"] = _held(r)
         for c in env["cases"]:
             c["rules"] = list(backs.get(c["id"], []))
@@ -592,8 +617,8 @@ def _tie(envs: list[dict], problems: list[dict], guards: dict | None = None, gua
 def _counts(env: dict) -> dict:
     held = [r["held"] for r in env["rules"]]
     return {"rules": len(held), "candidates": sum(r["candidate"] for r in env["rules"]),
-            "written": held.count("written"), "checked": held.count("checked"), "guarded": held.count("guarded"),
-            "cases": len(env["cases"])}
+            "written": held.count("written"), "checked": held.count("checked"),
+            "guarded_once": held.count("guarded once"), "guarded": held.count("guarded"), "cases": len(env["cases"])}
 
 
 def _link_parents(envs: list[dict], unread: dict[str, tuple[str, str]], problems: list[dict]) -> None:
@@ -672,8 +697,9 @@ def _read_folder(folder: Path, problems: list[dict]) -> tuple[list[dict], list[s
     return envs, others, unread
 
 
-def load(cfg: dict) -> dict:
-    """The rule cards in the "cards" folder, or {"off": True, ...} when that key is missing.
+def load(cfg: dict, now=None) -> dict:
+    """The rule cards in the "cards" folder, or {"off": True, ...} when that key is missing. `now` (a UTC datetime)
+    stands in for the clock that judges the run records' age; the tests' only.
 
     {"off": False, "cards": the folder, "environments": [...], "others": [...], "counts": {...}, "problems": [...]}.
     An environment is a folder that holds a SEMANTICS.yaml, or whose name starts with a letter or digit (see
@@ -689,13 +715,15 @@ def load(cfg: dict) -> dict:
     (basis, and the quote), who ratified it (a rule nobody ratified is a candidate), whether it is live (not switched
     off or undone), the agent whose layer it is in (None for the environment's own), how it stands to other rules
     (relation), the guards the card claims (shown, and counted for nothing), the checkers the config's "guards" file
-    names for it (checkers), its cases (each with the cards that keep it) and how firmly it is held:
-    written, checked or guarded. A case holds its id, the message that was misread, the owner's correction and
+    names for it (checkers, shown, and counted for nothing), what each checker's newest run record earns it (runs:
+    runs.verdict for each), its cases (each with the cards that keep it) and how firmly it is held: written, checked,
+    guarded once or guarded. A case holds its id, the message that was misread, the owner's correction and
     refinement of it, the reading expected and the one forbidden, where it came from, and the rules it backs.
 
     A problem is {"source", "line", "kind", "text"}. The kinds: no-folder, unreadable, link, no-card, too-large,
     not-utf8, bad-yaml, not-a-card, name-mismatch, bad-rule, bad-field, bad-case, duplicate-id, unknown-rule,
-    missing-parent, unread-parent, stale-pin, and for the guards file no-guards-file, bad-guards and bad-checker."""
+    missing-parent, unread-parent, stale-pin, for the guards file no-guards-file, bad-guards and bad-checker, and for
+    the run records the kinds runs.py lists."""
     root = cfg.get("cards")
     if not root:
         return {"off": True, "environments": [], "problems": []}
@@ -706,8 +734,12 @@ def load(cfg: dict) -> dict:
     else:
         problems.append(problem(folder, None, "no-folder", "the cards folder is not there"))
     guards_file = cfg.get("guards") if isinstance(cfg.get("guards"), str) and cfg.get("guards").strip() else None
-    _tie(envs, problems, checkers(guards_file, problems), guards_file)
+    named = checkers(guards_file, problems)
+    ran = runs.read(cfg, now)
+    problems += ran["problems"]
+    _tie(envs, problems, named, guards_file, {**ran, "now": now})
     _link_parents(envs, unread, problems)
     totals = {"environments": len(envs), **{k: sum(e["counts"][k] for e in envs) for k in COUNTED}}
     return {"off": False, "cards": str(folder), "environments": envs, "others": others, "counts": totals,
-            "guards": guards_file, "problems": problems}
+            "guards": guards_file, "run_records": ran["folders"] if not ran["off"] else None,
+            "run_record_days": ran["days"], "problems": problems}

@@ -174,6 +174,12 @@ def test_the_relay_card_needs_its_floor_from_the_base(store):
         if e["id"] in ("base.irreversible-needs-your-word", "base.relayed-words-are-information"):
             e["enabled"] = False                                        # the floor itself switched off, by hand
     store.save("base", base)
+    short = store.card("default", "relay")                              # still served (review of 1.2.2, S6)
+    assert "NOT the user's own message" in short
+    assert "base.irreversible-needs-your-word" in short and "base.relayed-words-are-information" in short
+    base["entries"] = [e for e in base["entries"]
+                       if e["id"] not in ("base.irreversible-needs-your-word", "base.relayed-words-are-information")]
+    store.save("base", base)
     assert store.card("default", "relay") == store.card("default")      # no floor in the base: the full card
 
 

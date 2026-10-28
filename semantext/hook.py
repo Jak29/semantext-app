@@ -13,6 +13,7 @@ stdout is added to the prompt's context. Three limits, each learned the hard way
 from __future__ import annotations
 
 import json
+import re
 import sys
 
 from . import jsonread
@@ -161,6 +162,39 @@ def sender_name(prompt) -> str:
     return "" if key_shaped(raw) else clean(raw)
 
 
+SESSION_RE = re.compile(r"[A-Za-z0-9_-]{1,64}", re.ASCII)   # the session names the work kernel's reader accepts
+
+
+def keep_turn(root, event: dict, prompt, transcript, own: bool, basis: str) -> None:
+    """The session's newest turn, for the work kernel (PM-DESIGN, follow-ups to A1, (a)): paths.turns_dir/<session>.json
+    holds whose words they were, on what basis, when, and where the turn's own record lies in the transcript (path,
+    byte offset, length). The words themselves are not copied: they stay in the transcript, and the kernel reads them
+    from the span. One small file per session, replaced each turn. Never raises, never blocks the prompt."""
+    try:
+        session = event.get("session_id")
+        if not isinstance(session, str) or not SESSION_RE.fullmatch(session) or not isinstance(transcript, str):
+            return
+        from . import provenance
+        from .paths import turns_dir
+        from .store import write_atomic
+        span = provenance.span_of(transcript, prompt)
+        rec = {"origin": "own" if own else "relayed", "basis": basis if span and basis == "transcript" else "none",
+               "turn": (span or {}).get("turn") or f"{session}@{(span or {}).get('offset')}",
+               "at": stamp_utc()}
+        if span:
+            rec.update(transcript=transcript, offset=span["offset"], length=span["length"])
+        folder = turns_dir(root)
+        folder.mkdir(parents=True, exist_ok=True)
+        write_atomic(folder / f"{session}.json", json.dumps(rec))
+    except Exception:  # noqa: BLE001  the turn record is for the work kernel; the card goes out whatever happens here
+        pass
+
+
+def stamp_utc() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def run(event_text: str, store: Store | None = None) -> str:
     """The text to add to the prompt: the inbox's answers and waiting requests first, then the card. If hearing
     prompts is switched on, the prompt is also kept, on this machine; if the feed is on (the default), one line says
@@ -179,9 +213,15 @@ def run(event_text: str, store: Store | None = None) -> str:
     who = agents.identify(event=event)         # the same name `semantext ask` works out in this agent's shell
     transcript = event.get("transcript_path") if isinstance(event.get("transcript_path"), str) else None
     agents.seen(who, transcript)                # the session and where its transcript is, never the prompt
-    kind, basis = whose(prompt, transcript)     # the user's own words, or another agent's or a tool's
+    try:
+        kind, basis = whose(prompt, transcript)     # the user's own words, or another agent's or a tool's
+    except Exception:  # noqa: BLE001  the evidence could not be read: the short card for this one prompt, and the
+        kind, basis = NOTICE, "error"            # feed says why (audit of f342d88, protection finding 2)
     own = kind == USER
-    if own and state.get("hear_prompts") and isinstance(prompt, str) and prompt.strip():
+    keep_turn(store.root, event, prompt, transcript, own, basis)
+    # Kept as heard only when the tool's own record says the user typed it, the bar a typed answer has: the text
+    # alone can be fooled (a relay behind a zero-width space, or in lower case), and nothing marked is not a yes.
+    if own and basis == "transcript" and state.get("hear_prompts") and isinstance(prompt, str) and prompt.strip():
         try:
             Heard(store.root).hear(name, prompt, source="hook")   # only the user's own words become "heard"
         except Refused:

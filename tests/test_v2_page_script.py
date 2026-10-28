@@ -1,4 +1,4 @@
-"""The v2 page's own script, run in node on a small stand-in for the browser's document (tests/v2_dom.js).
+"""The v2 page's own modules, run in node on a small stand-in for the browser's document (tests/v2_dom.js).
 
 These check what the page draws, not what the server answers: a waiting card's extras are folded, the problems count
 equals the problems, markdown is set as text, the gaming indicator says what the flag says, and Done shows each run's
@@ -6,26 +6,13 @@ output. Every check has a must-pass arm and a must-refuse arm. Skipped where nod
 """
 from __future__ import annotations
 
-import json
 import re
-import shutil
-import subprocess
-from pathlib import Path
 
 import pytest
 
-from semantext import paths
+from v2_node import NODE, run
 
-NODE = shutil.which("node")
-HARNESS = Path(__file__).with_name("v2_dom.js")
-PAGE = paths.static_dir() / "v2.html"
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-
-
-def run(js: str):
-    r = subprocess.run([NODE, str(HARNESS), str(PAGE)], input=js.encode("utf-8"), capture_output=True, timeout=60)
-    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
-    return json.loads(r.stdout.decode("utf-8"))
 
 
 CARD = """
@@ -263,21 +250,41 @@ def test_the_rules_drawer_shows_each_level_with_its_source():
     got = run("""
 const rule = (over) => Object.assign({ id: "core.a", words: "Ask first.", held: "written", cases: [], checkers: [], guards: [] }, over || {});
 const text = (r) => ruleNode(rule(r)).textContent;
-const data = (guards) => ({ off: false, guards, counts: { rules: 4, environments: 1, written: 2, checked: 2, guarded: 0 },
+const data = (folders, once) => ({ off: false, run_records: folders, counts: { rules: 4, environments: 1, written: 2, checked: 2, guarded_once: once || 0, guarded: 0 },
   environments: [{ name: "core", rules: [rule()] }], agents: {} });
-const drawer = (g) => DRAW.rules(data(g), {})[1].map((p) => p.textContent).join(" ");
+const drawer = (f, once) => DRAW.rules(data(f, once), {})[1].map((p) => p.textContent).join(" ");
+const run = (state, over) => Object.assign({ checker: "semantext-prove", version: "0.1.0", at: "2026-10-23T20:00:00Z", state, stale: [],
+  arms: { must_pass: { ran: 3, passed: 3 }, must_refuse: { ran: 4, refused: 4 } } }, over || {});
+const named = { name: "pre-write hook", where: "hooks/x", must_pass: ["a short answer"], must_refuse: ["a long one"] };
 report({ written: text(), checked: text({ held: "checked", cases: [{ id: "C-1", kept_in: ["core"] }, { id: "C-9", kept_in: [] }] }),
-  guarded: text({ held: "guarded", checkers: [{ name: "pre-write hook", where: "hooks/x", must_pass: ["a short answer"], must_refuse: ["a long one"] }] }),
-  claimed: text({ guards: ["a hook"] }), noFile: drawer(null), withFile: drawer("guards.json") });
+  named: text({ held: "checked", checkers: [named] }),
+  guarded: text({ held: "guarded", runs: [run("guarded", { note: "<b>n</b>" })] }),
+  stale: text({ held: "guarded once", runs: [run("stale", { stale: ["src/hook.py has changed since it was checked"] })] }),
+  failed: text({ held: "written", runs: [run("failed", { arms: { must_pass: { ran: 3, passed: 2 }, must_refuse: { ran: 4, refused: 4 } } })] }),
+  found: text({ held: "guarded", runs: [run("guarded", { findings: ["the two answers differ", "<i>x</i>"] })] }),
+  claimed: text({ guards: ["a hook"] }), noFile: drawer(null), withFile: drawer(["/repo"], 1) });
 """)
+    # findings are shown with their count and as text, and never change the level
+    assert "core.a · guarded, with 2 findings" in got["found"] and "Guarded, with 2 findings: must-pass" in got["found"]
+    assert "Finding: the two answers differ" in got["found"] and "Finding: <i>x</i>" in got["found"]
+    assert "core.a · guarded" in got["guarded"] and "finding" not in got["guarded"]   # none: plain guarded
     assert "Its words alone" in got["written"]
     assert "Checked by C-1 (kept in core)" in got["checked"] and "C-9, which no card keeps" in got["checked"]
-    assert "Guarded by pre-write hook (hooks/x): it must let pass a short answer, and it must refuse a long one." in got["guarded"]
-    assert "2 written (50%), 2 checked (50%), 0 guarded (0%)" in got["noFile"]
-    # must-refuse: a guard the card only mentions is a claim, never "guarded"; with no guards file, the drawer says so
+    recorded = "(recorded by semantext-prove 0.1.0 at 2026-10-23T20:00:00Z; not re-run by this page)"
+    assert ("Guarded: must-pass 3 of 3 passed, must-refuse 4 of 4 refused " + recorded) in got["guarded"]
+    assert "Its note: <b>n</b>" in got["guarded"]                          # a note is text, shown as text
+    assert ("Guarded once, now stale: src/hook.py has changed since it was checked." in got["stale"]
+            and recorded in got["stale"] and "guarded once" in got["stale"])
+    assert "did not pass (must-pass 2 of 3 passed" in got["failed"] and "earns nothing" in got["failed"]
+    # must-refuse: a checker the guards file names is listed as a claim, and the rule stays checked
+    assert "Your guards file names pre-write hook (hooks/x): it must let pass a short answer, and it must refuse a long one." in got["named"]
+    assert "earns nothing by itself" in got["named"] and "Guarded:" not in got["named"]
+    assert "2 written (50%), 2 checked (50%), 0 guarded (0%)" in got["noFile"] and "guarded once (" not in got["noFile"]
+    assert "1 guarded once (25%)" in got["withFile"]
+    # must-refuse: a guard the card only mentions is a claim, never "guarded"; with no run-record folder, the drawer says so
     assert "guarded" not in got["claimed"].split("Ask first.")[1].split("The card says")[0]
     assert "counts for nothing" in got["claimed"]
-    assert "names no guards file" in got["noFile"] and "names no guards file" not in got["withFile"]
+    assert "names no run-record folder" in got["noFile"] and "names no run-record folder" not in got["withFile"]
 
 
 def test_done_shows_each_runs_output_as_text():

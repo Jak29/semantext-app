@@ -6,7 +6,128 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
-## [1.2.3] - unreleased: should run on Linux and macOS (confirmed only when CI passes)
+## [1.3.0] - 2026-10-28
+
+Two new things, Work and the v2 page, and the first plug-in API. Outside plug-ins stay off: none reads anything until
+the closed places are named (`"closed"` or a `"closures_file"` in the sources file), and none loads until you turn it
+on at your console.
+
+### Added: Work
+- **A work store with one writer** (`semantext.work`): items, epics, moves, links, comments and decisions, kept as a
+  hash chain of events and folded into the board. Only the chain mints item numbers; one writer appends, under a lock,
+  only after the prefix it has verified, and a line whose write was cut off is adopted by the next append and only
+  that one.
+- **`semantext work new|move|link|unlink|comment|list|show`**, the command line. Who may make each move is a rule
+  (`work/rules.py`): void is the owner's, parked and reopening are the person's, review needs a deliverable.
+- **Your word, checked against the transcript.** A move that is yours carries the span of your own words in the
+  session transcript (path, offset, length, sha256), which the card hook writes to `<home>/work/turns/`. It is checked
+  again whenever it is read; a span that does not match, an absurd offset, or an act with no span is "unverified",
+  never yours. One record of your words authorizes one act. A cached verdict stands only while the span's sha256
+  does.
+- **Clauses read for real:** a decision counts for an item only when its own words name the item or its epic (notes
+  never count); run records come through `runs.py` and verdicts from the verdicts file; evidence or a piece that names
+  no maker leaves its clause "unknown", never "independent".
+- **The Work place on the v2 page:** Waiting on you, the board, the backlog, the estate's columns and the item panel,
+  with the open item in the address.
+
+### Added: the v2 page
+- **`/v2`**, read-only, in files (`index.html`, `style.css` and one ES module per place): Waiting, Projects,
+  Documents, Record, Estate and Work. Its Content-Security-Policy has `style-src 'self'` and no `'unsafe-inline'`.
+  Documents are served by row (`/api/v2/doc/<place>/<row_id>`) and checked again when served. A write whose referer is
+  a plug-in's page module, or that is not a plain fetch, is refused.
+
+### Security (from the reviews of Work and of the gate reader)
+- A forged or replayed act of yours, an act with no span, and a span offset past 2**63 are all unverified.
+- The inbox reads no requests file that is a link of any kind (symbolic, junction or hard) or that sits in a closed
+  place; before, a `requests.jsonl` hard-linked to any readable file was shown as that agent's cards.
+- A package that calls itself built-in is an outside plug-in, with every guard on. Anything a plug-in call raises,
+  SystemExit with any code included, is an error, and a document is served only on its check's explicit pass.
+- Calls into plug-ins: at most 4 in flight per plug-in and 16 hanging in all, waiting for a turn kept apart from the
+  run budget, and one page's answers capped at 8 MB.
+- A seat's home is joined in one place for the places and the gates readers, which refuses a path that names its own
+  start. A settings or seats file that gives a key twice is refused.
+- The gate reader runs on Python 3.10 again (a regex used a quantifier 3.10 does not know; every regex is now compiled
+  by a test). Later git extensions (`refStorage`, `relativeWorktrees`) are ignored at format 0 and refused by name at
+  format 1, as git 2.39 does.
+
+### Fixed
+- **The package says its own version.** 1.2.3 was released with `version = "1.2.2"` in its metadata; 1.3.0 says
+  1.3.0.
+
+### Phase 1: claims that said more than was measured
+
+Each change has a test that fails on 1.2.2.
+
+#### Changed
+- **A change's evidence is chosen by structure, not by name (git index).** Names lost to the next name: an audit
+  found 34 of 35 new secret-shaped names digested and 16 of 32 honest names refused. Evidence is now a file a real
+  repository's index lists as an ordinary file (`.git/HEAD` must name a ref or a commit), read from `.git/index` in
+  pure Python (versions 2, 3 and 4, SHA-1 or SHA-256); untracked and ignored files are "unknown". The index is not a
+  boundary: an agent can write it, so this chooses relevant files and is not a defence against an agent that breaks
+  rules. A short name belt refuses a few listed names (`.env*`, `id_rsa*`, `*.pem`, `*.key`, `credentials*`,
+  `token.*`, `*_token*`, `*-token*`, `*.token`, `wallet.*`, `wallet_*`, `wallet-*`). A home below its repository's top is read when that top is inside one of the named roots. The kind
+  allowlist and the full secret-name list no longer decide; the full list stays in `sources/evidence.py`, off.
+  Which files are evidence is now one small policy module (`evidence_gitindex.py`) behind `evidence.Policy`, so
+  another way can be added without touching `change.py`; `fingerprint` and `freshness` take a policy, or a list of
+  roots as before (`semantext.api.fingerprint`), which is read through the page's way. See docs/evidence-ways.md.
+- **The gates' all-clear says what was read.** A worktree with a hook file for each act and an `.identity` line is
+  now "a hook for each act, identity named (read; not tested)", never "gated, identity declared", and the holds line
+  says every worktree "has a hook for each act and an .identity that names someone (read; not tested)": no hook is
+  run, so none is known to refuse. The reader's notes say it deliberately differs from the hook checker on VACUOUS
+  (only when at least one act is gated).
+- **A hook git would not run is not counted.** On POSIX a hook file without the executable bit is ignored, as git
+  ignores it, and listed under `not_executable`. On Windows there is no bit to read: every file counts, and each record
+  says "executable bit not checked on Windows". Measured on Windows only; the POSIX branch is tested by setting the
+  platform flag and the executable check by hand.
+- **Every gates record carries the time it was read** (`read_at`, UTC), and so does the holds line ("Gates (read at
+  ...)").
+- **A change card's Brier score always comes with both counts:** n scored of m made, where m = scored + left out of
+  its outcome + awaiting an outcome + unusable (no direction, a chance missing or outside 0 to 1, no name), so neither
+  leaving a measure out nor writing one that cannot be scored improves a score. A coin's 0.25 stands beside it. The
+  interval counts changes, not predictions (ten predictions on one change are one): from ten changes scored, a 95%
+  Hoeffding bound on the mean score per change, which never has zero width; below ten, "too few to state an
+  interval", with the number of changes beside it.
+- **envcard says when an environment holds no rules** (`(no rules: this environment holds no entries)` under its
+  header), rather than a bare header. `envcard.KNOWN_DIGEST_DIFFERENCES` names the two empty shapes on which the
+  estate's digest.py knowingly differs, with why, for a parity check.
+- **A rule written into a file by hand is marked, without growing the card per rule.** Semantext's card carries one
+  line, "N rules are hand-written (no provenance)", for rules with none of the provenance Semantext writes; the page
+  marks each and says "Hand-written" where it said "Came with Semantext". envcard counts rules with no provenance in
+  one line per environment and marks each in the reference; the Rules drawer of ratified environments marks each.
+
+#### Fixed
+- **A file error no longer reaches the page as its own text.** The server answers a fixed message and an error id
+  (the error's kind, such as `PermissionError/EACCES`), never `str(e)`, which carries a path.
+
+#### Security
+- SECURITY.md states the price of 1.2.2's two-day bound on history names: a clock that ran more than two days ahead and
+  was corrected leaves `undo_last` restoring a future-named version for a while; a name up to two days ahead holds
+  later names at that time, with the order kept.
+
+#### Added
+- **The registry and `semantext.api` 0.1** (the first step of the ecosystem). Sources, places and checkers are
+  plug-ins by kind; the built-in readers and the page's places register as built-ins, and the page asks the registry
+  instead of fixed tuples, with the same answers. Outside plug-ins come from installed packages' `semantext.plugins`
+  entry points and load only once turned on: `semantext plugins enable <kind>.<name>`, typed at your console (a bar
+  for an agent that follows the rules, and no more; SECURITY.md, Plug-ins). `semantext plugins` lists them;
+  `semantext plugins check` says the kits are not built yet. The card hook loads none, and a test pins its imports.
+- **`semantext.api.is_closed_place(path)`**, the one shared check of the folders the sources file lists under
+  `"closed"`; it fails closed.
+- **`semantext.api` 0.2**, from what the first outside plug-ins asked for: `Source.read(config, ctx)` with a
+  `ReadContext` (0.1's `read(config)` still works); `named_roots`, `seat_rows`, `inside_roots`, `taken_names` and
+  `closures_known`; list settings (texts, numbers, flat records) that reach a plug-in's read; documents served by row
+  (`/api/v2/doc/<place>/<row_id>`, re-checked at serve time); closures that must be named (`"closed"` or a
+  `"closures_file"`) before a plug-in reads anything or is turned on; a time budget and size caps on every call into
+  a plug-in; and a v2 page policy with no `'unsafe-inline'`. The module's docstring and SECURITY.md state each limit.
+
+#### Fixed (on the way to api 0.2)
+- A path written with the `\\?\` prefix was judged open inside a closed folder.
+- A plug-in's list setting never reached its read.
+- A name two packages declared could never load; an attribute that raised took every page place down; SystemExit
+  from a plug-in escaped; `semantext plugins` printed package names raw (escape sequences included).
+- A run record whose own outcome is `failed` or `not proved` could be shown as guarded.
+
+## [1.2.3] - 2026-10-23: runs on Linux and macOS (CI passed on every job)
 
 1.2.2 passed every test on Windows, but CI failed 10 to 13 tests on each Linux and macOS job and 1 to 4 on each
 Windows job. Two were the product; the rest were tests that took the machine they ran on for granted.

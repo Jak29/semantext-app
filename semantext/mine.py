@@ -24,7 +24,8 @@ from . import jsonread
 from .agents import _user_home, project_root
 from .heard import Heard
 from .inbox import SECRET
-from .sender import USER, _record_origin, record_text, sender_of
+from .provenance import USER, record_origin, record_text
+from .sender import sender_of
 from .store import Store
 
 REPLY_TAIL = 400
@@ -94,11 +95,7 @@ def turns(path: Path):
                 yield "prompt", {"text": record_text(r), "origin": "summary", "at": r.get("timestamp"),
                                  "record": r.get("uuid")}
                 continue
-            text, origin = _record_origin(r)
-            if r.get("type") == "user" and text is None and origin is None:
-                text = record_text(r)            # a record that says nothing of itself: the text decides
-                if text is not None and r.get("isMeta"):
-                    origin = "meta"              # added by the tool, never typed
+            text, origin = record_origin(r)      # None: a record that says nothing of itself, so the text decides
             if text is None:
                 continue
             yield "prompt", {"text": text, "origin": origin, "at": r.get("timestamp"), "record": r.get("uuid")}

@@ -23,6 +23,19 @@ def at_the_users_terminal(monkeypatch):
     monkeypatch.setattr("semantext.inbox.stdin_is_console", lambda: True)
 
 
+@pytest.fixture(autouse=True)
+def no_plug_in_call_outlives_its_test():
+    """Calls into plug-ins are counted under the plug-in's registration name ("source.tickets"), and tests reuse names:
+    a late call one test leaves running would make the same name Busy in the next. So each test ends only once the
+    plug-in threads it started have returned (each ends on its own deadline), as if every test were its own process."""
+    yield
+    import threading
+    import time
+    end = time.monotonic() + 15
+    while time.monotonic() < end and any(t.name == "semantext-plugin" and t.is_alive() for t in threading.enumerate()):
+        time.sleep(0.01)
+
+
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     """A fresh Semantext home, and a fresh user home, so no test ever touches the real ~/.semantext or ~/.claude."""

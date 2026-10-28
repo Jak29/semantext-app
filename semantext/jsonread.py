@@ -45,15 +45,37 @@ def depth(text: str) -> int:
     return deepest
 
 
-def loads(text: str | bytes | bytearray, **kw):
+class _Twice(Exception):
+    """A key given twice in one object: raised inside the parse, said as NotJSON by loads."""
+
+
+def _once(pairs):
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise _Twice(k)
+        out[k] = v
+    return out
+
+
+def loads(text: str | bytes | bytearray, unique: bool = False, **kw):
     """json.loads, refusing with NotJSON a text nested deeper than MAX_DEPTH (never handed to the parser), one the
-    parser overflows on, and one json calls bad. Bytes are decoded as json.loads decodes them."""
+    parser overflows on, and one json calls bad. Bytes are decoded as json.loads decodes them. With `unique`, a text in
+    which any object gives one key twice is refused too: JSON keeps the last of the two in silence, so a first value
+    the person wrote would be replaced unseen (the audit of 784faf6, protection item 9). It is for the files the
+    person keeps settings in, and cannot be given with an object_pairs_hook of the caller's."""
     if isinstance(text, (bytes, bytearray)):
         text = bytes(text).decode(json.detect_encoding(text), "surrogatepass")
     if depth(text) > MAX_DEPTH:
         raise NotJSON(f"it is nested more than {MAX_DEPTH} levels deep, so it is not read", text, 0, deep=True)
+    if unique:
+        if "object_pairs_hook" in kw or "object_hook" in kw:
+            raise TypeError("unique cannot be given with a hook of the caller's")
+        kw["object_pairs_hook"] = _once
     try:
         return json.loads(text, **kw)
+    except _Twice as e:
+        raise NotJSON(f"the key {str(e.args[0])[:80]!r} is given twice in one object, so it is not read", text, 0) from None
     except RecursionError:
         raise NotJSON(f"it is nested more than {MAX_DEPTH} levels deep, so it is not read", text, 0, deep=True) from None
     except NotJSON:

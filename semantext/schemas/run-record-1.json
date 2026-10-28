@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semantext/schemas/run-record-1.json",
+  "title": "Semantext run record, schema 1",
+  "description": "One line of runs/<checker>.jsonl under a folder the person lists in sources.json (\"run_records\": [folders]). A checker that runs outside Semantext appends one record per run; the newest record for a (rule, checker) pair decides. Semantext reads records and never re-runs anything. This file documents the shape; Semantext validates it by hand (semantext/sources/runs.py), and a checker reads this file rather than importing the package. A rule is shown as guarded only when the newest record has schema 1, both arms ran (ran > 0) and every case passed (passed == ran, refused == ran), rule.sha256 equals the rule's text now, every subject blob equals the bytes in place now, and at is not in the future and is within the age bound (30 days unless the sources file sets \"run_record_days\"). When the blobs, the rule's text or the age no longer hold it is shown as guarded once (stale), with which. Extra fields are allowed and decide nothing, except that counts in arms must agree with detail when detail lists the cases.",
+  "type": "object",
+  "required": ["schema", "checker", "rule", "subject", "arms", "at"],
+  "properties": {
+    "schema": {"const": 1},
+    "checker": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 100, "description": "Plain text: printable characters only (no control, format or line-separator characters), no leading or trailing space."},
+        "version": {"type": "string", "minLength": 1, "maxLength": 100, "description": "Plain text, as name."},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "The SHA-256 of the checker's own entry file. Shown, never judged."}
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "description": "The rule's id as its card gives it."},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the UTF-8 bytes of the rule's statement as the card shows it: every run of whitespace (the characters Python's str.split() splits on) joined into one ordinary space, the ends trimmed, nothing else changed."}
+      }
+    },
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "blob"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "description": "The file checked, relative to the listed folder this record lies under (an absolute path must lie inside a listed folder). A path outside every listed folder, or in a place the person closed, refuses the record."},
+          "blob": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$", "description": "The git blob id of the bytes checked: SHA-1 (40 hex) or SHA-256 (64 hex) of \"blob <length>\\0\" followed by the bytes."}
+        }
+      }
+    },
+    "arms": {
+      "type": "object",
+      "required": ["must_pass", "must_refuse"],
+      "properties": {
+        "must_pass": {
+          "type": "object",
+          "required": ["ran", "passed"],
+          "properties": {
+            "ran": {"type": "integer", "minimum": 1},
+            "passed": {"type": "integer", "minimum": 0, "description": "No more than ran."},
+            "how": {"type": "string"}
+          }
+        },
+        "must_refuse": {
+          "type": "object",
+          "required": ["ran", "refused"],
+          "properties": {
+            "ran": {"type": "integer", "minimum": 1},
+            "refused": {"type": "integer", "minimum": 0, "description": "No more than ran."},
+            "how": {"type": "string"}
+          }
+        }
+      }
+    },
+    "at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$", "description": "When the run finished, in UTC with a Z. More than two minutes after the reader's clock refuses the record."},
+    "by": {"type": "string", "description": "Who started the run, as the checker knows it. Shown as text."},
+    "note": {"type": "string", "description": "Free text, shown as text."},
+    "findings": {"type": "array", "items": {"type": "string"}, "description": "Optional: short texts for what the run found that the counts cannot carry. The level stays what the counts say; the page shows \"guarded, with N findings\" and each finding as text. Anything but a list of texts refuses the record."},
+    "outcome": {"enum": ["clean", "with findings", "failed", "not proved"], "description": "Optional: the record's own word for its run. \"failed\" or \"not proved\" is never guarded, whatever the counts say; the page shows the outcome and the findings. Any other value refuses the record."},
+    "summary": {"type": "object", "description": "Optional: counts by status and class. An extra the page may show; it decides nothing."},
+    "detail": {
+      "type": "object",
+      "description": "Optional. When it holds arms as a list of cases, each with a class (must_pass or must_refuse; other classes are not counted) and a status, the cases of each class whose status is not \"not-run\" must number that arm's ran, and those with status \"passed\" must number passed (or refused). When it holds must_pass or must_refuse as a list of cases, the list's length must equal that arm's ran, and when every case carries a boolean ok, the number of true ones must equal passed (or refused). A record that disagrees is refused.",
+      "properties": {
+        "arms": {"type": "array", "items": {"type": "object", "properties": {"class": {"type": "string"}, "status": {"type": "string"}}}},
+        "must_pass": {"type": "array", "items": {"type": "object", "properties": {"ok": {"type": "boolean"}}}},
+        "must_refuse": {"type": "array", "items": {"type": "object", "properties": {"ok": {"type": "boolean"}}}}
+      }
+    }
+  },
+  "additionalProperties": true
+}

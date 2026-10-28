@@ -2,6 +2,9 @@
 alternate stream, secret names, short names, missing roots), and the scoring of an undo. Every attack here was digested, or scored, by 8807d40; each now has a refusing arm beside a
 passing one. Junctions are made with _winapi.CreateJunction (Windows, no privilege needed); a test that cannot make its
 link or its short name on this machine is skipped, never passed.
+
+These test HOW change.py reads (the checks every evidence policy sits behind), so they use a policy defined here that
+admits every file inside its roots. Which files are evidence is each way's own test (test_evidence_*.py).
 """
 from __future__ import annotations
 
@@ -12,9 +15,23 @@ from pathlib import Path
 
 import pytest
 
-from semantext.sources import change
+from semantext.sources import change, evidence
 
 WINDOWS = sys.platform == "win32"
+
+
+class Inside(evidence.Policy):
+    """Every file inside the roots, for testing the reading alone."""
+    name = "inside (tests only)"
+
+    def __init__(self, *roots):
+        self._roots = [str(r) for r in roots]
+
+    def roots(self):
+        return self._roots
+
+    def refuse(self, path, real, root, budget=None):
+        return None
 
 
 def junction(link: Path, target: Path) -> None:
@@ -35,7 +52,7 @@ def area(tmp_path):
 
 def fp(path, root) -> dict:
     # the root as compared (case-folded), the way 8807d40's view passed it, so an attack is measured on its own
-    return change.fingerprint([str(path)], [os.path.normcase(str(root))])
+    return change.fingerprint([str(path)], Inside(os.path.normcase(str(root))))
 
 
 def test_a_plain_file_inside_is_digested_and_one_outside_is_not(area):
@@ -44,8 +61,21 @@ def test_a_plain_file_inside_is_digested_and_one_outside_is_not(area):
     assert fp(outside / "report.txt", root)["digest"] is None
     assert fp(root / ".." / "outside" / "report.txt", root)["digest"] is None
     with pytest.raises(TypeError):
-        change.fingerprint([str(root / "plain.txt")])          # roots are required: there is no default to fall back on
-    assert change.fingerprint([str(outside / "report.txt")], [])["digest"] is None
+        change.fingerprint([str(root / "plain.txt")])          # a policy is required: there is no default to fall back on
+    assert change.fingerprint([str(outside / "report.txt")], Inside())["digest"] is None     # a policy with no roots
+    # must refuse: a bare list of roots (the public call) is read through the page's way (git-index), never with no
+    # policy, so a file no repository lists is not digested; something that is neither a list nor a policy reads nothing
+    got = change.fingerprint([str(root / "plain.txt")], [str(root)])
+    assert got["digest"] is None and "git repository" in got["why"]
+    for nothing in (str(root), {"roots": [str(root)]}, None, object()):
+        got = change.fingerprint([str(root / "plain.txt")], nothing)
+        assert got["digest"] is None and "no evidence policy" in got["why"]
+    # the base policy admits nothing
+    class Bare(evidence.Policy):
+        def roots(self):
+            return [str(root)]
+    got = change.fingerprint([str(root / "plain.txt")], Bare())
+    assert got["digest"] is None and "no evidence policy admits it" in got["why"]
 
 
 @pytest.mark.skipif(not WINDOWS, reason="junctions are a Windows thing")
@@ -59,6 +89,19 @@ def test_a_junction_in_the_middle_of_a_path_is_never_followed(area):
     via = root.parent / "via"
     junction(via, root)
     assert fp(via / "sub" / "notes.txt", via)["digest"] == fp(via / "sub" / "notes.txt", via)["digest"] is not None
+
+
+@pytest.mark.skipif(not WINDOWS, reason="junctions are a Windows thing")
+def test_a_file_directly_under_a_linked_root_is_read_like_one_a_folder_deeper(area):
+    # review of 1.2.2, C1: its parent is the root, and the root's own link was taken for "changed while it was read"
+    root, outside = area
+    via = root.parent / "via"
+    junction(via, root)
+    got = fp(via / "plain.txt", via)
+    assert got["digest"] is not None, got
+    assert got["digest"] == fp(via / "plain.txt", via)["digest"]             # and steady from one read to the next
+    junction(root / "bridge", outside)
+    assert fp(via / "bridge" / "report.txt", via)["digest"] is None          # must-refuse: a link below the root
 
 
 def test_a_hard_link_is_never_read(area):
@@ -81,85 +124,16 @@ def test_an_alternate_stream_is_never_read(area):
         pytest.skip(f"no alternate stream here: {e}")
     got = fp(str(root / "plain.txt") + ":hidden", root)          # 8807d40: digested the stream
     assert got["digest"] is None and "colon" in got["why"]
-    assert change.fingerprint(["C:plain.txt"], [str(root)])["digest"] is None          # drive-relative
+    assert change.fingerprint(["C:plain.txt"], Inside(root))["digest"] is None          # drive-relative
 
 
-SECRETS = [(".ssh", "notes.md"), ("sub", ".env.local.txt"), (".kaggle", "notes.txt"), (".aws", "config.json"),
-           (".Docker", "config.json"), (".kube", "x.yaml"), (".gnupg", "a.txt"), ("credentials", "x.txt"),
-           ("credentials.json",), ("sub", ".env.json")]
-NOT_EVIDENCE = [(".npmrc",), (".netrc",), (".pgpass",), (".git-credentials",), ("id_ed25519",), ("id_rsa.pub",),
-                ("server.PEM",), ("x.pfx",), ("x.p12",), ("db.kdbx",), ("api.key",), ("photo.png",), ("prod.env",),
-                ("wallet.dat",), ("a.pdf",), ("nb.ipynb",), ("paper.tex",), ("README.rst",), ("a.tsv",)]
-# Names that held or suggested secrets and were digested at 91625c1, from the audit's probe of the kinds: every one is
-# refused now.
-DIGESTED_AT_91625C1 = [
-    "wallet.json", "wallet.txt", "wallet.md", "vault.json", "vault.yaml", "vault.txt", "token.json", "tokens.json",
-    "my_token.txt", "secret.json", "secrets.json", "secrets.yaml", "client_secret.json", "kaggle.json", "gh/hosts.yml",
-    ".config/gh/hosts.yml", ".ssh_old/config.txt", ".ssh.bak/id.txt", ".sshd/x.txt", "service-account.json",
-    "api_key.txt", "apikey.json", "password.txt", "passwords.csv", "seed.txt", "mnemonic.txt", "recovery_codes.txt",
-    "access_token.txt", "auth.json", "env.json", "settings.local.json", ".claude/settings.local.json", "keys.json",
-    "key.json", "private_key.json", "x.key.md", "cred.json"]
-INNOCENT = [("tokenizer.py",), ("secretary.md",), ("sub", "token_budget.md"), ("tokenizer", "a.py"), ("keyboard.md",),
-            ("monkey.md",), ("key_results.md",), ("notes.MD",), ("hosts.yml",), ("other", "hosts.yml")]
-# The new kinds: scripts, markup, build files and logs, which changes are most often about.
-SCRIPTS = ["LICENSE", "Makefile", "Dockerfile", "README", ".gitignore", ".gitattributes", ".editorconfig", "index.html",
-           "style.css", "run.sh", "run.ps1", "run.bat", "run.cmd", "pom.xml", "setup.cfg", "pytest.ini", "main.go",
-           "App.java", "lib.c", "lib.h", "x.hpp", "x.cpp", "a.log"]
-# The trade-off of whole-part matching, stated: these honest names are refused.
-REFUSED_HONEST = ["vault_notes.md", "wallets.md", "tokens.md", ".sshd_notes.md", "passwords_policy.md"]
-
-
-def make(root: Path, parts) -> Path:
-    f = root.joinpath(*parts)
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("x", encoding="utf-8")
-    return f
-
-
-@pytest.mark.parametrize("parts", SECRETS)
-def test_a_part_named_like_a_secret_is_refused_even_for_a_kind_that_is_evidence(area, parts):
-    root, _ = area
-    got = fp(make(root, parts), root)
-    assert got["digest"] is None and "holds secrets" in got["why"]
-
-
-@pytest.mark.parametrize("parts", NOT_EVIDENCE)
-def test_a_file_that_is_not_a_kind_of_evidence_is_refused(area, parts):
-    root, _ = area
-    got = fp(make(root, parts), root)
-    assert got["digest"] is None and ("not a kind of file read as evidence" in got["why"] or "holds secrets" in got["why"])
-
-
-@pytest.mark.parametrize("parts", INNOCENT)
-def test_an_innocent_name_is_read_as_evidence(area, parts):
-    root, _ = area
-    assert fp(make(root, parts), root)["digest"]                 # c5eecb6 refused several of these by substring
-
-
-@pytest.mark.parametrize("rel", DIGESTED_AT_91625C1)
-def test_every_secret_name_digested_at_91625c1_is_refused(area, rel):
-    root, _ = area
-    got = fp(make(root, ("s", *rel.split("/"))), root)
-    assert got["digest"] is None and "holds secrets" in got["why"]
-
-
-@pytest.mark.parametrize("name", SCRIPTS)
-def test_scripts_and_build_files_are_evidence(area, name):
-    root, _ = area
-    assert fp(make(root, ("h", name)), root)["digest"]          # 91625c1 refused every one of these as not evidence
-
-
-@pytest.mark.parametrize("name", REFUSED_HONEST)
-def test_the_trade_off_of_whole_part_matching_refuses_these_honest_names(area, name):
-    root, _ = area
-    assert fp(make(root, ("h", name)), root)["digest"] is None
-
-
-def test_a_secret_named_file_is_refused_by_both_layers():
-    for name in (".npmrc", ".netrc", ".git-credentials", "id_ed25519", "server.pem", "db.kdbx"):
-        assert change._kind(name) is not None and change._bad_name(name) is not None, name
-    # must pass: each layer lets an ordinary evidence name through
-    assert change._kind("tokenizer.py") is None and change._bad_name("tokenizer.py") is None
+def test_the_names_the_file_system_reads_differently_are_refused_and_names_alone_decide_nothing_else():
+    for part in ("a.txt:hidden", "trailing.", "trailing ", "CON", "nul.txt", "PROGRA~1"):
+        assert change._bad_name(part) is not None, part
+    # must pass: change.py no longer judges what a name may hold; that is the evidence policy's question
+    for part in (".npmrc", "id_ed25519", "server.pem", "wallet.json", "password_policy.md", "tokenizer.py"):
+        assert change._bad_name(part) is None, part
+    assert not hasattr(change, "SECRET_NAMES") and not hasattr(change, "EVIDENCE_KINDS")
 
 
 @pytest.mark.skipif(not WINDOWS, reason="short (8.3) names are a Windows thing")
@@ -178,16 +152,16 @@ def test_a_short_name_is_refused_and_realpath_expands_it_here(area):
     assert os.path.normcase(os.path.realpath(short)) == os.path.normcase(os.path.realpath(long))   # expanded here
     got = fp(short, root)                                        # 8807d40: digested
     assert got["digest"] is None and "is a short (8.3) name" in got["why"]
-    assert change.fingerprint([str(short)], [str(root)])["digest"] is None     # the root as written, too
+    assert change.fingerprint([str(short)], Inside(root))["digest"] is None     # the root as written, too
 
 
 def test_an_absent_file_is_unknown_and_too_many_files_are_said(area):
     root, _ = area
-    gone = change.freshness({"files": [str(root / "nope.txt")], "digest": "x" * 64}, [str(root)])
+    gone = change.freshness({"files": [str(root / "nope.txt")], "digest": "x" * 64}, Inside(root))
     assert gone["state"] == "unknown" and "not there" in gone["why"]
-    many = change.fingerprint([str(root / "plain.txt")] * (change.MAX_FILES + 1), [str(root)])
+    many = change.fingerprint([str(root / "plain.txt")] * (change.MAX_FILES + 1), Inside(root))
     assert many["digest"] is None and "at most 50" in many["why"]
-    assert change.fingerprint([str(root / "plain.txt")] * change.MAX_FILES, [str(root)])["digest"]   # must pass
+    assert change.fingerprint([str(root / "plain.txt")] * change.MAX_FILES, Inside(root))["digest"]   # must pass
 
 
 def test_the_cache_is_in_memory_and_lapses(area, monkeypatch):

@@ -34,7 +34,7 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
 own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
 
-> **Status: version 1.0.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+> **Status: version 1.3.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 

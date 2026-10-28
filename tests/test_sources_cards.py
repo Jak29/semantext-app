@@ -76,7 +76,9 @@ def lines_of(lines, bom: bool, eol: str) -> bytes:
 
 
 @pytest.fixture
-def world(tmp_path):
+def world(tmp_path, monkeypatch):
+    # the reader judges each file against the person's closures: here none are named, never the real home's
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(tmp_path / "no-sources.json"))
     return World(tmp_path)
 
 
@@ -1158,11 +1160,14 @@ def test_the_reader_opens_only_the_named_files_for_reading_and_lists_no_folder(w
     world.put("Birch", cmd("B-1"))   # Cedar has no file yet, and so none is opened for it
     world.runs(run_line("Birch", "B-1"))
     world.parked(park("Alder", "A-1"))
+    sources = world.root / "sources.json"   # the person's closures are read too, once (the Fable review of 70f2d3c, 3)
+    sources.write_text(json.dumps({"closed": []}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
     with watching(monkeypatch) as (opened, listed):
         out = world.load()
     assert len(out["cards"]) == 2
     assert {p for p, _ in opened} == {world.seats, world.file("Alder"), world.file("Birch"),
-                                      world.inbox / "runs.jsonl", world.inbox / "parked.jsonl"}
+                                      world.inbox / "runs.jsonl", world.inbox / "parked.jsonl", sources}
     assert {mode for _, mode in opened} <= {"r", "rb"} and listed == []
 
 

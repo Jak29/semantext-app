@@ -1,0 +1,3086 @@
+{
+ "posix": {
+  "group": null,
+  "home": "<TMP>/user",
+  "key": "seats",
+  "off": false,
+  "outside_group": [],
+  "problems": [
+   {
+    "kind": "no-home",
+    "line": 13,
+    "source": "<TMP>/roots.json",
+    "text": "s2 declares no home, so has no home root"
+   },
+   {
+    "kind": "bad-value",
+    "line": 3,
+    "source": "<TMP>/base/refused/.git/config",
+    "text": "core.bare = 'maybe' is not a yes or no; git would refuse to run in any repository that reads this file"
+   },
+   {
+    "kind": "bad-config",
+    "line": 3,
+    "source": "<TMP>/base/badline/.git/config",
+    "text": "bad config line; git would refuse to run in any repository that reads this file"
+   },
+   {
+    "kind": "missing-root",
+    "line": null,
+    "source": "<TMP>/base/absent",
+    "text": "the folder for absent is not there"
+   }
+  ],
+  "read": "static",
+  "read_at": "<READ_AT>",
+  "read_note": "a static read of git's own files: it can say a gate is reachable, never that it still refuses",
+  "repos": [
+   {
+    "counts": {
+     "ARMED": 1,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "armed",
+    "present": true,
+    "root": "<TMP>/base/armed",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/armed/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/armed/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/armed/.git",
+      "hooks_dir": "<TMP>/base/armed/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/armed/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/armed/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/armed",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 1,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "inert",
+    "present": true,
+    "root": "<TMP>/base/inert",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/inert/.git",
+      "events": [
+       {
+        "by": null,
+        "event": "ordinary commit",
+        "needs": [
+         "pre-commit"
+        ],
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git merge --no-ff",
+        "needs": [
+         "commit-msg"
+        ],
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/inert/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/inert/.git",
+      "hooks_dir": "<TMP>/base/inert/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/inert/.identity",
+       "present": false
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/inert",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "INERT"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "INERT",
+        "words": "off"
+       }
+      ],
+      "words": [
+       "off"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 1,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "vacuous",
+    "present": true,
+    "root": "<TMP>/base/vacuous",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/vacuous/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/vacuous/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/vacuous/.git",
+      "hooks_dir": "<TMP>/base/vacuous/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/vacuous/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/vacuous/.identity",
+       "present": false
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/vacuous",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "VACUOUS"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "VACUOUS",
+        "words": "checks nothing"
+       }
+      ],
+      "words": [
+       "checks nothing"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 1,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "nobody",
+    "present": true,
+    "root": "<TMP>/base/nobody",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/nobody/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/nobody/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/nobody/.git",
+      "hooks_dir": "<TMP>/base/nobody/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/nobody/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/nobody/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/nobody",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "VACUOUS"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "VACUOUS",
+        "words": "checks nothing"
+       }
+      ],
+      "words": [
+       "checks nothing"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 1,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "stranded",
+    "present": true,
+    "root": "<TMP>/base/stranded",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/stranded/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": null,
+        "event": "git merge --no-ff",
+        "needs": [
+         "commit-msg"
+        ],
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/stranded/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/stranded/.git",
+      "hooks_dir": "<TMP>/base/stranded/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/stranded/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/stranded/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/stranded",
+      "reachable": [
+       "pre-commit"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "UNCOVERED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "none_gated": false,
+        "open": [
+         "git merge --no-ff",
+         "git am",
+         "git push"
+        ],
+        "read": "static",
+        "stranded": [
+         {
+          "name": "commit-msg",
+          "where": [
+           "<TMP>/base/stranded/.git/hooks"
+          ],
+          "words": "stranded"
+         },
+         {
+          "name": "pre-push",
+          "where": [
+           "<TMP>/base/stranded/.git/hooks"
+          ],
+          "words": "stranded"
+         }
+        ],
+        "tested": false,
+        "verdict": "UNCOVERED",
+        "words": "open"
+       }
+      ],
+      "words": [
+       "open"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 1,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "noexec",
+    "present": true,
+    "root": "<TMP>/base/noexec",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/noexec/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/noexec/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/noexec/.git",
+      "hooks_dir": "<TMP>/base/noexec/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/noexec/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/noexec/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [
+       "pre-push"
+      ],
+      "note": null,
+      "path": "<TMP>/base/noexec",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "UNCOVERED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "none_gated": false,
+        "open": [
+         "git push"
+        ],
+        "read": "static",
+        "stranded": [],
+        "tested": false,
+        "verdict": "UNCOVERED",
+        "words": "open"
+       }
+      ],
+      "words": [
+       "open"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 1,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "includes",
+    "present": true,
+    "root": "<TMP>/base/includes",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/includes/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/includes/.git/config",
+        "included_by": null,
+        "scope": "local"
+       },
+       {
+        "file": "<TMP>/base/includes/.git/extra.cfg",
+        "included_by": "<TMP>/base/includes/.git/config",
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/includes/.git",
+      "hooks_dir": "<TMP>/base/includes/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/includes/.git/extra.cfg",
+       "line": 2,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": [
+        "<TMP>/base/includes/.git/config"
+       ]
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/includes/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/includes",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [
+       "<TMP>/base/includes/.git/config line 6: includeIf \"gitdir:elsewhere/\" is not evaluated; what it includes does not set core.hooksPath, so this answer does not depend on it"
+      ],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 1,
+     "worktrees": 1
+    },
+    "name": "refused",
+    "present": true,
+    "root": "<TMP>/base/refused",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/refused/.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/refused/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/refused/.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/refused",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "unknown",
+      "tested": false,
+      "uncertain": [
+       "git would refuse to run here: <TMP>/base/refused/.git/config line 3: core.bare = 'maybe' is not a yes or no"
+      ],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 1,
+     "worktrees": 1
+    },
+    "name": "badline",
+    "present": true,
+    "root": "<TMP>/base/badline",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/badline/.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/badline/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/badline/.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/badline",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "unknown",
+      "tested": false,
+      "uncertain": [
+       "git would refuse to run here: <TMP>/base/badline/.git/config line 3: bad config line"
+      ],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 3,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 3,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 6
+    },
+    "name": "multi",
+    "present": true,
+    "root": "<TMP>/base/multi",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git",
+      "hooks_dir": "<TMP>/base/multi/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/a",
+      "hooks_dir": "<TMP>/base/multi/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi-a/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": false,
+      "name": "a",
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi-a",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       },
+       {
+        "file": "<TMP>/base/multi/.git/worktrees/b/config.worktree",
+        "included_by": null,
+        "scope": "worktree"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/b",
+      "hooks_dir": "<TMP>/base/multi-b/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/multi/.git/worktrees/b/config.worktree",
+       "line": 2,
+       "scope": "worktree",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi-b/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": false,
+      "name": "b",
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi-b",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/gone",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": false,
+      "name": "gone",
+      "not_executable": [],
+      "note": "the worktree's folder is gone; git lists it as prunable",
+      "path": "<TMP>/base/multi-gone",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/locked",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": true,
+      "main": false,
+      "name": "locked",
+      "not_executable": [],
+      "note": "the worktree's folder is gone, but it is locked, so git does not call it prunable",
+      "path": "<TMP>/base/multi-locked",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/nogitfile",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": false,
+      "name": "nogitfile",
+      "not_executable": [],
+      "note": "the worktree's .git file is gone, though its folder is still there; git lists it as prunable",
+      "path": "<TMP>/base/multi-nogitfile",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 1,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "bare.git",
+    "present": true,
+    "root": "<TMP>/base/bare.git",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/bare.git",
+      "events": [],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [],
+      "git_dir": "<TMP>/base/bare.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": "a bare repository: it has no work tree, so nothing is committed here and there is no gate to read",
+      "path": "<TMP>/base/bare.git",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "bare",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 0
+    },
+    "name": "absent",
+    "present": false,
+    "root": "<TMP>/base/absent",
+    "seat": null,
+    "worktrees": []
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 1,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "home",
+    "present": true,
+    "root": "<TMP>/base/homes/s1",
+    "seat": "s1",
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/homes/s1/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit checked: a hook file git would ignore as not executable is not counted",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/homes/s1/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/homes/s1/.git",
+      "hooks_dir": "<TMP>/base/homes/s1/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/homes/s1/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/homes/s1/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/homes/s1",
+      "reachable": [
+       "commit-msg",
+       "pre-commit"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "UNCOVERED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "none_gated": false,
+        "open": [
+         "git am",
+         "git push"
+        ],
+        "read": "static",
+        "stranded": [],
+        "tested": false,
+        "verdict": "UNCOVERED",
+        "words": "open"
+       }
+      ],
+      "words": [
+       "open"
+      ]
+     }
+    ]
+   }
+  ],
+  "seats": "<TMP>/roots.json",
+  "summary": {
+   "ARMED": 5,
+   "INERT": 1,
+   "UNCOVERED": 3,
+   "VACUOUS": 2,
+   "bare": 1,
+   "missing": 3,
+   "uncertain": 3,
+   "unknown": 2,
+   "worktrees": 17
+  },
+  "system_config": {
+   "file": null,
+   "files": [],
+   "tried": []
+  }
+ },
+ "windows": {
+  "group": null,
+  "home": "<TMP>/user",
+  "key": "seats",
+  "off": false,
+  "outside_group": [],
+  "problems": [
+   {
+    "kind": "no-home",
+    "line": 13,
+    "source": "<TMP>/roots.json",
+    "text": "s2 declares no home, so has no home root"
+   },
+   {
+    "kind": "bad-value",
+    "line": 3,
+    "source": "<TMP>/base/refused/.git/config",
+    "text": "core.bare = 'maybe' is not a yes or no; git would refuse to run in any repository that reads this file"
+   },
+   {
+    "kind": "bad-config",
+    "line": 3,
+    "source": "<TMP>/base/badline/.git/config",
+    "text": "bad config line; git would refuse to run in any repository that reads this file"
+   },
+   {
+    "kind": "missing-root",
+    "line": null,
+    "source": "<TMP>/base/absent",
+    "text": "the folder for absent is not there"
+   }
+  ],
+  "read": "static",
+  "read_at": "<READ_AT>",
+  "read_note": "a static read of git's own files: it can say a gate is reachable, never that it still refuses",
+  "repos": [
+   {
+    "counts": {
+     "ARMED": 1,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "armed",
+    "present": true,
+    "root": "<TMP>/base/armed",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/armed/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/armed/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/armed/.git",
+      "hooks_dir": "<TMP>/base/armed/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/armed/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/armed/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/armed",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 1,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "inert",
+    "present": true,
+    "root": "<TMP>/base/inert",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/inert/.git",
+      "events": [
+       {
+        "by": null,
+        "event": "ordinary commit",
+        "needs": [
+         "pre-commit"
+        ],
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git merge --no-ff",
+        "needs": [
+         "commit-msg"
+        ],
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/inert/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/inert/.git",
+      "hooks_dir": "<TMP>/base/inert/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/inert/.identity",
+       "present": false
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/inert",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "INERT"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "INERT",
+        "words": "off"
+       }
+      ],
+      "words": [
+       "off"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 1,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "vacuous",
+    "present": true,
+    "root": "<TMP>/base/vacuous",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/vacuous/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/vacuous/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/vacuous/.git",
+      "hooks_dir": "<TMP>/base/vacuous/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/vacuous/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/vacuous/.identity",
+       "present": false
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/vacuous",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "VACUOUS"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "VACUOUS",
+        "words": "checks nothing"
+       }
+      ],
+      "words": [
+       "checks nothing"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 1,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "nobody",
+    "present": true,
+    "root": "<TMP>/base/nobody",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/nobody/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/nobody/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/nobody/.git",
+      "hooks_dir": "<TMP>/base/nobody/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/nobody/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 0,
+       "file": "<TMP>/base/nobody/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/nobody",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "VACUOUS"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "VACUOUS",
+        "words": "checks nothing"
+       }
+      ],
+      "words": [
+       "checks nothing"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 1,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "stranded",
+    "present": true,
+    "root": "<TMP>/base/stranded",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/stranded/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": null,
+        "event": "git merge --no-ff",
+        "needs": [
+         "commit-msg"
+        ],
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/stranded/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/stranded/.git",
+      "hooks_dir": "<TMP>/base/stranded/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/stranded/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/stranded/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/stranded",
+      "reachable": [
+       "pre-commit"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "UNCOVERED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "none_gated": false,
+        "open": [
+         "git merge --no-ff",
+         "git am",
+         "git push"
+        ],
+        "read": "static",
+        "stranded": [
+         {
+          "name": "commit-msg",
+          "where": [
+           "<TMP>/base/stranded/.git/hooks"
+          ],
+          "words": "stranded"
+         },
+         {
+          "name": "pre-push",
+          "where": [
+           "<TMP>/base/stranded/.git/hooks"
+          ],
+          "words": "stranded"
+         }
+        ],
+        "tested": false,
+        "verdict": "UNCOVERED",
+        "words": "open"
+       }
+      ],
+      "words": [
+       "open"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 1,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "noexec",
+    "present": true,
+    "root": "<TMP>/base/noexec",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/noexec/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/noexec/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/noexec/.git",
+      "hooks_dir": "<TMP>/base/noexec/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/noexec/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/noexec/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/noexec",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 1,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "includes",
+    "present": true,
+    "root": "<TMP>/base/includes",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/includes/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/includes/.git/config",
+        "included_by": null,
+        "scope": "local"
+       },
+       {
+        "file": "<TMP>/base/includes/.git/extra.cfg",
+        "included_by": "<TMP>/base/includes/.git/config",
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/includes/.git",
+      "hooks_dir": "<TMP>/base/includes/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/includes/.git/extra.cfg",
+       "line": 2,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": [
+        "<TMP>/base/includes/.git/config"
+       ]
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/includes/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/includes",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [
+       "<TMP>/base/includes/.git/config line 6: includeIf \"gitdir:elsewhere/\" is not evaluated; what it includes does not set core.hooksPath, so this answer does not depend on it"
+      ],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 1,
+     "worktrees": 1
+    },
+    "name": "refused",
+    "present": true,
+    "root": "<TMP>/base/refused",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/refused/.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/refused/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/refused/.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/refused",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "unknown",
+      "tested": false,
+      "uncertain": [
+       "git would refuse to run here: <TMP>/base/refused/.git/config line 3: core.bare = 'maybe' is not a yes or no"
+      ],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 1,
+     "unknown": 1,
+     "worktrees": 1
+    },
+    "name": "badline",
+    "present": true,
+    "root": "<TMP>/base/badline",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/badline/.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/badline/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/badline/.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/badline",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "unknown",
+      "tested": false,
+      "uncertain": [
+       "git would refuse to run here: <TMP>/base/badline/.git/config line 3: bad config line"
+      ],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 3,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 3,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 6
+    },
+    "name": "multi",
+    "present": true,
+    "root": "<TMP>/base/multi",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git",
+      "hooks_dir": "<TMP>/base/multi/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/a",
+      "hooks_dir": "<TMP>/base/multi/.git/hooks",
+      "hooks_path": {
+       "file": null,
+       "line": null,
+       "scope": null,
+       "set": false,
+       "value": null,
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi-a/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": false,
+      "name": "a",
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi-a",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": "applypatch-msg",
+        "event": "git am",
+        "needs": null,
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "gated"
+       },
+       {
+        "by": "pre-push",
+        "event": "git push",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-push",
+        "state": "gated"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/multi/.git/config",
+        "included_by": null,
+        "scope": "local"
+       },
+       {
+        "file": "<TMP>/base/multi/.git/worktrees/b/config.worktree",
+        "included_by": null,
+        "scope": "worktree"
+       }
+      ],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/b",
+      "hooks_dir": "<TMP>/base/multi-b/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/multi/.git/worktrees/b/config.worktree",
+       "line": 2,
+       "scope": "worktree",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/multi-b/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": false,
+      "name": "b",
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/multi-b",
+      "reachable": [
+       "applypatch-msg",
+       "commit-msg",
+       "pre-commit",
+       "pre-push"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "ARMED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "read": "static",
+        "tested": false,
+        "verdict": "ARMED",
+        "words": "a hook for each act, identity named"
+       }
+      ],
+      "words": [
+       "a hook for each act, identity named"
+      ]
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/gone",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": false,
+      "name": "gone",
+      "not_executable": [],
+      "note": "the worktree's folder is gone; git lists it as prunable",
+      "path": "<TMP>/base/multi-gone",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/locked",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": true,
+      "main": false,
+      "name": "locked",
+      "not_executable": [],
+      "note": "the worktree's folder is gone, but it is locked, so git does not call it prunable",
+      "path": "<TMP>/base/multi-locked",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     },
+     {
+      "common_dir": "<TMP>/base/multi/.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": false,
+      "files": [],
+      "git_dir": "<TMP>/base/multi/.git/worktrees/nogitfile",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": false,
+      "name": "nogitfile",
+      "not_executable": [],
+      "note": "the worktree's .git file is gone, though its folder is still there; git lists it as prunable",
+      "path": "<TMP>/base/multi-nogitfile",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "missing",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 1,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "bare.git",
+    "present": true,
+    "root": "<TMP>/base/bare.git",
+    "seat": null,
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/bare.git",
+      "events": [],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [],
+      "git_dir": "<TMP>/base/bare.git",
+      "hooks_dir": null,
+      "hooks_path": null,
+      "identity": null,
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": "a bare repository: it has no work tree, so nothing is committed here and there is no gate to read",
+      "path": "<TMP>/base/bare.git",
+      "reachable": [],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [],
+      "status": "bare",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [],
+      "words": []
+     }
+    ]
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 0,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 0
+    },
+    "name": "absent",
+    "present": false,
+    "root": "<TMP>/base/absent",
+    "seat": null,
+    "worktrees": []
+   },
+   {
+    "counts": {
+     "ARMED": 0,
+     "INERT": 0,
+     "UNCOVERED": 1,
+     "VACUOUS": 0,
+     "bare": 0,
+     "missing": 0,
+     "uncertain": 0,
+     "unknown": 0,
+     "worktrees": 1
+    },
+    "name": "home",
+    "present": true,
+    "root": "<TMP>/base/homes/s1",
+    "seat": "s1",
+    "worktrees": [
+     {
+      "common_dir": "<TMP>/base/homes/s1/.git",
+      "events": [
+       {
+        "by": "pre-commit",
+        "event": "ordinary commit",
+        "needs": null,
+        "note": null,
+        "preferred": "pre-commit",
+        "state": "gated"
+       },
+       {
+        "by": "commit-msg",
+        "event": "git merge --no-ff",
+        "needs": null,
+        "note": null,
+        "preferred": "commit-msg",
+        "state": "gated"
+       },
+       {
+        "by": null,
+        "event": "git am",
+        "needs": [
+         "applypatch-msg",
+         "pre-applypatch"
+        ],
+        "note": null,
+        "preferred": "applypatch-msg",
+        "state": "open"
+       },
+       {
+        "by": null,
+        "event": "git push",
+        "needs": [
+         "pre-push"
+        ],
+        "note": null,
+        "preferred": "pre-push",
+        "state": "open"
+       }
+      ],
+      "executable": "executable bit not checked on Windows",
+      "exists": true,
+      "files": [
+       {
+        "file": "<TMP>/base/homes/s1/.git/config",
+        "included_by": null,
+        "scope": "local"
+       }
+      ],
+      "git_dir": "<TMP>/base/homes/s1/.git",
+      "hooks_dir": "<TMP>/base/homes/s1/chain",
+      "hooks_path": {
+       "file": "<TMP>/base/homes/s1/.git/config",
+       "line": 3,
+       "scope": "local",
+       "set": true,
+       "value": "chain",
+       "via": []
+      },
+      "identity": {
+       "entries": 1,
+       "file": "<TMP>/base/homes/s1/.identity",
+       "present": true
+      },
+      "locked": false,
+      "main": true,
+      "name": null,
+      "not_executable": [],
+      "note": null,
+      "path": "<TMP>/base/homes/s1",
+      "reachable": [
+       "commit-msg",
+       "pre-commit"
+      ],
+      "read": "static",
+      "read_at": "<READ_AT>",
+      "set": [
+       "UNCOVERED"
+      ],
+      "status": "read",
+      "tested": false,
+      "uncertain": [],
+      "verdicts": [
+       {
+        "none_gated": false,
+        "open": [
+         "git am",
+         "git push"
+        ],
+        "read": "static",
+        "stranded": [],
+        "tested": false,
+        "verdict": "UNCOVERED",
+        "words": "open"
+       }
+      ],
+      "words": [
+       "open"
+      ]
+     }
+    ]
+   }
+  ],
+  "seats": "<TMP>/roots.json",
+  "summary": {
+   "ARMED": 6,
+   "INERT": 1,
+   "UNCOVERED": 2,
+   "VACUOUS": 2,
+   "bare": 1,
+   "missing": 3,
+   "uncertain": 3,
+   "unknown": 2,
+   "worktrees": 17
+  },
+  "system_config": {
+   "file": null,
+   "files": [],
+   "tried": []
+  }
+ }
+}

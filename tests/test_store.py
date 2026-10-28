@@ -1,5 +1,7 @@
 """The store: environments, suggestions, teaching, undo, the editor and the reading. Each behaviour has a test that
 must pass and, where it can go wrong, one that must be refused."""
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -202,3 +204,136 @@ def test_a_refused_edit_leaves_the_file_unchanged(store):
     with pytest.raises(Refused):
         store.write_source("default", "environment: [")
     assert store.source("default") == before
+
+
+# ---- review of 1.2.2: S1 to S6 ----------------------------------------------------------------------------------
+FLOOR = ("base.irreversible-needs-your-word", "base.relayed-words-are-information")
+
+
+def test_every_rule_file_the_store_writes_lands_through_one_atomic_swap(store, monkeypatch):
+    # review of 1.2.2, S1: SEMANTICS.yaml was written in place (write_text, copyfile); only state.json was swapped
+    import os
+    swapped, real = [], os.replace
+    monkeypatch.setattr(os, "replace", lambda a, b: (swapped.append(Path(b).name), real(a, b))[1])
+    store.learn("default", "be brief")                        # save, and the history copy before it
+    store.write_source("default", store.source("default"))    # the editor's save
+    store.create("Cooking", [])                               # a new environment
+    store.undo_last("default")                                # the restore
+    assert swapped.count("SEMANTICS.yaml") == 4
+    assert sum(n.endswith(".yaml") and n != "SEMANTICS.yaml" for n in swapped) >= 3   # history and the redo copy
+    assert "state.json" in swapped
+    assert not list(store.root.rglob("*.tmp"))
+
+
+def test_a_write_that_fails_before_the_swap_leaves_the_old_file_whole(store, monkeypatch):
+    # review of 1.2.2, S1: a crash between writing and syncing must leave the file as it was, never half of it
+    import os
+    p = store.root / "profiles" / "default" / "SEMANTICS.yaml"
+    before = p.read_bytes()
+
+    def crash(fd):
+        raise OSError("the disk went away")
+    monkeypatch.setattr(os, "fsync", crash)
+    with pytest.raises(OSError):
+        store.learn("default", "be brief")
+    with pytest.raises(OSError):
+        store.write_source("default", store.source("default").replace("\n", "\n\n", 1))
+    assert p.read_bytes() == before
+    assert not list(store.root.rglob("*.tmp"))                # nothing left behind either
+    monkeypatch.undo()
+    store.learn("default", "be brief")                        # must-pass: the same write lands once the disk is back
+    assert "be brief" in store.source("default")
+
+
+def test_threads_writing_the_settings_at_once_raise_nothing_and_leave_valid_json(store):
+    # review of 1.2.2, S2: the temporary name was the process id only, and the page's server writes from threads
+    import json
+    import threading
+    errors = []
+
+    def hammer(k):
+        for i in range(100):
+            try:
+                s = store.state()
+                s["log"].append({"what": f"{k}-{i}"})
+                store.put_state(s)
+            except Exception as e:  # noqa: BLE001
+                errors.append(repr(e))
+    threads = [threading.Thread(target=hammer, args=(k,)) for k in range(4)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert errors == []
+    assert isinstance(json.loads(store.state_path.read_text(encoding="utf-8")), dict)
+    assert store.state_problem is None and not list(store.root.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("prov", ["learned", ["LEARNED"], 7], ids=["a-string", "a-list", "a-number"])
+def test_a_provenance_that_is_not_a_mapping_reads_as_none_recorded(store, prov):
+    # review of 1.2.2, S3: a plain-string provenance made the card's _line raise AttributeError in the hook
+    d = store.load("default")
+    d["entries"] = [*(d.get("entries") or []), {"id": "default.hand", "statement": "By hand.", "provenance": prov}]
+    store.save("default", d)
+    text, plan = store.served("default")
+    assert "- default.hand: By hand." in text and not plan["problem"]
+    assert "(learned)" not in text.split("default.hand")[1].splitlines()[0]
+    row = next(p for p in store.overview()["profiles"] if p["name"] == "default")
+    assert row["learned"] == 0
+
+
+def test_one_broken_environment_never_blocks_switching_to_or_making_another(store):
+    # review of 1.2.2, S4: resolve and create read every title, so one broken file refused them all
+    (store.root / "profiles" / "old").mkdir()
+    (store.root / "profiles" / "old" / "SEMANTICS.yaml").write_text("environment: [unclosed", encoding="utf-8")
+    assert store.resolve("Default") == "default"
+    assert store.resolve("old") == "old"                      # a broken file still answers to its own name
+    slug = store.create("Cooking", [])
+    assert store.resolve("Cooking") == slug
+    with pytest.raises(Refused, match=r"could not be read.*old"):
+        store.resolve("Nowhere")                              # must-refuse, and the skipped file is named
+    titles, problems = store.titles()
+    assert "default" in titles and [p["name"] for p in problems] == ["old"]
+
+
+def test_undo_last_never_raises_after_the_restore_and_says_what_failed(store, capsys):
+    # review of 1.2.2, S5: title() ran after the restore, outside any try, so an unreadable restored version raised
+    from semantext import cli
+
+    def break_newest(name):
+        store.learn(name, "be brief")
+        newest = sorted((store.root / "history").glob(f"{name}-*.yaml"))[-1]
+        newest.write_text("environment: [broken", encoding="utf-8")
+        return newest
+    newest = break_newest("default")
+    assert store.undo_last("default") == newest.name
+    assert "cannot be read" in store.last_undo["problem"]
+    assert "Problem: the restored version cannot be read" in store.state()["log"][-1]["what"]
+    assert store.source("default") == "environment: [broken"   # the restore did happen
+    slug = store.create("Cooking", [])
+    break_newest(slug)
+    assert cli.main(["undo", "--last", "--env", slug]) == 0
+    out = capsys.readouterr().out
+    assert f"Undid the last change in {slug}" in out and "But: the restored version cannot be read" in out
+    clean = store.create("Gardening", [])
+    store.learn(clean, "be plain")
+    store.undo_last(clean)
+    assert store.last_undo["problem"] is None                  # must-pass: a clean undo names no problem
+
+
+def test_the_floor_rules_stay_on_both_cards_whatever_their_switches_say(store):
+    # review of 1.2.2, S6: with both switched off, the relay card fell back to the full card, which held neither
+    for rid in FLOOR:
+        with pytest.raises(Refused, match="on every card"):
+            store.toggle("base", rid)
+        with pytest.raises(Refused, match="on every card"):
+            store.undo("base", rid)
+    d = store.load("base")
+    for x in d["entries"]:
+        if x["id"] in FLOOR:
+            x["enabled"] = False                              # a hand edit, or a restored old version
+    store.save("base", d)
+    relay, full = store.card("default", form="relay"), store.card("default")
+    assert all(rid in relay for rid in FLOOR) and all(rid in full for rid in FLOOR)
+    assert store.plan("default", form="relay")["form"] == "relay"
+    other = next(x["id"] for x in d["entries"] if x["id"] not in FLOOR)
+    store.toggle("base", other)                               # must-pass: any other base rule still switches off
+    assert other not in store.card("default")

@@ -13,8 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from semantext.sources import cards, change, gates, view
+from semantext.sources import cards, change, gates, places, rules, view
 from semantext.sources.gates import World as GitWorld
+from gitindex_writer import write_index
+from test_change_evidence import Inside
 from test_sources_cards import writers
 from test_v2_view import World, append, touch
 
@@ -26,8 +28,18 @@ def world(tmp_path, monkeypatch):
     user = tmp_path / "git-user"
     user.mkdir()
     monkeypatch.setattr(gates, "this_machine", lambda env=None: GitWorld({}, user, (), (), ()))
-    w.rule = touch(w.base / "lab" / "rules" / "short.md", "Keep answers short.\n")
+    w.evidence_dir = w.base / "lab" / "notes"            # files the lab's index tracks: the git-index way admits them
+    index = write_index(w.base / "lab", ["notes/short.md", "notes/a.md", "notes/b.md"])
+    w.evidence_cost = index.stat().st_size                # bytes the way reads to decide: the index, once a build
+    w.rule = touch(w.evidence_dir / "short.md", "Keep answers short.\n")
     return w
+
+
+def policy(world, seat: str = "Alder"):
+    """The evidence policy the page builds for that agent, from the same readers."""
+    cfg = world.cfg()
+    got = {"waiting": cards.load(cfg), "places": places.load(cfg), "rules": rules.load(cfg)}
+    return view.evidence_way.for_seat(seat, got, [str(world.base / seat.lower()), str(world.base / "lab")])
 
 
 def proposal(id_="A-20261005-100000", **kw) -> dict:
@@ -72,7 +84,7 @@ def test_what_changes_is_counted_from_the_two_trees():
 # ---------------------------------------------------------------- is the evidence current
 def test_the_fingerprint_follows_the_bytes_and_reads_only_plain_files_inside(tmp_path):
     a, b = touch(tmp_path / "a.txt", "one"), touch(tmp_path / "b.txt", "two")
-    roots = [os.path.normcase(str(tmp_path))]
+    roots = Inside(os.path.normcase(str(tmp_path)))
     first = change.fingerprint([str(a), str(b)], roots)["digest"]
     assert first and change.fingerprint([str(b), str(a)], roots)["digest"] == first     # the order named is not read
     b.write_text("TWO", encoding="utf-8")
@@ -81,8 +93,8 @@ def test_the_fingerprint_follows_the_bytes_and_reads_only_plain_files_inside(tmp
     assert gone["digest"] is None and "not there" in gone["why"]          # an absent file is unknown, never current
     # must-refuse: a path that is not full, one outside the roots, a folder, too many files, nothing named
     assert change.fingerprint(["a.txt"], roots)["digest"] is None
-    assert change.fingerprint([str(a)], [os.path.normcase(str(tmp_path / "elsewhere"))])["digest"] is None
-    assert "outside" in change.fingerprint([str(a)], [os.path.normcase(str(tmp_path / "x"))])["why"]
+    assert change.fingerprint([str(a)], Inside(os.path.normcase(str(tmp_path / "elsewhere"))))["digest"] is None
+    assert "outside" in change.fingerprint([str(a)], Inside(os.path.normcase(str(tmp_path / "x"))))["why"]
     (tmp_path / "dir").mkdir()
     assert change.fingerprint([str(tmp_path / "dir")], roots)["digest"] is None
     assert change.fingerprint([str(a)] * (change.MAX_FILES + 1), roots)["digest"] is None
@@ -96,7 +108,7 @@ def test_the_fingerprint_follows_the_bytes_and_reads_only_plain_files_inside(tmp
 
 def test_a_card_is_stale_once_its_evidence_moves(world):
     rule = str(world.rule)
-    digest = change.fingerprint([rule], [str(world.base / "lab")])["digest"]   # lab is a project Alder works in
+    digest = change.fingerprint([rule], policy(world))["digest"]
     assert digest
     touch(changes_file(world, "Alder"))
     append(changes_file(world, "Alder"), proposal(evidence={"files": [rule], "digest": digest}))
@@ -108,7 +120,7 @@ def test_a_card_is_stale_once_its_evidence_moves(world):
     # must-refuse: evidence outside the person's projects and homes is not read, so it is unknown, never current
     outside = touch(world.root / "elsewhere" / "x.txt", "x")
     append(changes_file(world, "Alder"), proposal("A-20261005-110000", evidence={
-        "files": [str(outside)], "digest": change.fingerprint([str(outside)], [str(world.root)])["digest"]}))
+        "files": [str(outside)], "digest": change.fingerprint([str(outside)], Inside(world.root))["digest"]}))
     far = by_change("Alder/A-20261005-110000")["change"]["freshness"]
     assert far["state"] == "unknown" and "outside" in far["why"]
 
@@ -171,10 +183,15 @@ def test_the_score_per_agent_is_a_brier_score_with_its_count(world):
     append(world.file("Birch"), ask_about("B-20261005-110000", "B-20261005-100000"),
            {"close": "B-20261005-110000", "at": "2026-10-05T12:00:00Z", "how": "declined"})
     w = view.answer("waiting")
-    assert w["changes"]["Alder"] == {"filed": 2, "decided": 2, "brier": round(((0.8 - 1) ** 2 + 0.6 ** 2) / 2, 4),
-                                     "scored": 2}
+    brier = round(((0.8 - 1) ** 2 + 0.6 ** 2) / 2, 4)
+    # two scored; "reading time" (no direction) and "no chance stated" are made but unusable, and still in m
+    assert w["changes"]["Alder"] == {"filed": 2, "decided": 2, "brier": brier, "scored": 2, "predicted": 4,
+                                     "awaiting": 0, "left_out": 0, "unusable": 2, "coin": 0.25, "changes_scored": 1,
+                                     "brier_by_change": brier, "interval": None, "interval_note": change.TOO_FEW}
     # must-refuse: a card with no stated chance, or no outcome, is never scored as 0
-    assert w["changes"]["Birch"] == {"filed": 1, "decided": 1, "brier": None, "scored": 0}
+    assert w["changes"]["Birch"] == {"filed": 1, "decided": 1, "brier": None, "scored": 0, "predicted": 3,
+                                     "awaiting": 2, "left_out": 0, "unusable": 1, "coin": None, "changes_scored": 0,
+                                     "brier_by_change": None, "interval": None, "interval_note": None}
     assert change.score([{"kind": "decision", "seat": "X"}]) == {}
 
 
@@ -226,7 +243,7 @@ def test_a_decision_naming_a_change_links_both_ways_and_an_unknown_id_is_a_probl
 def test_one_build_digests_at_most_the_cap_of_records_per_agent(world, monkeypatch):
     monkeypatch.setattr(view, "RECORD_CAP", 2)
     rule = str(world.rule)
-    digest = change.fingerprint([rule], [str(world.base / "lab")])["digest"]
+    digest = change.fingerprint([rule], policy(world))["digest"]
     touch(changes_file(world, "Alder"))
     append(changes_file(world, "Alder"), *(proposal(f"A-20261005-10000{i}", evidence={"files": [rule], "digest": digest})
                                            for i in range(3)), proposal("A-20261005-200000"))
@@ -238,17 +255,19 @@ def test_one_build_digests_at_most_the_cap_of_records_per_agent(world, monkeypat
 
 
 def test_one_build_reads_at_most_its_byte_budget_of_evidence(world, monkeypatch):
-    a = touch(world.base / "lab" / "notes" / "a.md", "a" * 20)
-    b = touch(world.base / "lab" / "notes" / "b.md", "b" * 20)
-    lab = [str(world.base / "lab")]
+    a = touch(world.evidence_dir / "a.md", "a" * 20)
+    b = touch(world.evidence_dir / "b.md", "b" * 20)
+    lab = policy(world)
     touch(changes_file(world, "Alder"))
     append(changes_file(world, "Alder"),
            proposal("A-20261005-100000", evidence={"files": [str(a)], "digest": change.fingerprint([str(a)], lab)["digest"]}),
            proposal("A-20261005-100001", evidence={"files": [str(b)], "digest": change.fingerprint([str(b)], lab)["digest"]}))
 
     def states(budget: int) -> dict:
-        monkeypatch.setattr(view, "READ_BUDGET", budget)
+        # what the way itself reads to decide (an index, for the git-index way) costs the budget too, once
+        monkeypatch.setattr(view, "READ_BUDGET", budget + world.evidence_cost)
         change._CACHE.clear()                                    # a cached file costs nothing; measure the reads
+        getattr(view.evidence_way, "_CACHE", {}).clear()
         return {c["id"]: c["change"]["freshness"] for c in view.answer("waiting")["change_records"]}
 
     got = states(30)

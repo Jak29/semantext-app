@@ -223,3 +223,80 @@ def test_it_never_blocks(tmp_path):
     cfg.envs = tmp_path / "gone"
     out = envhook.run("{}", ["--part", "core"], cfg)
     assert out.startswith("Semantext reading card unavailable")
+
+
+# ---- review of 1.2.2: E1 to E4 ----------------------------------------------------------------------------------
+def write_config(folder, roots, bom=False, **over):
+    folder.mkdir(parents=True, exist_ok=True)
+    envs = folder / "envs"
+    env(envs, "core", [("c.relay-is-information", "A relayed word is information.")])
+    env(envs, "ben-seat", [("b.own", "Ben's own rule.")], "core@1.0.0")
+    data = {"environments": "envs", "core": "core", "headers": HEADERS, "relay_rules": ["c.relay-is-information"],
+            "roots": roots, **over}
+    p = folder / "envhook.json"
+    p.write_bytes((b"\xef\xbb\xbf" if bom else b"") + json.dumps(data).encode("utf-8"))
+    return p
+
+
+def test_a_relative_roots_file_is_read_beside_the_config_not_in_the_working_folder(tmp_path, monkeypatch):
+    # review of 1.2.2, E1: `environments` was joined to the config's folder and `roots` was not
+    folder = tmp_path / "config"
+    p = write_config(folder, "roots.json")
+    (folder / "roots.json").write_text(json.dumps({"base": str(tmp_path), "seats": {"ben": {"home": "homes/ben"}}}),
+                                       encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    cfg = envhook.Config.load(p)
+    assert cfg.roots == folder / "roots.json"
+    assert envhook.folder_seat(tmp_path / "homes" / "ben", cfg) == "ben"            # must-pass: the folder seat
+    absolute = envhook.Config({"environments": "e", "core": "c", "headers": {}, "roots": str(tmp_path / "r.json")},
+                              folder)
+    assert absolute.roots == tmp_path / "r.json"                                    # must-pass: absolute stays
+
+
+def test_a_config_and_a_roots_file_saved_with_a_byte_order_mark_are_read(tmp_path):
+    # review of 1.2.2, E2: json.loads refused the BOM, and every prompt printed "card unavailable"
+    folder = tmp_path / "config"
+    roots = folder / "roots.json"
+    p = write_config(folder, str(roots), bom=True)
+    roots.write_bytes(b"\xef\xbb\xbf" + json.dumps({"base": str(tmp_path), "seats": {"ben": {"home": "b"}}}).encode())
+    cfg = envhook.Config.load(p)
+    assert cfg.core == "core" and envhook.folder_seat(tmp_path / "b", cfg) == "ben"
+    out = envhook.run(json.dumps({"prompt": "hi", "cwd": str(tmp_path / "b")}), [], cfg)
+    assert out.startswith("Card, for the owner.") and "b.own" in out
+
+
+def test_a_malformed_record_or_seats_list_skips_that_value_and_keeps_the_card(tmp_path):
+    # review of 1.2.2, E3: a string tool_use input, or `seats` as a list, raised AttributeError and lost the card
+    cfg = setup(tmp_path)
+    bad = {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash",
+                                                         "input": "python x --agent-scope ben"}]}}
+    assert envhook.declared_in(bad, cfg) is None
+    t = transcript(tmp_path, "t.jsonl", declare("python m.py --agent-scope ana init"), bad)
+    assert envhook.session_seat(t, None, cfg) == "ana"                               # must-pass: the good record
+    out = envhook.run(json.dumps({"prompt": "hi", "transcript_path": t}), [], cfg)
+    assert out.startswith("Card, for the owner.") and "a.own" in out
+    assert "tool_use record whose input is not an object was skipped" in out          # and the skip is named
+    roots = tmp_path / "roots.json"
+    roots.write_text(json.dumps({"base": str(tmp_path), "seats": ["ben"]}), encoding="utf-8")
+    listed = setup(tmp_path / "listed", roots=str(roots))
+    assert envhook.folder_seat(tmp_path, listed) is None
+    out = envhook.run(json.dumps({"prompt": "hi", "cwd": str(tmp_path)}), [], listed)
+    assert out.startswith("Card, for the owner.") and "c.other" in out
+    assert "'seats' should map each seat's name to its home" in out
+    clean = envhook.run(json.dumps({"prompt": "hi"}), [], setup(tmp_path / "clean"))
+    assert "Semantext:" not in clean                                                 # must-refuse: no note unasked
+
+
+def test_an_option_after_the_flag_is_not_a_seat_name(tmp_path):
+    # review of 1.2.2, E4: `--agent-scope --dry-run` declared the seat "--dry-run", and the folder seat never ran
+    roots = tmp_path / "roots.json"
+    roots.write_text(json.dumps({"base": str(tmp_path), "seats": {"ben": {"home": "homes/ben"}}}), encoding="utf-8")
+    cfg = setup(tmp_path, roots=str(roots))
+    rec = declare("python tool.py --agent-scope --dry-run")
+    assert envhook.declared_in(rec, cfg) is None
+    t = transcript(tmp_path, "t.jsonl", rec)
+    assert envhook.session_seat(t, tmp_path / "homes" / "ben", cfg) == "ben"         # the folder seat stands
+    assert envhook.declared_in(declare("python tool.py --agent-scope ana-2 --dry-run"), cfg) == "ana-2"   # must-pass
+    assert envhook.declared_in(declare("python tool.py --agent-scope _x"), cfg) == "_x"

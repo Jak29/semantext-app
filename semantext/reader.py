@@ -33,7 +33,7 @@ from . import jsonread
 from .backtest import FALLBACK, matched_null, newcombe, read_jsonl, wilson
 from .inbox import SECRET, token_like
 from .mine import units
-from .store import Refused, Store
+from .store import Refused, Store, provenance_of
 
 LINE = 300
 VERDICTS = ("expected", "forbidden", "neither")
@@ -249,7 +249,7 @@ def model_backtest(store: Store, name: str, reader, judges=(), files=(), cases=N
         raise Refused("a judge must be another model family than the reader: a model never grades its own reading")
     entries = store.live(store.load(name).get("entries"))
     if split:
-        entries = [e for e in entries if not str((e.get("provenance") or {}).get("when") or "")[:10] >= split]
+        entries = [e for e in entries if not str(provenance_of(e).get("when") or "")[:10] >= split]
     card, ids = card_text(store, name, entries)
     null_card, null_ids = card_text(store, name, matched_null(store, entries))
     _card_may_leave(reader, card)

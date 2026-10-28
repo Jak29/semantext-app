@@ -7,24 +7,18 @@ apart, and gives anything that is not the user's own message the short relay car
 The test looks only at how a prompt OPENS, in the forms the tools use for those deliveries. A user's own message that
 mentions those words later, or opens with a bracket of its own, stays the user's. Anything unreadable counts as the
 user's: the safe direction, since the full card holds every rule.
+
+The rules themselves, and the reading of the tool's own record, live in provenance.py, shared with the estate's
+reading card (envhook.from_owner), so the two can never drift apart again.
 """
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 
-from . import jsonread
-
-USER, RELAY, NOTICE = "user", "relay", "notice"
-# Another agent's message: one session's to another, or a subagent's to the session that started it.
-RELAY_STARTS = ("Another Claude session sent a message:", "<cross-session-message", "<agent-message")
-# A tool's own report or notice.
-NOTICE_STARTS = ("<task-notification>",)
-# A bracketed notice the tool adds, recognised by the words it carries rather than one exact spelling.
-NOTICE_TAG = re.compile(r"\[[^\]\n]{0,120}?(?:cross-session|not user input|non-user source|system notification)"
-                        r"[^\]\n]{0,120}\]", re.IGNORECASE)
-
+from . import provenance
+from .provenance import (NOTICE, NOTICE_STARTS, NOTICE_TAG, RELAY, RELAY_STARTS, TAIL_BYTES, USER,  # noqa: F401
+                         record_text)
 
 FROM_NAME = re.compile(r'\bfrom-name="([^"\n]{1,80})"')
 
@@ -35,7 +29,7 @@ def relay_from(prompt) -> str:
     the prompt is not a relay, or its opening states no name."""
     if not isinstance(prompt, str) or sender_of(prompt) != RELAY:
         return ""
-    head = prompt.lstrip("﻿").lstrip()[:600]
+    head = provenance.head(prompt)[:600]
     end = head.find(">")
     m = FROM_NAME.search(head[:end] if end > 0 else "")
     return m.group(1) if m else ""
@@ -43,89 +37,17 @@ def relay_from(prompt) -> str:
 
 def sender_of(prompt) -> str:
     """USER, RELAY or NOTICE, from how the prompt opens."""
-    if not isinstance(prompt, str):
-        return USER
-    head = prompt.lstrip("﻿").lstrip()
-    if head.startswith(RELAY_STARTS):
-        return RELAY
-    if head.startswith(NOTICE_STARTS) or NOTICE_TAG.match(head):
-        return NOTICE
-    return USER
+    return provenance.by_text(prompt)
 
 
 # ---- the tool's own record of where a prompt came from ---------------------------------------------------------------
 # Claude Code keeps a transcript, and marks each turn with where it came from (turnOrigin), and each prompt queued while
 # the agent worked with what kind it was. Measured on 1,503 prompts of one real transcript: every prompt's
 # record was made before its hook started, and was already in the file for all turns and all but 11 queued prompts.
-TAIL_BYTES = 4_000_000           # how much of the transcript's end is read: a prompt's record is among the newest
-TURN_ORIGIN = {"human": USER, "peer": RELAY, "task_notification": NOTICE, "system": NOTICE}
-# The older form of the same record, still written on many records with no turnOrigin: {"origin": {"kind": ...}}.
-ORIGIN_KIND = {"human": USER, "peer": RELAY, "task-notification": NOTICE, "task_notification": NOTICE, "system": NOTICE}
-
-
-def _kind(origin) -> str | None:
-    return ORIGIN_KIND.get(origin.get("kind")) if isinstance(origin, dict) else None
-
-
-def record_text(r: dict) -> str | None:
-    """The text of a user record that is a prompt: a string, or text blocks (perhaps beside an image). None for a
-    tool's result, or anything else."""
-    m = r.get("message") if isinstance(r.get("message"), dict) else {}
-    c = m.get("content")
-    if isinstance(c, list):
-        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c):
-            return None
-        c = "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text") or None
-    return c if isinstance(c, str) else None
-
-
-def _record_origin(r: dict) -> tuple[str | None, str | None]:
-    """(the prompt text a transcript record carries, where it came from), or (None, None) for any other record."""
-    a = r.get("attachment") if isinstance(r.get("attachment"), dict) else {}
-    if a.get("type") == "queued_command":
-        text = a.get("prompt") if isinstance(a.get("prompt"), str) else None
-        if a.get("humanTurn"):
-            return text, USER
-        if a.get("commandMode") == "task-notification":
-            return text, NOTICE
-        if a.get("isMeta"):
-            return text, RELAY if a.get("reminderId") else NOTICE
-        return text, _kind(a.get("origin")) or _kind(r.get("origin"))   # None: it says nothing of itself
-    if r.get("type") == "user":
-        origin = TURN_ORIGIN.get(r.get("turnOrigin")) or _kind(r.get("origin"))
-        if origin is not None:
-            return record_text(r), origin
-    return None, None
-
-
 def origin_of(transcript, prompt, tail: int = TAIL_BYTES) -> str | None:
     """Where the tool's own transcript says this prompt came from (USER, RELAY or NOTICE): its newest record whose text
     is the prompt's. None when there is no transcript, no such record yet, or the record says nothing."""
-    if not transcript or not isinstance(prompt, str) or not prompt.strip():
-        return None
-    want = prompt.lstrip("﻿").strip()
-    # The prompt's opening words as they appear inside a JSON line (quotes, backslashes and line breaks escaped).
-    needle = json.dumps(want[:40], ensure_ascii=False)[1:-1].encode("utf-8")
-    try:
-        with open(transcript, "rb") as f:
-            f.seek(0, 2)
-            f.seek(max(0, f.tell() - tail))
-            lines = f.read().splitlines()
-    except (OSError, ValueError, TypeError):
-        return None
-    for line in reversed(lines):
-        if needle not in line:
-            continue                     # cheap: most lines are not this prompt's record
-        try:
-            r = jsonread.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(r, dict):
-            continue
-        text, origin = _record_origin(r)
-        if text is not None and text.lstrip("﻿").strip() == want:
-            return origin
-    return None
+    return provenance.recorded(transcript, prompt, tail)
 
 
 SENTENCES = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -159,22 +81,8 @@ def users_sentence(transcript, words) -> dict | None:
             return None                  # it may quote a hedge, but it may not ask
     elif not RULE_OPENING.match(body) or HEDGE.search(want):
         return None
-    try:
-        with open(transcript, "rb") as f:
-            f.seek(0, 2)
-            f.seek(max(0, f.tell() - TAIL_BYTES))
-            lines = f.read().splitlines()
-    except (OSError, ValueError, TypeError):
-        return None
-    needle = json.dumps(want, ensure_ascii=False)[1:-1].encode("utf-8")
-    for line in reversed(lines):
-        if needle not in line:
-            continue
-        try:
-            r = jsonread.loads(line)
-        except ValueError:
-            continue
-        text, origin = _record_origin(r) if isinstance(r, dict) else (None, None)
+    for r in provenance.records(transcript, provenance.needles(want)):
+        text, origin = provenance.record_origin(r)
         if origin != USER or text is None or sender_of(text) != USER:
             continue                     # only a prompt that both the record and the text call the user's own
         if want not in (s.strip() for s in SENTENCES.split(text)):
@@ -190,13 +98,7 @@ def whose(prompt, transcript=None) -> tuple[str, str]:
     side). The text decides first; the tool's own record can only take a prompt away from the user, never give one to
     them: a relay read as the user's words is the costly mistake, so a record that is stale, or matches an older prompt
     with the same words, cannot turn a relay into the user's own."""
-    kind = sender_of(prompt)
-    if kind != USER:
-        return kind, "text"
-    origin = origin_of(transcript, prompt)
-    if origin in (RELAY, NOTICE):
-        return origin, "transcript"
-    return USER, "transcript" if origin == USER else "none"
+    return provenance.classify(prompt, transcript)
 
 
 def own_words(prompt, transcript=None) -> bool:

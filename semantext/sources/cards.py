@@ -208,13 +208,14 @@ def _half_pair(text: str) -> bool:
     return False
 
 
-def _parse(text: str):
+def _parse(text: str, unique: bool = False):
     """A line as JSON, the way the inbox's parser reads it into a value: NaN, Infinity and a number the parser calls out
     of range are not JSON, half of a surrogate pair is not text, and a line nested deeper than MAX_DEPTH is not read."""
     def refuse(name):
         raise ValueError(f"{name} is not JSON")
     try:
-        value = jsonread.loads(text, parse_constant=refuse, parse_int=_int_token, parse_float=_float_token)
+        value = jsonread.loads(text, unique=unique, parse_constant=refuse, parse_int=_int_token,
+                               parse_float=_float_token)
     except jsonread.NotJSON as e:
         if e.deep:
             raise ValueError("it is nested too deeply") from None
@@ -233,7 +234,7 @@ def _seats(path: str, problems: list, group: str | None = None) -> list[dict]:
     holds a NUL character, or that steps outside the base folder is a problem and is not followed."""
     where = Path(path)
     try:
-        data = _parse(where.read_text(encoding="utf-8-sig"))
+        data = _parse(where.read_text(encoding="utf-8-sig"), unique=True)   # a key twice: no seats, never the last
     except (OSError, ValueError) as e:
         problems.append(problem(where, None, "seats file", f"cannot be read ({e})"))
         return []
@@ -327,8 +328,9 @@ class _Requests:
     """One agent's request file, read. Every non-blank line becomes a card, a closing that took effect or a refused line
     with a problem, so tally lines = cards + closings + refused."""
 
-    def __init__(self, seat: str, file: Path | None, problems: list):
+    def __init__(self, seat: str, file: Path | None, problems: list, closures=()):
         self.seat, self.file, self.problems = seat, file, problems
+        self.closures = closures   # the person's closed places, as the built-in readers read them (closed.closures)
         self.tally = {"file": str(file) if file else None, "present": False, "lines": 0, "cards": 0, "closings": 0,
                       "refused": 0}
 
@@ -343,9 +345,30 @@ class _Requests:
     def lines(self) -> list:
         """The file's lines. Nothing when it is not there (an agent that has asked nothing has no file yet), and nothing
         with a problem when it is there but cannot be read. The inbox reads a file whole or not at all: one byte that
-        is not UTF-8 and none of it is read."""
+        is not UTF-8 and none of it is read.
+
+        A file in a place the person closed is not read, nor one that is a link of any kind: a symbolic link, a
+        junction, or a hard link (a file with more than one name), any of which could show another file's lines as this
+        agent's cards. The changes file was held to this alone; the requests file was not, so a requests.jsonl hard-linked
+        to any readable file was read and shown as that seat's (the Fable review of 70f2d3c, finding 3)."""
         if self.file is None:
             return []
+        from .closed import _judge   # here: only a file about to be read needs the closures judged
+        if _judge(str(self.file), self.closures):
+            return self.unusable(f"{self.file.name} is in a place you closed, so it is not read", "closed-place")
+        try:
+            st = os.lstat(self.file)
+        except FileNotFoundError:
+            return []
+        except (OSError, ValueError) as e:
+            return self.unusable(f"cannot be examined ({e})")
+        if _linked(st):
+            self.tally["present"] = True
+            return self.unusable(f"{self.file.name} is a link, so it is not read", "link")
+        if stat.S_ISREG(st.st_mode) and st.st_nlink > 1:
+            self.tally["present"] = True
+            return self.unusable(f"{self.file.name} is a hard link (it has {st.st_nlink} names), so it is not read",
+                                 "link")
         try:
             size = self.file.stat().st_size
         except FileNotFoundError:
@@ -432,30 +455,12 @@ class _Changes(_Requests):
     is never read for it (one that disagrees is said, and the folder stands). Read whole or not at all, as a requests
     file is; tally lines = records + outcomes + refused."""
 
-    def __init__(self, seat: str, file: Path | None, problems: list):
-        super().__init__(seat, file, problems)
+    def __init__(self, seat: str, file: Path | None, problems: list, closures=()):
+        super().__init__(seat, file, problems, closures)
         self.tally = {"file": str(file) if file else None, "present": False, "lines": 0, "records": 0, "outcomes": 0,
                       "refused": 0}
 
-    def lines(self) -> list:
-        """The file's lines, as a requests file's are read, unless it is a link of any kind: a symbolic link, a
-        junction, or a hard link (a file with more than one name), any of which could show another agent's changes
-        as this agent's. Then none of it is read, and it is a problem."""
-        if self.file is not None:
-            try:
-                st = os.lstat(self.file)
-            except FileNotFoundError:
-                return []
-            except (OSError, ValueError) as e:
-                return self.unusable(f"cannot be examined ({e})")
-            if _linked(st):
-                self.tally["present"] = True
-                return self.unusable(f"{self.file.name} is a link, so it is not read", "link")
-            if stat.S_ISREG(st.st_mode) and st.st_nlink > 1:
-                self.tally["present"] = True
-                return self.unusable(f"{self.file.name} is a hard link (it has {st.st_nlink} names), so it is not "
-                                     f"read", "link")
-        return super().lines()
+    # lines() is a requests file's: a link of any kind, or a file in a closed place, is not read
 
     def records(self) -> list[dict]:
         records, seen, outcomes = [], set(), []
@@ -841,12 +846,17 @@ def load(cfg: dict) -> dict:
         kept = CHANGES
     cards: list[dict] = []
     changes: list[dict] = []
+    from .closed import closures as _closures   # here: the card hook's status line never reads a requests file
+    # read once for every agent, beside the sources file this config came from (as the run reader reads them); None,
+    # closures that cannot be read, closes every file
+    where = cfg.get("_file")
+    shut = _closures(Path(where).parent if isinstance(where, str) and where else None) if agents else ()
     for agent in agents:
-        requests = _Requests(agent["seat"], Path(agent["home"]) / name if agent["home"] else None, problems)
+        requests = _Requests(agent["seat"], Path(agent["home"]) / name if agent["home"] else None, problems, shut)
         mine = requests.cards()
         cards.extend(mine)
         agent.update(requests.tally)
-        records = _Changes(agent["seat"], Path(agent["home"]) / kept if agent["home"] else None, problems)
+        records = _Changes(agent["seat"], Path(agent["home"]) / kept if agent["home"] else None, problems, shut)
         theirs = records.records()
         changes.extend(theirs)
         agent["changes"] = {k: records.tally[k] for k in ("file", "present", "lines", "records", "outcomes", "refused")}

@@ -34,7 +34,8 @@ NOTICED = ("question", "suggestion", "yes", "pause", "time", "correction", "inst
 OLDER = frozenset(FIELDS) - {"noticed"}  # a line written before 1.1 kept no `noticed`: read back as noticing nothing
 HOW = ("bound", "claimed", "observed", "fallback")
 WORDS = ("own", "agent", "tool")        # the user's own words, another agent's, or a tool's notice
-BASIS = ("text", "transcript", "none")  # what told: how the prompt opens, the tool's own record, or nothing (the user's)
+BASIS = ("text", "transcript", "none",  # what told: how the prompt opens, the tool's own record, or nothing (the user's)
+         "error")                        # ... or the reading failed, and the prompt got the short card
 FORMS = ("full", "relay")
 LAYERS = ("base", "environment", "agent")
 TRIM_AT, KEEP = 512_000, 256_000        # bytes

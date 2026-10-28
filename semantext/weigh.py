@@ -39,7 +39,7 @@ from pathlib import Path
 
 from .backtest import FALLBACK, classify, matched_null, newcombe, touch, wilson
 from .mine import units
-from .store import Refused, Store
+from .store import Refused, Store, provenance_of
 
 SUPPORT = 3          # a cue seen fewer times than this, in the fit part, weighs 0
 WORD = re.compile(r"[a-z']+")
@@ -135,9 +135,9 @@ def card_before(store: Store, name: str, t: datetime) -> tuple[list, dict]:
     """The live rules learned before the test part; rules with no date are kept."""
     live = store.live(store.load(name).get("entries"))
     day = t.date().isoformat()
-    kept = [e for e in live if not (str((e.get("provenance") or {}).get("when") or "")[:10] >= day
-                                    and (e.get("provenance") or {}).get("when"))]
-    undated = sum(1 for e in kept if not (e.get("provenance") or {}).get("when"))
+    kept = [e for e in live if not (str(provenance_of(e).get("when") or "")[:10] >= day
+                                    and provenance_of(e).get("when"))]
+    undated = sum(1 for e in kept if not provenance_of(e).get("when"))
     return kept, {"on_card": len(kept), "left_off": len(live) - len(kept), "undated_kept": undated}
 
 

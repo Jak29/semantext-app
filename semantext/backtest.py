@@ -31,7 +31,7 @@ from pathlib import Path
 from . import jsonread
 from .inbox import SECRET, token_like
 from .mine import is_correction, units
-from .store import Refused, Store
+from .store import Refused, Store, provenance_of
 
 FALLBACK = "base.show-your-work"
 SEED = 13
@@ -88,7 +88,7 @@ def score(store: Store, name: str, us: list[dict], entries: list) -> dict:
 
 
 def _when(e: dict) -> str:
-    return str((e.get("provenance") or {}).get("when") or "")
+    return str(provenance_of(e).get("when") or "")
 
 
 def matched_null(store: Store, entries: list) -> list:

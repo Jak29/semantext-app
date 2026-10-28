@@ -10,6 +10,7 @@ import io
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -23,8 +24,11 @@ ALL_FOUR = ("pre-commit", "commit-msg", "applypatch-msg", "pre-push")
 
 # ---------------------------------------------------------------- building repositories without git
 def touch(path: Path, text: str = "") -> Path:
+    """A file, made executable: on POSIX git (and the reader) ignore a hook without the bit. On Windows the mode is
+    not read."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="")
+    path.chmod(0o755)
     return path
 
 
@@ -92,7 +96,7 @@ STATES = {
     "off: only .sample files are not hooks": ("", {".git/hooks": ["pre-commit.sample", "pre-push.sample"]}, None,
                                              ["INERT"], ["off"]),
     "git's own folder gates when nothing is set": ("", {".git/hooks": ALL_FOUR}, "A <a@x.y>\n", ["ARMED"],
-                                                  ["gated, identity declared"]),
+                                                  [gates.ARMED_WORDS]),
     "open, not off: git's own folder holds a hook that is no gate": ("", {".git/hooks": ["post-commit"]}, None,
                                                                     ["UNCOVERED"], ["open"]),
     "open: a hook folder with no hook in it": ("\thooksPath = chain\n", {"chain": ["README"]}, "A <a@x.y>\n",
@@ -102,8 +106,8 @@ STATES = {
     "open with an identity": ("\thooksPath = chain\n", {"chain": ALL_FOUR[:3]}, "A <a@x.y>\n", ["UNCOVERED"], ["open"]),
     "checks nothing: all four, no identity": ("\thooksPath = chain\n", {"chain": ALL_FOUR}, None, ["VACUOUS"],
                                               ["checks nothing"]),
-    "gated, identity declared": ("\thooksPath = chain\n", {"chain": ALL_FOUR}, "A <a@x.y>\n", ["ARMED"],
-                                 ["gated, identity declared"]),
+    "a hook for each act, identity named": ("\thooksPath = chain\n", {"chain": ALL_FOUR}, "A <a@x.y>\n", ["ARMED"],
+                                            [gates.ARMED_WORDS]),
 }
 
 
@@ -347,13 +351,52 @@ def test_the_worktree_file_belongs_to_its_own_worktree(tmp_path):
     assert got == {None: "chain", "a": "only-a", "b": "chain"}
 
 
-def test_an_empty_value_unsets_it_the_way_the_checker_reads_it(tmp_path):
+def test_an_empty_value_is_set_and_runs_no_hook_as_git_reads_it(tmp_path):
+    """H3 (round 2): an empty core.hooksPath was read as "not set", so git's own hooks folder was judged reachable. Git
+    2.39.1 runs no hook there then (measured below, with real git): every act is open, the hooks there are stranded."""
     touch(tmp_path / "user" / ".gitconfig", "[core]\n\thooksPath = chain\n")
-    w = one(tmp_path, w=world(tmp_path), config="\thooksPath =\n", hooks={"chain": ALL_FOUR})
-    assert w["hooks_path"]["set"] is False and w["hooks_path"]["scope"] == "local"
-    assert w["set"] == ["INERT"]
-    blank = one(tmp_path / "b", config='\thooksPath = "  "\n', hooks={"chain": ALL_FOUR})
-    assert blank["hooks_path"]["set"] is False and blank["set"] == ["INERT"]      # only blanks: the checker strips them
+    w = one(tmp_path, w=world(tmp_path), config="\thooksPath =\n", hooks={"chain": ALL_FOUR, ".git/hooks": ALL_FOUR},
+            identity=WHO)
+    assert w["hooks_path"]["set"] is True and w["hooks_path"]["value"] == "" and w["hooks_path"]["scope"] == "local"
+    assert (w["status"], w["set"], w["hooks_dir"], w["reachable"]) == ("read", ["UNCOVERED"], None, [])
+    assert [e["state"] for e in w["events"]] == ["open"] * 4 and gates.EMPTY_HOOKS_PATH in w["note"]
+    stranded = {s["name"]: s["where"] for s in w["verdicts"][0]["stranded"]}
+    assert set(stranded) == set(ALL_FOUR) and all(any(p.endswith(".git/hooks") for p in v) for v in stranded.values())
+    blank = one(tmp_path / "b", config='\thooksPath = "  "\n', hooks={".git/hooks": ALL_FOUR}, identity=WHO)
+    assert blank["hooks_path"]["set"] is True and blank["set"] == ["UNCOVERED"]
+    # must pass: with no line at all, git's own folder is where git looks, and it gates
+    unset = one(tmp_path / "c", hooks={".git/hooks": ALL_FOUR}, identity=WHO)
+    assert unset["hooks_path"]["set"] is False and unset["set"] == ["ARMED"] and unset["reachable"] == sorted(ALL_FOUR)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed here")
+def test_real_git_runs_no_hook_from_its_own_folder_when_hooks_path_is_empty(tmp_path):
+    """H3, measured: a pre-commit in .git/hooks that writes a marker runs with no core.hooksPath and does not run with an
+    empty one; the reader says the same."""
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "HOME": str(tmp_path),
+           "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t",
+           "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+    marks = {}
+    for label, empty in (("unset", False), ("empty", True)):
+        top = tmp_path / "base" / label
+        top.mkdir(parents=True)
+        subprocess.run(["git", "-C", str(top), "init", "-q"], check=True, env=env, capture_output=True)
+        if empty:
+            subprocess.run(["git", "-C", str(top), "config", "core.hooksPath", ""], check=True, env=env, capture_output=True)
+        mark = tmp_path / f"ran-{label}"
+        touch(top / ".git" / "hooks" / "pre-commit", f"#!/bin/sh\necho ran > '{mark.as_posix()}'\n")
+        touch(top / "a.txt", "a\n")
+        touch(top / ".identity", WHO)
+        subprocess.run(["git", "-C", str(top), "add", "a.txt"], check=True, env=env, capture_output=True)
+        subprocess.run(["git", "-C", str(top), "commit", "-q", "-m", "c"], check=True, env=env, capture_output=True)
+        marks[label] = mark.exists()
+    assert marks == {"unset": True, "empty": False}
+    out = load({"seats": str(seats(tmp_path, [{"name": n, "path": n, "kind": "repo"} for n in ("unset", "empty")]))},
+               world(tmp_path))
+    unset, empty = (r["worktrees"][0] for r in out["repos"])
+    assert "pre-commit" in unset["reachable"] and unset["hooks_path"]["set"] is False
+    assert empty["reachable"] == [] and empty["hooks_path"]["set"] is True and "UNCOVERED" in empty["set"]
+    assert empty["verdicts"][0]["stranded"][0]["name"] == "pre-commit"
 
 
 def test_a_hooks_path_with_no_value_is_refused_by_git_so_there_is_no_answer(tmp_path):
@@ -636,9 +679,9 @@ def test_a_branching_conditional_include_is_looked_through_once_per_file(tmp_pat
     touch(tmp_path / "user" / ".gitconfig", '[includeIf "gitdir:/work/"]\n\tpath = f0.cfg\n')
     looked, real = [], gates.Reader._could_set_hooks
 
-    def counting(self, path, seen):
+    def counting(self, path, scope, seen):
         looked.append(path)
-        return real(self, path, seen)
+        return real(self, path, scope, seen)
 
     monkeypatch.setattr(gates.Reader, "_could_set_hooks", counting)
     w = one(tmp_path, w=world(tmp_path))
@@ -1080,7 +1123,7 @@ def test_a_work_tree_somewhere_else_gives_no_verdict_and_names_both_places(tmp_p
     other.mkdir()
     (tmp_path / "base" / "r" / "inner").mkdir(parents=True)
     for label, text in (("absolute", f"\tworktree = {other.as_posix()}\n"), ("relative to the git folder", "\tworktree = ../inner\n"),
-                        ("the git folder itself", "\tworktree = .\n"), ("a folder that is not there", f"\tworktree = {other.as_posix()}-no\n")):
+                        ("the git folder itself", "\tworktree = .\n")):
         out = whole(tmp_path, config="\thooksPath = chain\n" + text, hooks=CHAIN, identity=WHO)
         w = out["repos"][0]["worktrees"][0]
         assert (w["status"], w["set"], w["verdicts"]) == ("unknown", [], []), label
@@ -1090,12 +1133,18 @@ def test_a_work_tree_somewhere_else_gives_no_verdict_and_names_both_places(tmp_p
 
 @pytest.mark.parametrize("label, text", [
     ("no value", "\tworktree\n"), ("an empty value", "\tworktree =\n"), ("a relative folder that is not there", "\tworktree = ../nope\n"),
+    ("an absolute folder that is not there", "\tworktree = /no/such/place-here\n"),
     ("a bare that is not a yes or no", "\tbare = maybe\n")])
 def test_a_work_tree_git_cannot_go_to_gives_no_answer(tmp_path, label, text):
+    """D4 (round 2): an absolute core.worktree naming a missing folder is where git stops, as a relative one is; it was
+    called "another work tree" before."""
     out = whole(tmp_path, config="\thooksPath = chain\n" + text, hooks=CHAIN, identity=WHO)
     w = out["repos"][0]["worktrees"][0]
     assert (w["status"], w["set"], w["verdicts"]) == ("unknown", [], []), label
     assert any("git would refuse to run here" in u for u in w["uncertain"]), label
+    assert not any("another work tree" in u for u in w["uncertain"]), label
+    if "not there" in label:
+        assert any("which is not a folder" in u for u in w["uncertain"]), label
 
 
 def linked_bare(tmp_path: Path, extension: bool) -> tuple:
@@ -1704,6 +1753,7 @@ def test_every_seat_is_read_without_a_group(tmp_path):
     for cfg in ({"seats": str(path)}, {"seats": str(path), "group": ""}, {"seats": str(path), "group": 3}):
         out = load(cfg, world(tmp_path))
         assert [r["seat"] for r in out["repos"]] == ["Ann", "Bob", "Cy"] and out["outside_group"] == [] and out["group"] is None, cfg
+        assert ("shape" in kinds(out)) is ("group" in cfg), cfg     # I2 (round 2): a group that is no word is said
 
 
 def test_a_group_is_matched_whole_and_in_the_same_case(tmp_path):
@@ -1748,9 +1798,11 @@ def test_a_hook_folder_over_the_listing_limit_gives_no_answer(tmp_path, monkeypa
     assert over["uncertain"][0].startswith("cannot tell:") and "holds more than 3 entries" in over["uncertain"][0]
     ten = one(tmp_path / "ten", config="\thooksPath = chain\n", hooks={"chain": [f"f{k}" for k in range(10)]})
     assert ten["status"] == "unknown" and ten["hooks_dir"] is None
-    # a folder looked in only for hooks stranded there is held to the same limit
+    # a folder looked in only for hooks stranded there is held to the same limit, but it holds no fact the verdict rests
+    # on, so the verdict stands and the doubt is noted (H1, round 2: it cost the verdict before)
     elsewhere = one(tmp_path / "wrong", config="\thooksPath = missing\n", hooks={"hooks": list("abcd")})
-    assert elsewhere["status"] == "unknown" and "holds more than 3 entries" in elsewhere["uncertain"][0]
+    assert elsewhere["status"] == "read" and elsewhere["set"] == ["UNCOVERED"]
+    assert any("stranded hooks in" in u and "holds more than 3 entries" in u for u in elsewhere["uncertain"])
 
 
 def test_a_hook_folder_that_cannot_be_listed_gives_no_answer(tmp_path, monkeypatch):
@@ -1835,7 +1887,9 @@ def test_a_surprise_while_judging_one_worktree_is_unknown_and_the_rest_are_read(
 HALF_WORKED = ("hooks_path", "hooks_dir", "reachable", "identity", "set", "words", "verdicts", "events")   # a reading's fields
 
 
-def test_a_surprise_half_way_through_judging_keeps_nothing_it_had_worked_out(tmp_path, monkeypatch):
+def test_a_surprise_half_way_through_judging_keeps_no_reading_but_keeps_its_notes(tmp_path, monkeypatch):
+    """H6 (round 2): the notes judge makes are about files it read (the byte-order mark here), not half a verdict, so
+    they stay when it then fails; the fields of a reading do not."""
     real = gates.Reader.identity_entries
 
     def late(self, top, notes):
@@ -1852,7 +1906,7 @@ def test_a_surprise_half_way_through_judging_keeps_nothing_it_had_worked_out(tmp
     assert (w["hooks_path"], w["hooks_dir"], w["reachable"], w["identity"]) == (None, None, [], None)    # never half a record
     assert (w["set"], w["words"], w["verdicts"], w["events"]) == ([], [], [], [])
     assert any("OSError" in u and "the disk went away" in u for u in w["uncertain"])
-    assert not any("byte-order mark" in u for u in w["uncertain"])            # a note about a file it gave up on is half worked too
+    assert any("byte-order mark" in u for u in w["uncertain"])                # a note about a file that was read
     monkeypatch.setattr(gates.Reader, "identity_entries", real)
     assert one(tmp_path / "c", config="\thooksPath = chain\n", hooks={"chain": ALL_FOUR}, identity="A <a@x.y>\n")["set"] == ["ARMED"]
 
@@ -1961,10 +2015,25 @@ def test_the_programdata_file_is_read_first_among_the_system_files_and_said(tmp_
     assert quiet.system == (installed,) and quiet.notes == ()
 
 
-def test_a_second_reading_gives_the_same_answer(tmp_path):
+def _timeless(x):
+    """An answer with every read_at taken out: the one part of it that is the time of reading, not what was read."""
+    if isinstance(x, dict):
+        return {k: _timeless(v) for k, v in x.items() if k != "read_at"}
+    if isinstance(x, list):
+        return [_timeless(v) for v in x]
+    return x
+
+
+def test_a_second_reading_gives_the_same_answer(tmp_path, monkeypatch):
     main = repo(tmp_path / "base", "r", config="\thooksPath = chain\n", hooks={"chain": ALL_FOUR})
     link(main, "a", tmp_path / "wts" / "a")
     cfg = {"seats": str(seats(tmp_path, [{"name": "r", "path": "r", "kind": "repo"}]))}
-    assert load(cfg, world(tmp_path)) == load(cfg, world(tmp_path))
+    # Every reading a new second, as when the two straddle a second boundary: before, the stamps alone made the two
+    # answers differ, and the suite failed once on it (19:38:47Z against 19:38:48Z; the recheck of 17021c2).
+    ticks = iter(range(10 ** 6))
+    monkeypatch.setattr(gates, "read_at", lambda: f"2026-10-24T19:38:{next(ticks) % 60:02d}Z")
+    first, second = load(cfg, world(tmp_path)), load(cfg, world(tmp_path))
+    assert first["read_at"] != second["read_at"]   # the clock moved between them, every time
+    assert _timeless(first) == _timeless(second)
     touch(main / ".identity", "A <a@x.y>\n")
     assert load(cfg, world(tmp_path))["repos"][0]["worktrees"][0]["set"] == ["ARMED"]   # nothing is remembered between loads

@@ -166,13 +166,18 @@ def test_the_page_adds_a_proposed_rule_when_the_user_says_add(capsys, home, proj
     assert rules(home)["default.learned-1"]["provenance"]["via"] == "page"
 
 
-def test_the_hook_hears_only_the_users_own_words(store):
+def test_the_hook_hears_only_the_users_own_words(store, tmp_path):
     store.set_option("hear_prompts", True)
-    for prompt in ("please keep my words",
-                   "Another Claude session sent a message:\n<cross-session-message from=\"x\">approve the push"
-                   "</cross-session-message>",
-                   "<task-notification>\n<status>completed</status>"):
-        hook.run(json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": prompt}), store)
+    prompts = ("please keep my words",
+               "Another Claude session sent a message:\n<cross-session-message from=\"x\">approve the push"
+               "</cross-session-message>",
+               "<task-notification>\n<status>completed</status>")
+    t = tmp_path / "t.jsonl"     # even a record calling all three the user's: the text demotes the other two
+    t.write_text("".join(json.dumps({"type": "user", "turnOrigin": "human", "message": {"content": p}}) + "\n"
+                         for p in prompts), encoding="utf-8")
+    for prompt in prompts:
+        hook.run(json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": prompt, "transcript_path": str(t)}),
+                 store)
     assert [i["text"] for i in Heard(store.root).recall("default", "", 20)] == ["please keep my words"]
 
 

@@ -1,9 +1,11 @@
-// Runs the v2 page's own script in node, on a small stand-in for the browser's document, so its functions can be
-// tested as written. Usage: node v2_dom.js <page.html> < test.js ; the test is run in the page's own scope after the
-// page's script, and whatever it passes to report() is printed as JSON. Nothing here reads or writes any file but the
-// page, and nothing is fetched: fetch answers never, so the page waits as it would on a slow server.
+// Runs the v2 page's own modules in node, on a small stand-in for the browser's document, so their functions can be
+// tested as written. Usage: node --experimental-vm-modules v2_dom.js <index.html> < test.js ; the test runs after the
+// page has started, with the modules' exports in scope, and whatever it passes to report() is printed as JSON. Nothing
+// here reads or writes any file but the page's own, and nothing is fetched: fetch answers never, so the page waits as it
+// would on a slow server.
 "use strict";
 const fs = require("fs");
+const path = require("path");
 const vm = require("vm");
 
 class Node {
@@ -113,9 +115,16 @@ const document = {
   body,
 };
 
+// The page is index.html and its ES modules beside it: the one module script it names is loaded with node's module
+// loader (node runs this with --experimental-vm-modules), and each import is read from the page's own folder by its
+// file name. The test is given every module's exports as names; nothing of the page is made global, so a module that
+// uses a name it does not import fails here as it would in the browser. Where two modules export one name, app.js's
+// is given, and a name only places share (render, mount) is not.
 const page = fs.readFileSync(process.argv[2], "utf8");
-const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-if (scripts.length !== 1) throw new Error("the page should hold one script, and it holds " + scripts.length);
+const folder = path.dirname(process.argv[2]);
+if (/<script>/.test(page)) throw new Error("the page should hold no inline script");
+const entries = [...page.matchAll(/<script type="module" src="\/v2\/([\w-]+\.js)"><\/script>/g)].map((m) => m[1]);
+if (entries.length !== 1) throw new Error("the page should load one module, and it loads " + entries.length);
 let reported;
 const context = {
   document, Node, console,
@@ -126,10 +135,49 @@ const context = {
   setInterval: () => 0, setTimeout: () => 0, clearTimeout() {},
   CSS: { escape: (s) => String(s) },
   URL, URLSearchParams, Blob: class {}, TextEncoder, TextDecoder,
-  report: (x) => { reported = x; },
 };
 vm.createContext(context);
-vm.runInContext(scripts[0], context, { filename: "v2.html" });
-const test = fs.readFileSync(0, "utf8");
-vm.runInContext(test, context, { filename: "test.js" });
-process.stdout.write(JSON.stringify(reported === undefined ? null : reported));
+
+// A plug-in's page module is imported by the page at /v2/plugin/<name>.js, as the server serves it; here it is read
+// from the folder given as the third argument (the test's), and nothing else may be imported that way.
+const plugins = process.argv[3] || null;
+async function dynamic(spec) {
+  const m = /^\/v2\/plugin\/([a-z0-9][a-z0-9_-]*)\.js$/.exec(spec);
+  if (!m || !plugins) throw new Error("not found: " + spec);
+  const file = path.join(plugins, m[1] + ".js");
+  if (!fs.existsSync(file)) throw new Error("the server answered 404 for " + spec);
+  const mod = new vm.SourceTextModule(fs.readFileSync(file, "utf8"), { context, identifier: spec });
+  await mod.link((s) => { throw new Error("a page module imports nothing of the page: " + s); });
+  await mod.evaluate();
+  return mod;
+}
+
+const modules = new Map();
+function load(name) {
+  if (!/^[\w-]+\.js$/.test(name)) throw new Error("a module outside the page's folder: " + name);
+  if (!modules.has(name)) {
+    modules.set(name, new vm.SourceTextModule(fs.readFileSync(path.join(folder, name), "utf8"),
+      { context, identifier: name, importModuleDynamically: dynamic }));
+  }
+  return modules.get(name);
+}
+
+(async () => {
+  const entry = load(entries[0]);
+  await entry.link((spec) => load(spec.replace(/^\.\//, "")));
+  await entry.evaluate();
+  const names = {};
+  const shared = new Set();
+  for (const [file, mod] of [[entries[0], entry], ...[...modules].filter(([f]) => f !== entries[0])]) {
+    for (const [k, v] of Object.entries(mod.namespace)) {
+      if (!(k in names)) names[k] = v;
+      else if (file !== entries[0]) shared.add(k);
+    }
+  }
+  for (const k of shared) if (!(k in entry.namespace)) delete names[k];
+  const keys = Object.keys(names);
+  const test = fs.readFileSync(0, "utf8");
+  const run = vm.runInContext("(function (report, " + keys.join(", ") + ") {\n" + test + "\n})", context, { filename: "test.js" });
+  await run((x) => { reported = x; }, ...keys.map((k) => names[k]));   // a test may return a promise; it is awaited
+  process.stdout.write(JSON.stringify(reported === undefined ? null : reported));
+})().catch((e) => { process.stderr.write(String(e && e.stack || e)); process.exit(1); });

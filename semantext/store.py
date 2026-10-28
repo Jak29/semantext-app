@@ -10,9 +10,10 @@ import difflib
 import json
 import os
 import re
-import shutil
+import tempfile
 import time
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,6 +25,14 @@ NAME_RE = re.compile(r"[a-z][a-z0-9-]{0,30}")   # always used with fullmatch: "$
 # The base rules on every relay card, by their ids as well as by their `always` mark: a mark is an edit away, and the
 # rule that an act waits for the user's word must never fall off the card that relayed words get.
 FLOOR = ("base.irreversible-needs-your-word", "base.relayed-words-are-information")
+# The provenance types Semantext itself writes: the rules it ships, your corrections, an agent's proposal you added, a
+# suggestion you picked, a switch. A rule with none of these was written into its file by hand (Store.hand_written).
+WRITTEN_BY = ("DEFAULT", "LEARNED", "PROPOSED", "SUGGESTED", "SETTING")
+
+
+def hand_written_line(n: int) -> str:
+    """The card's one line for its hand-written rules."""
+    return f"{n} rule{' is' if n == 1 else 's are'} hand-written (no provenance)."
 MAX_CASE = 1000   # the longest misread message kept as a test
 # An agent's name, as agents.py makes it: the key of its own layer of rules in an environment file.
 AGENT_NAME_RE = re.compile(r"[a-z0-9][a-z0-9@._-]{0,59}")
@@ -101,6 +110,187 @@ def dump(data: dict) -> str:
     return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=110)
 
 
+_WRITE_LOCK = threading.Lock()
+# Every temporary file write_atomic makes starts with this, so the store can tell its own from anything else: a kill
+# between the write and the swap leaves one behind, and the store sweeps those at open (sweep_temps).
+TEMP_PREFIX = ".semantext-write-"
+TEMP_STALE_S = 3600   # a temporary file older than this is no write in progress
+
+
+def sweep_temps(folder) -> int:
+    """Remove this store's own stale temporary files from one folder (not below it): a name that starts with
+    TEMP_PREFIX and ends .tmp, a plain file (never a link), last changed over TEMP_STALE_S ago. Anything else is left
+    alone. Returns how many went; a file that cannot be examined or removed is skipped, never an error."""
+    gone, cutoff = 0, time.time() - TEMP_STALE_S
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return 0
+    for name in names:
+        if not (name.startswith(TEMP_PREFIX) and name.endswith(".tmp")):
+            continue
+        p = os.path.join(folder, name)
+        try:
+            st = os.lstat(p)
+            if os.path.islink(p) or not os.path.isfile(p) or st.st_mtime > cutoff:
+                continue
+            os.unlink(p)
+            gone += 1
+        except OSError:
+            continue
+    return gone
+
+
+def read_settled(path, binary: bool = False):
+    """A file's text (or bytes), read as the store reads its own files: Windows refuses a read for a moment while
+    write_atomic swaps the file in, so a PermissionError is tried again, three tries 50 ms apart, before it is
+    raised."""
+    path = Path(path)
+    for attempt in range(3):
+        try:
+            return path.read_bytes() if binary else path.read_text(encoding="utf-8")
+        except PermissionError:
+            if attempt == 2:
+                raise
+            time.sleep(0.05)
+
+
+def write_atomic(target, data) -> None:
+    """Every file the store writes, written whole or not at all (review of 1.2.2, S1): into a temporary file in the
+    same folder, flushed and synced to disk, then put in place with os.replace, so a crash or a reader at the same
+    moment sees the old file or the new one, never half of one. Text is written as write_text writes it (the system's
+    line endings); bytes are copied as they are. The temporary name is unique to this one write, not to the process
+    (review of 1.2.2, S2: the page's server writes from several threads at once), and an in-process lock keeps two
+    threads from racing on the swap. Windows refuses the swap while another process is reading the file, so it is
+    retried for a second before the error is raised; a write that cannot land leaves no temporary file behind."""
+    target = Path(target)
+    if isinstance(data, str):     # a text's CRLF is one line end: written in text mode it would become CR CR LF
+        data = data.replace("\r\n", "\n")
+    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=f"{TEMP_PREFIX}{target.stem}-", suffix=".tmp")
+    try:
+        with (os.fdopen(fd, "wb") if isinstance(data, bytes) else os.fdopen(fd, "w", encoding="utf-8")) as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        for attempt in range(20):
+            try:
+                with _WRITE_LOCK:     # the lock covers the swap only: a wait for a busy file never holds up the others
+                    os.replace(tmp, target)
+                return
+            except PermissionError:
+                if attempt == 19:
+                    raise
+                time.sleep(0.05)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+LOCK_TIMEOUT = 10.0   # seconds append_checked waits for another writer before it refuses
+
+
+class Tail:
+    """What append_checked hands its check, read under the lock: `raw`, the file's bytes; `lines`, its complete lines
+    as text without their newline (a carriage return before it is kept, for the reader to judge), made only when asked
+    for, so a check that reads only the end of a long file never splits all of it; and `torn`, the text after the last
+    newline when the file does not end in one (None when it does, or is empty). `size` is the file's length in bytes."""
+
+    def __init__(self, raw: bytes):
+        self.raw, self.size = raw, len(raw)
+        cut = raw.rfind(b"\n") + 1
+        self.torn = raw[cut:].decode("utf-8", errors="replace") if cut < len(raw) else None
+        self._lines = None
+
+    @property
+    def lines(self) -> list[str]:
+        if self._lines is None:
+            body = self.raw[:self.raw.rfind(b"\n") + 1]
+            self._lines = [p.decode("utf-8", errors="replace") for p in body.split(b"\n")[:-1]]
+        return self._lines
+
+
+@contextmanager
+def file_lock(lock_path, timeout: float = LOCK_TIMEOUT):
+    """An exclusive lock on <lock_path>, held across processes and threads: the operating system's own lock on its
+    first byte (msvcrt.locking on Windows, fcntl.flock elsewhere), which the system releases when the holder's process
+    ends, however it ends. So there is no stale-lock rule, and none is needed: a lock file left behind is only a file
+    and never blocks anyone. Waits up to `timeout` seconds, then refuses."""
+    lock_path = Path(lock_path)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o644)
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            try:
+                _lock_byte(fd, True)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise Refused(f"{lock_path.name} is held by another writer for over {timeout:g} s; try again")
+                time.sleep(0.005)
+        try:
+            yield
+        finally:
+            _lock_byte(fd, False)
+    finally:
+        os.close(fd)
+
+
+def _lock_byte(fd: int, on: bool) -> None:
+    if os.name == "nt":
+        import msvcrt
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK if on else msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(fd, (fcntl.LOCK_EX | fcntl.LOCK_NB) if on else fcntl.LOCK_UN)
+
+
+def append_checked(path, check, line, timeout: float = LOCK_TIMEOUT, after=None) -> str:
+    """One line appended to a JSON-lines file, checked first, as one act no other writer can split (doors spec v0.6,
+    rule 10): under file_lock(<path>.lock) the file is read whole, check(tail) is called with its Tail and may refuse
+    by raising Refused (then nothing is written), the line is made (`line` is the text, or a function of the same Tail
+    that returns it, so a number minted from the file is minted under the lock), one line ending in a newline is
+    appended, then flushed and synced to disk. `after(tail, text)`, when given, runs still under the lock, after the
+    sync (the work store writes its head there). Returns the line written.
+
+    A torn tail, the file not ending in a newline (a writer that died mid-write), is never glued to: the new line is
+    started on a fresh line, so the fragment stays a line of its own for the reader to report, and the line written is
+    whole. The check sees the fragment in tail.torn and decides what it means."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with file_lock(path.with_name(path.name + ".lock"), timeout):
+        raw = path.read_bytes() if path.exists() else b""
+        tail = Tail(raw)
+        if check is not None:
+            check(tail)
+        text = line(tail) if callable(line) else line
+        if not isinstance(text, str) or "\n" in text or "\r" in text:
+            raise Refused("append_checked writes one line of text, with no line break inside it")
+        data = (b"\n" if tail.torn is not None else b"") + text.encode("utf-8") + b"\n"
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o644)
+        try:
+            view = memoryview(data)
+            while view:
+                view = view[os.write(fd, view):]
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        if after is not None:
+            after(tail, text)
+    return text
+
+
+def provenance_of(x) -> dict:
+    """A rule's provenance, or {} when none is recorded. A hand edit can leave it a plain string ("learned") or a
+    list; that reads as none recorded, never as an AttributeError in the hook or the page (review of 1.2.2, S3)."""
+    p = x.get("provenance") if isinstance(x, dict) else None
+    return p if isinstance(p, dict) else {}
+
+
 class Refused(ValueError):
     """A request the store will not carry out, with the reason shown to the user."""
 
@@ -150,8 +340,18 @@ class Store:
 
     @classmethod
     def open(cls, root: Path | None = None) -> "Store":
-        """The store at root (or your home), created with the starting environments if it is new."""
-        return cls(paths.ensure_home(root))
+        """The store at root (or your home), created with the starting environments if it is new. Its own stale
+        temporary files (see sweep_temps) are swept from the folders write_atomic writes into: the store's folder, its
+        history, and each environment's folder; nothing below those, and nothing else."""
+        store = cls(paths.ensure_home(root))
+        try:   # environments only: a stray folder (see strays) is left alone, as strays() says
+            envs = [p for p in store.profiles_dir.iterdir() if valid_name(p.name) and not p.is_symlink()
+                    and (p / "SEMANTICS.yaml").is_file()]
+        except OSError:
+            envs = []
+        for folder in (store.root, store.history_dir, *envs):
+            sweep_temps(folder)
+        return store
 
     # ---- files ------------------------------------------------------------------------------------------------
     def path(self, name: str) -> Path:
@@ -167,7 +367,7 @@ class Store:
         edit went wrong): never a traceback."""
         p = self.path(name)
         try:
-            d = yaml.safe_load(p.read_text(encoding="utf-8"))
+            d = yaml.safe_load(read_settled(p))
         except UnicodeDecodeError:
             raise Refused(f"{p} is not saved as UTF-8 text; save it again as UTF-8")
         except yaml.YAMLError as e:
@@ -183,11 +383,11 @@ class Store:
         """The previous version goes to history/ before any write: undo at the file level, and nothing lost."""
         self.history_dir.mkdir(parents=True, exist_ok=True)
         mark = stamp(p.name for p in self.history_dir.glob(f"{name}-*.yaml"))
-        shutil.copyfile(self.path(name), self.history_dir / f"{name}-{mark}.yaml")
+        write_atomic(self.history_dir / f"{name}-{mark}.yaml", read_settled(self.path(name), binary=True))
 
     def save(self, name: str, data: dict) -> None:
         self._keep(name)
-        self.path(name).write_text(dump(data), encoding="utf-8")
+        write_atomic(self.path(name), dump(data))
 
     def names(self) -> list[str]:
         """Default first, then your own environments by name, then base (shared, never shown as an environment)."""
@@ -206,6 +406,27 @@ class Store:
     def title(self, name: str) -> str:
         return str(self.load(name)["environment"].get("title") or name.title())
 
+    def title_or_name(self, name: str) -> str:
+        """The title for a message, or the name when the file cannot be read: a message never fails on it."""
+        try:
+            return self.title(name)
+        except (Refused, OSError):
+            return name
+
+    def titles(self) -> tuple[dict, list]:
+        """Every environment's title by name (base left out), and the problems of the files that cannot be read. One
+        broken file is skipped and reported, and never blocks switching to, or making, any other (review of 1.2.2,
+        S4)."""
+        titles, problems = {}, []
+        for n in self.names():
+            if n == "base":
+                continue
+            try:
+                titles[n] = self.title(n)
+            except (Refused, OSError) as e:
+                problems.append({"name": n, "problem": str(e)})
+        return titles, problems
+
     def resolve(self, text: str) -> str:
         """An environment's name, from its name or its title, ignoring case: "Gardening" finds gardening."""
         text = " ".join(str(text or "").split())
@@ -214,7 +435,10 @@ class Store:
         names = [n for n in self.names() if n != "base"]
         if text in names:
             return text
-        titles = {n: self.title(n).lower() for n in names}
+        got, problems = self.titles()
+        titles = {n: t.lower() for n, t in got.items()}
+        names = [n for n in names if n in titles or n == text.lower()]
+        titles.update({n: n for n in names if n not in titles})   # a broken file still answers to its own name
         hits = [n for n in names if n == text.lower() or titles[n] == text.lower()]
         if len(hits) == 1:
             return hits[0]
@@ -225,7 +449,10 @@ class Store:
         hint = ""
         if close:
             hint = f"; did you mean {next((n for n in names if close[0] in (n, titles[n])), close[0])}?"
-        raise Refused(f"no environment called {text!r}{hint} (see them with: semantext env list)")
+        skipped = (f"; {len(problems)} environment file{'s' if len(problems) != 1 else ''} could not be read, so "
+                   f"{'their titles were' if len(problems) != 1 else 'its title was'} not searched: "
+                   + "; ".join(p["problem"] for p in problems)) if problems else ""
+        raise Refused(f"no environment called {text!r}{hint} (see them with: semantext env list){skipped}")
 
     # ---- state ------------------------------------------------------------------------------------------------
     def state(self) -> dict:
@@ -233,9 +460,11 @@ class Store:
         so the defaults stand in, and `state_problem` names the file; the next change keeps a copy of it first."""
         s = {"active": "default", "model": None, "hear_prompts": False, "feed": True, "log": [], "pending": []}
         self.state_problem = None
-        if self.state_path.exists():
+        if self.state_path.exists() and not self.state_path.is_file():
+            self.state_problem = self._not_a_file()
+        elif self.state_path.exists():
             try:
-                got = jsonread.loads(self.state_path.read_text(encoding="utf-8"))
+                got = jsonread.loads(read_settled(self.state_path))
                 if not isinstance(got, dict):
                     raise ValueError("it does not hold settings")
                 s.update(got)
@@ -253,24 +482,26 @@ class Store:
         unreadable file it replaces is kept beside it first."""
         s["log"] = s["log"][-60:]
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.state_path.exists() and not self.state_path.is_file():
+            raise Refused(self._not_a_file())
         if self.state_path.exists():
             try:
-                readable = isinstance(jsonread.loads(self.state_path.read_text(encoding="utf-8")), dict)
+                readable = isinstance(jsonread.loads(read_settled(self.state_path)), dict)
             except (ValueError, OSError):
                 readable = False
             if not readable:
                 mark = stamp()
-                shutil.copyfile(self.state_path, self.state_path.with_name(f"state-unreadable-{mark}.json"))
-        tmp = self.state_path.with_name(f"state-{os.getpid()}.tmp")
-        tmp.write_text(json.dumps(s, indent=1, ensure_ascii=False), encoding="utf-8")
-        for attempt in range(20):   # Windows refuses the swap while another process is reading the file
-            try:
-                os.replace(tmp, self.state_path)
-                return
-            except PermissionError:
-                if attempt == 19:
-                    raise
-                time.sleep(0.05)
+                try:
+                    old = read_settled(self.state_path, binary=True)
+                except OSError as e:     # never replace a file whose copy cannot be kept
+                    raise Refused(f"{self.state_path} cannot be read ({e}), so it is not replaced; the settings are "
+                                  f"not saved until it can be read or is moved aside")
+                write_atomic(self.state_path.with_name(f"state-unreadable-{mark}.json"), old)
+        write_atomic(self.state_path, json.dumps(s, indent=1, ensure_ascii=False))
+
+    def _not_a_file(self) -> str:
+        return (f"{self.state_path} is not a file, so the settings are at their defaults and cannot be saved until it "
+                f"is moved aside")
 
     def log(self, what: str) -> None:
         s = self.state()
@@ -292,10 +523,35 @@ class Store:
     def live(entries):
         return [e for e in entries or [] if e.get("enabled", True) and not e.get("archived")]
 
+    @classmethod
+    def served_rules(cls, name: str, entries) -> list:
+        """The rules of one layer the card carries: the live ones, and in base the FLOOR rules whatever their switch
+        says. Switched off, undone, or restored to a version where they were off, the floor would leave the relay card
+        and the full card both (review of 1.2.2, S6); the toggle and undo refuse it, and a hand edit cannot take it
+        off either. Only deleting the rule from the file removes it."""
+        live = cls.live(entries)
+        if name != "base":
+            return live
+        keep = {id(e) for e in live}
+        return [e for e in entries or [] if id(e) in keep or (isinstance(e, dict) and e.get("id") in FLOOR)]
+
+    @staticmethod
+    def _floor_guard(name: str, rule_id: str, what: str) -> None:
+        if name == "base" and rule_id in FLOOR:
+            raise Refused(f"{rule_id} is on every card, relayed or not, so it cannot be {what}; change its words in "
+                          f"the editor if they are wrong")
+
+    @staticmethod
+    def hand_written(x: dict) -> bool:
+        """A rule that carries none of the provenance Semantext writes (WRITTEN_BY): typed into the file by hand, by
+        the user in the page's editor or by any other program. Its file says nothing of who wrote it."""
+        p = x.get("provenance")
+        return not (isinstance(p, dict) and p.get("type") in WRITTEN_BY)
+
     @staticmethod
     def _line(x: dict) -> str:
         """One rule as the card shows it, with a mark when it is not the user's own rule as written."""
-        p = x.get("provenance") or {}
+        p = provenance_of(x)
         mark = (" (learned)" if p.get("type") == "LEARNED" else
                 f" (proposed by {p.get('by') or 'an agent'}, added by the user: not the user's own words)"
                 if p.get("type") == "PROPOSED" else "")
@@ -319,9 +575,9 @@ class Store:
         kind = lambda n: "base" if n == "base" else "environment"   # noqa: E731
         if form == "relay":
             on_floor = lambda x: x.get("always") or x.get("id") in FLOOR   # noqa: E731  by mark, or by id
-            floor = [x for x in self.live(self.load("base").get("entries")) if on_floor(x)]
-            picked = [(n, [x for x in self.live(self.load(n).get("entries")) if x.get("relay") or on_floor(x)])
-                      for n in chain]
+            floor = [x for x in self.served_rules("base", self.load("base").get("entries")) if on_floor(x)]
+            picked = [(n, [x for x in self.served_rules(n, self.load(n).get("entries"))
+                           if x.get("relay") or on_floor(x)]) for n in chain]
             picked.append((agent, [x for x in own if x.get("relay") or x.get("always")]))
             if floor and any(x.get("relay") for _, xs in picked for x in xs):
                 return {"form": "relay", "environment": name, "title": self.title(name), "agent": agent,
@@ -332,7 +588,7 @@ class Store:
         for n in chain:
             d = self.load(n)
             e = d["environment"]
-            out.append({"layer": kind(n), "name": n, "rules": self.live(d.get("entries")),
+            out.append({"layer": kind(n), "name": n, "rules": self.served_rules(n, d.get("entries")),
                         "heading": f"{e.get('title', e['id'])} {e.get('version', '')} "
                                    f"({str(e.get('scope', n)).split('.')[0]})",
                         "tests": len(d.get("tests") or [])})
@@ -351,6 +607,11 @@ class Store:
                    for layer in plan["layers"] for x in layer["rules"]])
         lines = [f"# Semantext: standing rules for reading this user ({plan['title']} environment)",
                  "Follow these rules when you read the user's messages, unless a message itself says otherwise."]
+        # One line for every hand-written rule, never a mark on each: the card is under the hook's byte limit, and a
+        # mark per rule grew it with every such rule. The page marks each one.
+        n = sum(self.hand_written(x) for layer in plan["layers"] for x in layer["rules"])
+        if n:
+            lines.append(hand_written_line(n))
         for layer in plan["layers"]:
             if layer["layer"] == "agent":
                 lines += ["", f"## For {layer['name']} only", LAYER_NOTE] + [self._line(x) for x in layer["rules"]]
@@ -401,7 +662,7 @@ class Store:
             live = self.live(d.get("entries"))
             out.append({"name": n, "title": d["environment"].get("title", n.title()),
                         "scope": d["environment"].get("scope", ""), "rules": len(live),
-                        "learned": sum(1 for x in live if (x.get("provenance") or {}).get("type") == "LEARNED"),
+                        "learned": sum(1 for x in live if provenance_of(x).get("type") == "LEARNED"),
                         "features": [k for k in FEATURES if any(x["id"] == f"feature.{k}" for x in live)]})
         return {"active": s["active"], "model": s["model"], "feed": bool(s.get("feed", True)),
                 "hear_prompts": bool(s.get("hear_prompts")), "profiles": out, "log": s["log"][-25:][::-1],
@@ -468,7 +729,7 @@ class Store:
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 '\-]{0,39}", title):
             raise Refused("name it with letters, numbers and spaces, up to 40 characters")
         # A title already in use gets a number, so the switcher never shows two the same: Cooking, then Cooking 2.
-        taken = {self.title(n).lower() for n in self.names() if n != "base"}
+        taken = {t.lower() for t in self.titles()[0].values()}   # a broken file is skipped (review of 1.2.2, S4)
         if title.lower() in taken:
             k = 2
             while f"{title} {k}".lower() in taken:
@@ -505,7 +766,7 @@ class Store:
                                "inherits": ["base@0.1.0"]},
                "entries": entries, "tests": []}
         (self.profiles_dir / slug).mkdir(parents=True)
-        (self.profiles_dir / slug / "SEMANTICS.yaml").write_text(dump(env), encoding="utf-8")
+        write_atomic(self.profiles_dir / slug / "SEMANTICS.yaml", dump(env))
         s = self.state()
         s["active"] = slug
         self.put_state(s)
@@ -550,6 +811,8 @@ class Store:
     def toggle(self, name: str, rule_id: str) -> bool:
         d = self.load(name)
         x = self._entry(d, rule_id)
+        if x.get("enabled", True):
+            self._floor_guard(name, rule_id, "switched off")
         x["enabled"] = not x.get("enabled", True)
         self.save(name, d)
         self.log(f"Turned {'on' if x['enabled'] else 'off'} {rule_id} in {self.title(name)}")
@@ -668,6 +931,7 @@ class Store:
         """Undo never deletes: the rule is archived in its file, with its words, and leaves the card."""
         d = self.load(name)
         x = self._entry(d, rule_id)
+        self._floor_guard(name, rule_id, "undone")
         x["archived"], x["enabled"], x["archived_at"] = True, False, now()
         self.save(name, d)
         self.log(f"Undid {rule_id} in {self.title(name)} (kept in the file, off the card)")
@@ -712,19 +976,34 @@ class Store:
             before = None
         mark = stamp(p.name for p in self.history_dir.glob(f"{name}-*.yaml"))
         kept = self.history_dir / f"{name}-{mark}-redo.yaml"
-        shutil.copyfile(p, kept)
-        shutil.copyfile(newest, p)
-        newest.replace(newest.with_name(newest.stem + "-used.yaml"))
+        current, restored = read_settled(p, binary=True), read_settled(newest, binary=True)   # both before any write
+        write_atomic(kept, current)
+        write_atomic(p, restored)
+        # The restore has happened: from here on nothing raises (review of 1.2.2, S5). A step that fails is named in
+        # last_undo["problem"] and in the log, and the caller says so.
+        problems = []
+        try:
+            newest.replace(newest.with_name(newest.stem + "-used.yaml"))
+        except OSError as e:
+            problems.append(f"the restored version could not be marked as used ({e}), so the next undo may restore it "
+                            f"again")
         try:
             after = {x.get("id") for x in self.every_entry(self.load(name))}
-        except Refused:
+        except (Refused, OSError) as e:
             after = set()
-        self.last_undo = {"kept": str(kept), "took_off": None if before is None else sorted(before - after)}
-        self.log(f"Undid the last change in {self.title(name)}; the version it replaced is kept as {kept.name}")
+            problems.append(f"the restored version cannot be read: {e}")
+        problem = "; ".join(problems) or None
+        self.last_undo = {"kept": str(kept), "took_off": None if before is None else sorted(before - after),
+                          "problem": problem}
+        try:
+            self.log(f"Undid the last change in {self.title_or_name(name)}; the version it replaced is kept as "
+                     f"{kept.name}" + (f". Problem: {problem}" if problem else ""))
+        except OSError as e:
+            self.last_undo["problem"] = "; ".join(filter(None, [problem, f"the log could not be written ({e})"]))
         return newest.name
 
     def source(self, name: str) -> str:
-        return self.path(name).read_text(encoding="utf-8")
+        return read_settled(self.path(name))
 
     def write_source(self, name: str, text: str) -> None:
         """The editor's save. Refused unless the text is a valid environment for the same name, so a typo cannot
@@ -746,7 +1025,7 @@ class Store:
         if len(set(ids)) != len(ids):
             raise Refused("two rules share an id")
         self._keep(name)
-        self.path(name).write_text(text, encoding="utf-8")
+        write_atomic(self.path(name), text)
         self.log(f"Edited {self.title(name)} by hand ({len(entries)} rules)")
 
     # ---- reading a message: cue words only ---------------------------------------------------------------------

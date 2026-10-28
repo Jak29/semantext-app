@@ -18,8 +18,8 @@
 #
 # CHANGED, 23 October 2026, for Semantext: diff_summary takes two {path: text} trees and a list of always-on paths
 # instead of a SurfaceSpec; fingerprint digests the files a card names (not a folder walked), with SHA-256, reads only
-# plain files inside the filing agent's own home and its projects, through no link or junction at any level, never a
-# name that holds secrets, a hard link or an alternate stream, through one checked handle; the fields are read from a
+# plain files inside the roots of an evidence policy (evidence.py) and only those the policy admits, through no link or
+# junction at any level, never a hard link or an alternate stream, through one checked handle; the fields are read from a
 # request line instead of an agent's done() call; the score is a Brier score over stated probabilities instead of a
 # hit rate. Nothing here runs a command, calls git or writes a file: rrsi's gitops (subprocess), its history rewrite
 # and its unattended fast-forward are not lifted.
@@ -42,8 +42,8 @@ agent files an ordinary decision card in its requests file naming the change's i
                                   as data, never performed
     prune                         true when the change removes machinery that stopped helping
     tree                          {"before": {path: text}, "after": {path: text}, "always_on": [paths]}: what changes
-    evidence                      {"files": [up to 50 full paths], "digest": fingerprint(files, roots) when the
-                                  evidence was measured}: files inside the agent's own home or its projects only
+    evidence                      {"files": [up to 50 full paths], "digest": fingerprint(files, policy) when the
+                                  evidence was measured}: only files the page's evidence policy admits for the agent
 
 A later line {"outcome": <the card's id>, "at", "moved": {measure: "up" | "down" | "none"}, "regressions": [texts],
 "undone": true or false} records what happened after the change, as a new entry: an outcome is never edited, and an
@@ -51,15 +51,14 @@ undo is one more outcome, never an erase.
 """
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import math
 import os
 import re
 import stat
 import time
-from pathlib import Path
 
+from . import evidence
 from .places import _linked   # a symlink or a junction; a cloud placeholder is not a link
 
 REQUIRED = ("id", "at", "title", "why", "component", "hypothesis")
@@ -112,31 +111,13 @@ def _tree(value, notes: list) -> dict | None:
 
 # ---- is the evidence current (harness2 runmark.fingerprint, reworked) ----------------------------------------------
 # A digest says only "same" or "different", but that is enough to confirm a guess about a file's bytes, or that a file
-# exists. So the evidence of a change is read only where the filing agent can already read: its own home and the
-# projects the places reader binds to it (the caller passes those roots; there is no default). Inside them, nothing is
-# followed and nothing that holds secrets is read: every folder below the root is checked to be no link or junction,
-# the file's real path must lie inside the root's real path, a name that carries secrets in ANY part of the path is
-# refused, as is a hard link, an alternate stream, a device name, and a short (8.3) name. The bytes are read through
-# one read-only handle checked against the file as examined, and the folder is checked again after the read.
-# The first layer: evidence is a document or source text, by its kind. Anything else is not read.
-EVIDENCE_KINDS = (".md", ".txt", ".json", ".jsonl", ".yaml", ".yml", ".toml", ".py", ".ts", ".tsx", ".js", ".mjs", ".cs",
-                  ".rs", ".lean", ".svg", ".csv", ".sh", ".ps1", ".bat", ".cmd", ".html", ".css", ".xml", ".cfg", ".ini",
-                  ".go", ".java", ".c", ".h", ".hpp", ".cpp", ".log")
-EVIDENCE_NAMES = ("license", "makefile", "dockerfile", "readme", ".gitignore", ".gitattributes", ".editorconfig")
-# The second layer: a part of the path, taken whole (case aside), that holds or guards secrets. The kinds above are the
-# places secrets live too (.json, .yaml, .txt), so this layer carries the weight. A trade-off, stated: "token" is
-# matched as a whole word (token, tokens, token.*, tokens.*, *_token*, *-token*) so that tokenizer.py stays evidence,
-# while vault*, wallet*, .ssh*, *kaggle* and password* refuse a few honest names (vault_notes.md, wallets.md).
-SECRET_NAMES = (".env*", ".npmrc", ".netrc", ".pgpass", ".git-credentials", "id_rsa*", "id_dsa*", "id_ecdsa*",
-                "id_ed25519*", "*.pem", "*.key", "*.key.*", "*.pfx", "*.p12", "*.kdbx", "credentials*", "cred", "cred.*",
-                "wallet*", "vault*", "*kaggle*", ".ssh*",
-                "token", "tokens", "token.*", "tokens.*", "*_token*", "*-token*",
-                "secret", "secrets", "secret.*", "secrets.*", "*_secret*", "*-secret*", "client_secret*",
-                "settings.local.json", "service-account*", "service_account*", "*api_key*", "*api-key*", "*apikey*",
-                "password*", "passwd*", "seed", "seed.*", "mnemonic*", "recovery_code*", "auth.json", "env.json",
-                "key", "key.*", "keys", "keys.*", "private_key*", "private-key*")
-SECRET_FOLDERS = (".ssh", ".kube", ".docker", ".aws", ".gnupg", ".kaggle")
-SECRET_IN = {"gh": ("hosts.yml", "hosts.yaml")}   # a name that holds secrets only under a folder of this name
+# exists. So the evidence of a change is read only where the filing agent can already read, and only what the page's
+# evidence policy admits (evidence.py: the policy names the roots, and there is no default). Below a root nothing is
+# followed: every folder below the root is checked to be no link or junction, the file's real path must lie inside the
+# root's real path, and a hard link, an alternate stream, a device name and a short (8.3) name are refused. Which files
+# are evidence at all is the policy's question, asked only once all of that has passed; names no longer decide it.
+# The bytes are read through one read-only handle checked against the file as examined, and the folder is checked
+# again after the read.
 DEVICE = re.compile(r"(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?", re.IGNORECASE)
 SHORT = re.compile(r"~[0-9]")
 EDGE = 4096                      # bytes at each end of a file that key the cache, beside its size, time and inode
@@ -144,21 +125,12 @@ CACHE_S = 60.0                   # how long a cached digest of one file stands
 _CACHE: dict = {}                # in memory only, never written: key -> (content digest, when)
 
 
-def _key(path: str) -> str:
-    return os.path.normcase(os.path.normpath(path))
-
-
-def _below(path: str, root: str) -> list[str] | None:
-    """The parts of `path` below `root` (both as compared), or None when it is not below it."""
-    p, r = _key(path), _key(root).rstrip("\\/")
-    if not p.startswith(r + os.sep):
-        return None
-    return [x for x in p[len(r) + 1:].split(os.sep) if x]
+_key, _below = evidence.key, evidence.below
 
 
 def _bad_name(part: str) -> str | None:
-    """Why one part of a path may not be read, or None."""
-    low = part.lower()
+    """Why one part of a path may not be read as a name of its own, or None: these are about how the file system reads
+    a name (a stream, a dropped end, a device, a short name), never about what the file may hold."""
     if ":" in part:
         return "it holds a colon (an alternate stream or a drive)"
     if part != part.rstrip(" ."):
@@ -167,25 +139,6 @@ def _bad_name(part: str) -> str | None:
         return "it is a device name"
     if SHORT.search(part):
         return "it is a short (8.3) name"
-    if low in SECRET_FOLDERS or any(fnmatch.fnmatchcase(low, pat) for pat in SECRET_NAMES):
-        return "its name is one that holds secrets"
-    return None
-
-
-def _kind(name: str) -> str | None:
-    """Why a file of this name is not evidence, or None: evidence is one of EVIDENCE_KINDS by its extension, or one of
-    EVIDENCE_NAMES whole."""
-    low = name.lower()
-    if low in EVIDENCE_NAMES or os.path.splitext(low)[1] in EVIDENCE_KINDS:
-        return None
-    return "it is not a kind of file read as evidence (" + ", ".join(EVIDENCE_KINDS + EVIDENCE_NAMES) + ")"
-
-
-def _secret_in(parts: list[str]) -> str | None:
-    """A part that holds secrets only under a certain folder (gh/hosts.yml), or None."""
-    for folder, part in zip(parts, parts[1:]):
-        if part.lower() in SECRET_IN.get(folder.lower(), ()):
-            return part
     return None
 
 
@@ -193,23 +146,20 @@ class _Unread(Exception):
     pass
 
 
-OVER_BUDGET = "not checked: over the read budget"
+OVER_BUDGET = evidence.OVER_BUDGET
 
 
-def _content(path: str, root: str, now: float, budget: dict | None = None) -> str:
+def _content(path: str, root: str, now: float, budget: dict | None, policy: evidence.Policy) -> str:
     """The SHA-256 of one file's bytes, read as the top of this section says, or _Unread with the reason."""
     if path.startswith(("\\\\", "//")) or not os.path.isabs(path) or ".." in re.split(r"[\\/]", path):
         raise _Unread(f"{path} is not a plain full path")
     parts = _below(path, root)
     if not parts:
-        raise _Unread(f"{path} is outside the filing agent's home and its projects, so it is not read")
+        raise _Unread(f"{path} is outside every folder where the filing agent's evidence may be read, so it is not read")
     for part in parts:
         why = _bad_name(part)
         if why:
             raise _Unread(f"{path} is not read: {part!r} {why}")
-    why = _kind(parts[-1])
-    if why:
-        raise _Unread(f"{path} is not read: {why}")
     here = root
     for i, part in enumerate(parts):       # every folder below the root, and then the file: no link, no junction
         here = os.path.join(here, part)
@@ -237,12 +187,9 @@ def _content(path: str, root: str, now: float, budget: dict | None = None) -> st
         why = _bad_name(part)
         if why:
             raise _Unread(f"{path} is not read: {part!r} {why}")
-    why = _kind(real_parts[-1])
+    why = policy.refuse(path, real, root, budget)   # which files are evidence at all: the policy's question
     if why:
-        raise _Unread(f"{path} is not read: {why}")
-    held = _secret_in(list(Path(real).parts))
-    if held:
-        raise _Unread(f"{path} is not read: {held!r} its name is one that holds secrets in that folder")
+        raise _Unread(why if why == OVER_BUDGET else f"{path} is not evidence: {why}, so whether it matches is unknown")
     parent = os.path.dirname(path)
     before = os.lstat(parent)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0))
@@ -278,7 +225,11 @@ def _content(path: str, root: str, now: float, budget: dict | None = None) -> st
     finally:
         os.close(fd)
     after, again = os.lstat(parent), os.lstat(path)
-    if _linked(after) or (after.st_dev, after.st_ino) != (before.st_dev, before.st_ino) or not _same(again, st):
+    # A folder below the root must still be no link; the root itself may be one (a synced folder is reached through a
+    # junction), as the walk above allows, so a file directly under it is read like one a folder deeper (review of
+    # 1.2.2, C1). Its identity is still checked.
+    if ((len(parts) > 1 and _linked(after)) or (after.st_dev, after.st_ino) != (before.st_dev, before.st_ino)
+            or not _same(again, st)):
         raise _Unread(f"{path} or its folder changed while it was read")
     return digest
 
@@ -287,19 +238,26 @@ def _same(a, b) -> bool:
     return (a.st_dev, a.st_ino, a.st_size, a.st_mtime_ns) == (b.st_dev, b.st_ino, b.st_size, b.st_mtime_ns)
 
 
-def fingerprint(files, roots, budget: dict | None = None) -> dict:
+def fingerprint(files, policy, budget: dict | None = None) -> dict:
     """A digest of the files a card names, as they are now: SHA-256 over each path as written (sorted), a NUL, the
     SHA-256 of its bytes, and a NUL. {"digest": hex} when every file could be digested; {"digest": None, "why": ...}
-    when one cannot be: a path that is not full, one outside `roots` (the filing agent's home and its projects: required,
-    with no default), one that passes through a link or junction, a name that holds secrets, a hard link, something that
-    is not a plain file, a file too large, or a file that is not there (whether it matches is then unknown, never
-    "current"). `budget`, when given, is {"left": bytes} shared across one page build: a file whose bytes would pass it
-    is not read ("not checked: over the read budget"). The filer computes the same function when it measures."""
+    when one cannot be: a path that is not full, one outside the policy's roots (required, with no default), one that
+    passes through a link or junction, a hard link, something that is not a plain file, a file too large, a file the
+    policy does not admit as evidence, or a file that is not there (whether it matches is then unknown, never
+    "current"). `policy` is an evidence.Policy, or a list of roots (the filing agent's home and projects, the public
+    interface since semantext.api 0.1), which is read through the page's evidence way over those roots
+    (evidence.from_roots), never with no policy; anything else reads nothing. `budget`, when given, is {"left": bytes}
+    shared across one page build: a file whose bytes would pass it is not read ("not checked: over the read budget").
+    The filer computes the same function, with the same policy, when it measures."""
     if not isinstance(files, list) or not files or not all(isinstance(f, str) and f.strip() for f in files):
         return {"digest": None, "why": "the evidence should name its files"}
     if len(files) > MAX_FILES:
         return {"digest": None, "why": f"the evidence names {len(files)} files; at most {MAX_FILES} are read"}
-    roots = [r for r in (roots or []) if isinstance(r, str) and r.strip()]
+    if isinstance(policy, (list, tuple)):
+        policy = evidence.from_roots(policy)
+    if not isinstance(policy, evidence.Policy):
+        return {"digest": None, "why": "no evidence policy is given, so no file is read"}
+    roots = [r for r in (policy.roots() or []) if isinstance(r, str) and r.strip()]
     if not roots:
         return {"digest": None, "why": "no folder is given where the filing agent's evidence may be read"}
     now = time.monotonic()
@@ -308,8 +266,9 @@ def fingerprint(files, roots, budget: dict | None = None) -> dict:
         root = next((r for r in sorted(roots, key=len, reverse=True) if _below(f, r)), None)
         try:
             if root is None:
-                raise _Unread(f"{f} is outside the filing agent's home and its projects, so it is not read")
-            digest = _content(f, root, now, budget)
+                raise _Unread(f"{f} is outside every folder where the filing agent's evidence may be read, so it is "
+                              f"not read")
+            digest = _content(f, root, now, budget, policy)
         except _Unread as e:
             return {"digest": None, "why": str(e)}
         except OSError as e:
@@ -318,15 +277,15 @@ def fingerprint(files, roots, budget: dict | None = None) -> dict:
     return {"digest": h.hexdigest()}
 
 
-def freshness(evidence, roots, budget: dict | None = None) -> dict | None:
+def freshness(ev, policy, budget: dict | None = None) -> dict | None:
     """Whether the evidence a change was measured on is still today's: "current" when today's digest is the card's,
     "stale" when it differs, "unknown" (with why) when today's cannot be worked out or the card carries none."""
-    if not isinstance(evidence, dict):
+    if not isinstance(ev, dict):
         return None
-    files, said = evidence.get("files"), evidence.get("digest")
+    files, said = ev.get("files"), ev.get("digest")
     if not isinstance(said, str) or not said.strip():
         return {"state": "unknown", "why": "the card carries no digest of its evidence", "files": files or []}
-    now = fingerprint(files, roots, budget)
+    now = fingerprint(files, policy, budget)
     if now["digest"] is None:
         return {"state": "unknown", "why": now["why"], "files": files or []}
     state = "current" if now["digest"].lower() == said.strip().lower() else "stale"
@@ -334,6 +293,9 @@ def freshness(evidence, roots, budget: dict | None = None) -> dict | None:
 
 
 # ---- the card (rrsi's done() contract, reworked) ------------------------------------------------------------------
+MAX_PREDICTIONS = 20   # predictions a change may make that count; the rest are unusable
+
+
 def _predicted(value, notes: list) -> list[dict]:
     if value is None:
         notes.append(("missing field", "it predicts no measure, so its effect cannot be checked"))
@@ -341,25 +303,58 @@ def _predicted(value, notes: list) -> list[dict]:
     if not isinstance(value, list):
         notes.append(("bad field", "its predicted measures are not a list"))
         return []
-    out = []
+    # One measure, one prediction, and at most MAX_PREDICTIONS a change: a repeat of a measure (in any case) or one
+    # past the cap is dropped here and counted by score() as unusable, so repeating a measure cannot pad a score (audit
+    # of the v2-next merge: one wrong p=0.9 beside 100 copies of one sure prediction scored 0.008). Of the copies of one
+    # measure, the first that can be scored counts (change_whole/F2: a bare name first no longer drops it).
+    out, at, past, over, repeats = [], {}, set(), 0, []
     for item in value:
-        if isinstance(item, str) and item.strip():
-            out.append({"measure": item.strip(), "direction": None, "p": None})
-            continue
-        m = _t(item, "measure")
+        m = item.strip() if isinstance(item, str) and item.strip() else _t(item, "measure")
         if m is None:
             notes.append(("bad field", f"a predicted measure has no name: {str(item)[:60]}"))
             continue
-        d = _t(item, "direction")
-        p = item.get("p")
-        ok_p = isinstance(p, (int, float)) and not isinstance(p, bool) and math.isfinite(p) and 0 <= p <= 1
-        if d is not None and d not in DIRECTIONS:
-            notes.append(("bad field", f"the measure {m} has the direction {d!r}, not up or down"))
-            d = None
-        if p is not None and not ok_p:
-            notes.append(("bad field", f"the measure {m} has the chance {p!r}, not a number from 0 to 1"))
-        out.append({"measure": m, "direction": d, "p": float(p) if ok_p else None})
+        key = m.casefold()
+        if key in past:                        # a repeat of a measure already past the cap is a repeat (F6)
+            repeats.append(m)
+            continue
+        own: list = []
+        entry = _one_prediction(item, m, own)
+        if key in at:
+            if not _binary(out[at[key]]) and _binary(entry):
+                out[at[key]] = entry
+                notes.extend(own)
+            repeats.append(m)
+            continue
+        if len(out) >= MAX_PREDICTIONS:
+            over += 1
+            past.add(key)
+            continue
+        at[key] = len(out)
+        out.append(entry)
+        notes.extend(own)
+    if repeats:                                # one note, bounded, however many copies (F3)
+        names = ", ".join(dict.fromkeys(n[:60] for n in repeats[:50]))
+        names = names if len(names) <= 200 else names[:200] + "..."
+        notes.append(("bad field", f"{len(repeats)} predicted measure{'s are' if len(repeats) != 1 else ' is'} "
+                                   f"predicted more than once ({names}); only the first that can be scored counts"))
+    if over:
+        notes.append(("bad field", f"it predicts more than {MAX_PREDICTIONS} measures; {over} past that do not count"))
     return out
+
+
+def _one_prediction(item, m: str, notes: list) -> dict:
+    """One predicted measure as the card keeps it: a bare text has no direction and no chance."""
+    if isinstance(item, str):
+        return {"measure": m, "direction": None, "p": None}
+    d = _t(item, "direction")
+    p = item.get("p")
+    ok_p = isinstance(p, (int, float)) and not isinstance(p, bool) and math.isfinite(p) and 0 <= p <= 1
+    if d is not None and d not in DIRECTIONS:
+        notes.append(("bad field", f"the measure {m[:60]} has the direction {d!r}, not up or down"))
+        d = None
+    if p is not None and not ok_p:
+        notes.append(("bad field", f"the measure {m[:60]} has the chance {p!r}, not a number from 0 to 1"))
+    return {"measure": m, "direction": d, "p": float(p) if ok_p else None}
 
 
 def _undo(value, notes: list) -> dict | None:
@@ -385,6 +380,10 @@ def fields(v: dict) -> tuple[dict, list[tuple[str, str]]]:
     notes: list[tuple[str, str]] = []
     out = {k: _t(v, k) for k in TEXTS}
     out["predicted"] = _predicted(v.get("predicted"), notes)
+    # a prediction with no name, a duplicate of a measure, or one past MAX_PREDICTIONS is dropped from the list, but
+    # it was made: score() counts it as unusable (the field keeps its first name, for the records already written)
+    raw = v.get("predicted")
+    out["unnamed_predictions"] = (len(raw) - len(out["predicted"])) if isinstance(raw, list) else int(raw is not None)
     out["undo"] = _undo(v.get("undo"), notes)
     out["prune"] = v.get("prune") is True
     out["what_changes"] = _tree(v.get("tree"), notes)
@@ -423,8 +422,14 @@ def judged(change: dict, outcomes: list) -> dict | None:
     measured = [o for o in outcomes if not o["undone"]]
     last = measured[-1] if measured else {"moved": {}, "regressions": []}
     rows, terms = [], []
+    # a measure is one name in any case, as the card's own repeats are folded (change_whole/F1): the exact name first
+    folded: dict = {}
+    for k, v in last["moved"].items():
+        folded.setdefault(k.casefold(), v)
     for p in change.get("predicted") or []:
         got = last["moved"].get(p["measure"])
+        if got is None:
+            got = folded.get(p["measure"].casefold())
         if got is None or p["direction"] is None:
             rows.append({**p, "moved": got, "hit": None})
             continue
@@ -432,28 +437,78 @@ def judged(change: dict, outcomes: list) -> dict | None:
         rows.append({**p, "moved": got, "hit": hit})
         if p["p"] is not None:
             terms.append((p["p"] - (1.0 if hit else 0.0)) ** 2)
-    named = {p["measure"] for p in change.get("predicted") or []}
-    unpredicted = [r for r in last["regressions"] if r not in named]
+    named = {p["measure"].casefold() for p in change.get("predicted") or []}
+    unpredicted = [r for r in last["regressions"] if r.casefold() not in named]
     return {"measures": rows, "terms": terms, "unpredicted_regressions": unpredicted,
             "undone": outcomes[-1]["undone"], "measured_at": last.get("at")}
 
 
+COIN = 0.25           # the Brier score of saying 0.5 to every up-or-down prediction, whatever happens
+MIN_INTERVAL = 10     # scored CHANGES below this state no interval: predictions on one change are not independent
+TOO_FEW = f"too few to state an interval (fewer than {MIN_INTERVAL} changes scored)"
+ALPHA = 0.05          # the interval is a 95% bound
+
+
+def _binary(p: dict) -> bool:
+    """A prediction that can be scored: a direction and a stated chance."""
+    return isinstance(p, dict) and p.get("direction") is not None and p.get("p") is not None
+
+
+def _interval(by_change: list[float]) -> list[float] | None:
+    """A 95% bound on an agent's mean Brier score per change, by Hoeffding's inequality over the changes, each one's
+    mean Brier term (a number from 0 to 1) taken as one draw: the mean of the changes, plus and minus
+    sqrt(ln(2 / 0.05) / (2 n)), held to 0 and 1. It assumes nothing of the spread, so it never has zero width, however
+    alike the changes scored (ten predictions on one change all hit gave a point under a normal interval over
+    predictions). It treats the changes as independent. None below MIN_INTERVAL changes."""
+    n = len(by_change)
+    if n < MIN_INTERVAL:
+        return None
+    mean = sum(by_change) / n
+    half = math.sqrt(math.log(2 / ALPHA) / (2 * n))
+    return [round(max(0.0, mean - half), 4), round(min(1.0, mean + half), 4)]
+
+
 def score(records: list[dict]) -> dict:
     """Per agent: changes filed, decided (a decision card asking about it was answered, or it has an outcome), and the
-    Brier score of their stated chances against what was measured (0 is perfect, 1 the worst), with how many
-    predictions it counts. A score over no prediction is None, never 0."""
+    Brier score of their stated chances against what was measured (0 is perfect, 1 the worst), always with both
+    counts: `scored` (n), the predictions an outcome measured, of `predicted` (m), every prediction made on every
+    change filed. m = scored + left_out + awaiting + unusable: `left_out`, a scorable prediction the outcome leaves out;
+    `awaiting`, one whose change has no outcome yet; `unusable`, one that cannot be scored (no direction, a chance
+    missing or outside 0 to 1, no name, a measure already predicted on that change, or one past MAX_PREDICTIONS on
+    it). So neither repeating a measure, nor leaving a measure out of an outcome nor writing a prediction that cannot
+    be scored ever improves a score. A sure prediction copied under other names is not caught: it can dilute a score
+    only up to the MAX_PREDICTIONS a change counts. Beside it, `coin`: the score of 0.5 on every prediction (0.25).
+    `changes_scored` counts the changes with a scored prediction; `brier_by_change` is the mean of each change's own
+    score, and `interval` (see _interval) bounds it, only from MIN_INTERVAL changes; below that it is None and
+    `interval_note` says so. A score over no prediction is None, never 0."""
     out: dict = {}
     for c in records:
         if c.get("kind") != "change":
             continue
-        a = out.setdefault(c.get("seat"), {"filed": 0, "decided": 0, "brier": None, "scored": 0, "_terms": []})
+        a = out.setdefault(c.get("seat"), {"filed": 0, "decided": 0, "brier": None, "scored": 0, "predicted": 0,
+                                           "awaiting": 0, "left_out": 0, "unusable": 0, "_terms": [], "_changes": []})
         a["filed"] += 1
         a["decided"] += bool(c.get("decided") or c.get("outcomes"))
+        own = c.get("change") or {}
+        made = own.get("predicted") or []
+        stated = sum(_binary(p) for p in made)
+        a["unusable"] += len(made) - stated + int(own.get("unnamed_predictions") or 0)
         j = c.get("judged")
-        if j:
+        if j and j["terms"]:
             a["_terms"] += j["terms"]
+            a["_changes"].append(sum(j["terms"]) / len(j["terms"]))
+        if j:
+            a["left_out"] += max(0, stated - len(j["terms"]))
+        else:
+            a["awaiting"] += stated
     for a in out.values():
-        terms = a.pop("_terms")
+        terms, changes = a.pop("_terms"), a.pop("_changes")
         a["scored"] = len(terms)
+        a["predicted"] = a["scored"] + a["left_out"] + a["awaiting"] + a["unusable"]
         a["brier"] = round(sum(terms) / len(terms), 4) if terms else None
+        a["coin"] = COIN if terms else None
+        a["changes_scored"] = len(changes)
+        a["brier_by_change"] = round(sum(changes) / len(changes), 4) if changes else None
+        a["interval"] = _interval(changes)
+        a["interval_note"] = None if a["interval"] or not terms else TOO_FEW
     return out

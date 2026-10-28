@@ -31,6 +31,12 @@ def static_dir() -> Path:
     return Path(str(resources.files("semantext") / "static"))
 
 
+def turns_dir(root: Path | None = None) -> Path:
+    """Where the hook keeps each session's newest turn, <session>.json, for the work kernel to find (the hook writes it,
+    work/turns.py reads it; one name for both, since the hook must not import the work package)."""
+    return Path(root if root is not None else home()) / "work" / "turns"
+
+
 def ensure_home(root: Path | None = None) -> Path:
     """Create the home on first use by copying in the starting environments. Nothing that exists is overwritten."""
     root = Path(root) if root else home()

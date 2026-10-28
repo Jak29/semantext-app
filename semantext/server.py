@@ -7,8 +7,10 @@ can change your rules.
 """
 from __future__ import annotations
 
+import errno
 import getpass
 import json
+import re
 import socket
 import sys
 import webbrowser
@@ -18,14 +20,14 @@ from urllib.parse import parse_qs, urlparse
 
 from pathlib import Path
 
-from . import __version__, agentfiles, claude, jsonread, paths
+from . import __version__, agentfiles, claude, docserve, jsonread, pagemodule, paths, registry
 from .agents import Agents, clean, since
 from .feed import Feed
 from .hook import LIMIT_BYTES, WORDS, compose, fit, rule_lines, sender_name, sent_layers
 from .inbox import Inbox, age, card_notes
 from .sender import whose
 from .sources import view
-from .store import Refused, Store
+from .store import Refused, Store, provenance_of
 
 
 def agents_view(st: Store) -> dict:
@@ -65,6 +67,13 @@ def agents_view(st: Store) -> dict:
             s["seen"] = since(s.get("last") or "")
         out.append(a)
     return {"active": active, "agents": out}
+
+
+def fault(said: str, e: OSError) -> dict:
+    """A file error as the page is told it: a fixed message and an id naming the kind of error (OSError/ENOENT, say),
+    never str(e), which carries a path and the system's own words. The server keeps no log, so nothing more is kept."""
+    code = errno.errorcode.get(e.errno, "no-errno") if isinstance(e.errno, int) else "no-errno"
+    return {"error": said, "error_id": f"{type(e).__name__}/{code}"}
 
 
 PERSON = ("you", "user", "the-user", "human", "person", "me", "owner", "admin", "root", "system")
@@ -182,7 +191,7 @@ def metrics(st: Store) -> dict:
         mine = [e for es in st.layers(d).values() for e in st.live(es)]
         rules["environment"], rules["agents"] = len(env), len(mine)
         for e in env + mine:
-            rules[ORIGIN.get((e.get("provenance") or {}).get("type"), "built_in")] += 1
+            rules[ORIGIN.get(provenance_of(e).get("type"), "built_in")] += 1
     except (Refused, OSError):
         pass
     return {
@@ -213,6 +222,40 @@ HOST, PORT = "127.0.0.1", 8765
 MAX_BODY = 200_000
 DEEP_BODY = "the request is nested too deeply to be read"
 LOOPBACK = ("127.0.0.1", "localhost")   # the server is IPv4; an address it cannot serve is not offered
+# The v2 page's files beside its index.html, each at /v2/<name>: this list is the whole of what is served from that
+# folder. A request's path is only looked up here; it never becomes a path on disk. Modules need a JavaScript type, and
+# every answer carries nosniff, so each type is stated.
+_JS, _CSS = "text/javascript; charset=utf-8", "text/css; charset=utf-8"
+V2_FILES = {f"/v2/{name}": (name, _CSS if name.endswith(".css") else _JS) for name in (
+    "style.css", "app.js", "dom.js", "words.js", "parts.js", "frame.js", "cards.js", "drawers.js", "markdown.js",
+    "waiting.js", "projects.js", "documents.js", "map.js", "record.js", "outside.js", "work.js", "workboard.js",
+    "workitem.js")}
+# The v2 page and each of its files carry this policy. Scripts only from this server's own files (no inline script
+# and no handler attributes; tests/test_v2_page.py checks index.html), styles only from its stylesheet (no style
+# attribute and no <style>: the audit of c607024 found 'unsafe-inline' there only for literal spacing, now classes in
+# style.css; tests/test_v2_page.py greps the modules for one), reads only back to this server, images only the blob:
+# URLs a diagram is shown through, and no base, no form target, and no framing by another page. A style computed at
+# run time would be set through the CSSOM (el.style.x = ...), which style-src 'self' allows; none is today.
+V2_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src blob:; "
+          "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+
+
+DOC_PREFIX = "/api/v2/doc/"   # /api/v2/doc/<place>/<row_id>: the serve hook by row
+PLUGIN_FILE = re.compile(r"(" + pagemodule.NAME.pattern + r")\.js")
+
+
+def plugin_module(tail: str, home=None) -> tuple[int, bytes | dict]:
+    """The answer for /v2/plugin/<tail>: the page module of the enabled outside place named by tail, found from that
+    place's registry entry and never from the request (pagemodule.locate), or 404 with the reason. A tail that is not
+    <plain word>.js, such as one shaped like a path, is 404 before any plug-in is looked at."""
+    m = PLUGIN_FILE.fullmatch(tail)
+    if not m:
+        return 404, {"error": "not found"}
+    reg = registry.load_enabled(view.BUILT_IN, home)
+    try:
+        return 200, pagemodule.read(reg.get("place", m.group(1)))
+    except pagemodule.NoModule as e:
+        return 404, {"error": str(e)}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -224,7 +267,12 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _send(self, code: int, body, ctype="application/json; charset=utf-8", extra: dict | None = None):
-        data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
+        try:   # strict JSON only: a bare NaN or Infinity is not JSON, and the page's JSON.parse refuses the whole answer
+            data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False,
+                                                                   allow_nan=False).encode("utf-8")
+        except ValueError:
+            code, data = 500, json.dumps({"error": "the answer held a number JSON cannot carry (NaN or Infinity), so "
+                                                   "it is not sent"}).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-store")
@@ -249,6 +297,21 @@ class Handler(BaseHTTPRequestHandler):
         local process, not the page, which would otherwise change the rules that only the user changes. A process that
         forges the page's own name is the limit SECURITY.md states."""
         return self.headers.get("Origin") in {f"http://{h}" for h in self._own()}
+
+    def _from_plugin_module(self) -> bool:
+        """Whether a change names a plug-in's page module as where it comes from: a Referer under /v2/plugin/, or a
+        Sec-Fetch-Dest other than a plain fetch's "empty" (a script, a worker, a frame or a document). The page's own
+        changes are fetches made from /v2, so they name neither.
+
+        A guard, not the sandbox (docs/page-module-sandbox.md): a module imported into the page and calling fetch()
+        sends the page's own Referer and "empty", so it is not told apart here. What this refuses is a change made from
+        a document, frame or worker loaded at a module's path, or a request a browser marks as no fetch (the Fable
+        review of 70f2d3c, finding 6)."""
+        dest = self.headers.get("Sec-Fetch-Dest")
+        if dest is not None and dest != "empty":
+            return True
+        referer = self.headers.get("Referer")
+        return bool(referer) and urlparse(referer).path.startswith(pagemodule.PREFIX)
 
     def _page_reads(self) -> bool:
         """A read only the page's own script may make (the feed: what your agents were sent, and when). It must carry
@@ -350,7 +413,16 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
             if u.path == "/v2":   # the page in four places, read-only on the person's own files (sources/view.py)
-                return self._send(200, (paths.static_dir() / "v2.html").read_bytes(), "text/html; charset=utf-8")
+                return self._send(200, (paths.static_dir() / "v2" / "index.html").read_bytes(), "text/html; charset=utf-8",
+                                  {"Content-Security-Policy": V2_CSP})
+            if u.path.startswith(pagemodule.PREFIX):   # an enabled outside place's own module (pagemodule.py)
+                code, body = plugin_module(u.path[len(pagemodule.PREFIX):], st.root)
+                return self._send(code, body, _JS if code == 200 else "application/json; charset=utf-8",
+                                  {"Content-Security-Policy": V2_CSP})
+            if u.path in V2_FILES:   # its style and modules: a fixed list, so no part of the request names a file
+                name, ctype = V2_FILES[u.path]
+                return self._send(200, (paths.static_dir() / "v2" / name).read_bytes(), ctype,
+                                  {"Content-Security-Policy": V2_CSP})
             if u.path == "/api/v2/document":   # one listed file of one listed cv/<project> folder, read (view.document)
                 if not self._page_reads():
                     return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
@@ -359,9 +431,17 @@ class Handler(BaseHTTPRequestHandler):
                 except view.DocumentRefused as e:
                     return self._send(e.status, {"error": e.why})
                 if got["kind"] == "diagram":   # an image the page shows through <img>, which never runs its script
-                    return self._send(200, got["bytes"], "image/svg+xml",
-                                      {"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox"})
+                    return self._send(200, got["bytes"], "image/svg+xml", {"Content-Security-Policy": docserve.DOC_CSP})
                 return self._send(200, got)
+            if u.path.startswith(DOC_PREFIX):   # one row of an enabled outside place (docserve.py): never a path
+                if not self._page_reads():
+                    return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
+                place, _, row = u.path[len(DOC_PREFIX):].partition("/")
+                try:
+                    data, ctype = docserve.serve(place, row, home=st.root)
+                except docserve.Refused as e:
+                    return self._send(e.status, {"error": e.why})
+                return self._send(200, data, ctype, {"Content-Security-Policy": docserve.DOC_CSP})
             if u.path.startswith("/api/v2/"):
                 if not self._page_reads():
                     return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
@@ -371,7 +451,7 @@ class Handler(BaseHTTPRequestHandler):
         except (Refused, ValueError, KeyError, TypeError) as e:
             return self._send(400, {"error": str(e)})
         except OSError as e:
-            return self._send(500, {"error": f"could not read your files: {e}"})
+            return self._send(500, fault("could not read your files", e))
 
     def do_POST(self):
         if not self._host_ok():
@@ -380,6 +460,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("X-Semantext") != "1" or not self._origin_ok():
             self._drain()
             return self._send(403, {"error": "changes are accepted only from the Semantext page"})
+        if self._from_plugin_module():
+            self._drain()
+            return self._send(403, {"error": "changes are not accepted from a plug-in's page module"})
         u = urlparse(self.path)
         st = self.store
         try:
@@ -405,7 +488,8 @@ class Handler(BaseHTTPRequestHandler):
                 r["uncovered"] = st.depends_on(b.get("name"), b.get("id"))
             elif u.path == "/api/undo-last":   # the newest saved version of this environment's file, and what that undid
                 r["restored"] = st.undo_last(b.get("name"))
-                r.update(took_off=st.last_undo.get("took_off"), kept=st.last_undo.get("kept"))
+                r.update(took_off=st.last_undo.get("took_off"), kept=st.last_undo.get("kept"),
+                         problem=st.last_undo.get("problem"))
             elif u.path == "/api/feature":
                 st.feature(b.get("name"), b.get("feature"), bool(b.get("on")), b.get("country", ""))
             elif u.path == "/api/source":
@@ -444,7 +528,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, KeyError, TypeError, AttributeError) as e:
             return self._send(400, {"error": f"bad request: {e}"})
         except OSError as e:
-            return self._send(500, {"error": f"could not write your files: {e}"})
+            return self._send(500, fault("could not write your files", e))
 
 
 class LocalServer(ThreadingHTTPServer):

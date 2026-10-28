@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantext</title>
+<link rel="stylesheet" href="/v2/style.css">
+</head>
+<body>
+<a class="skip" href="#main" id="skip">Skip to the content</a>
+<header class="bar">
+  <span class="brand">Semantext</span>
+  <nav class="places" aria-label="Places">
+    <a data-place="waiting" href="#waiting" id="tab-waiting">Waiting <span class="n" id="count-waiting"></span></a>
+    <a data-place="projects" href="#projects" id="tab-projects">Projects</a>
+    <a data-place="documents" href="#documents" id="tab-documents">Documents</a>
+    <a data-place="map" href="#map" id="tab-map">Map</a>
+    <a data-place="record" href="#record" id="tab-record">Record</a>
+    <a data-place="work" href="#work" id="tab-work">Work</a>
+    <span class="outside-tabs" id="tabs-outside"></span>
+  </nav>
+  <div class="bar-place" id="bar-place"></div>
+  <div class="bar-end">
+    <span class="gaming" id="gaming" role="status" hidden></span>
+    <button class="quiet-count" id="problems-count" type="button" aria-expanded="false" aria-controls="problems" hidden></button>
+    <span class="checked" id="checked" role="status">Reading your files…</span>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+  <section class="problems" id="problems" aria-label="Problems" tabindex="-1" hidden></section>
+  <div id="place"></div>
+</main>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="false" aria-labelledby="drawer-title" hidden>
+  <div class="drawer-head">
+    <p class="label" id="drawer-kind"></p>
+    <h2 id="drawer-title" tabindex="-1"></h2>
+    <button class="close" id="drawer-close" type="button" aria-label="Close" title="Close (Esc)">&#x2715;</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/v2/app.js"></script>
+</body>
+</html>

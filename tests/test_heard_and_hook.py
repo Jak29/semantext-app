@@ -55,11 +55,15 @@ def test_the_hook_prints_the_active_card(store):
     assert out == store.card("default")
 
 
-def test_the_hook_keeps_prompts_only_when_switched_on(store, home):
-    hook.run(json.dumps({"prompt": "Never apologise"}), store)
+def test_the_hook_keeps_prompts_only_when_switched_on(store, home, tmp_path):
+    t = tmp_path / "t.jsonl"     # only words the tool's own record calls the user's are kept
+    t.write_text(json.dumps({"type": "user", "turnOrigin": "human", "message": {"content": "Never apologise"}}) + "\n",
+                 encoding="utf-8")
+    event = json.dumps({"prompt": "Never apologise", "transcript_path": str(t)})
+    hook.run(event, store)
     assert Heard(home).items("default") == []
     store.set_option("hear_prompts", True)
-    hook.run(json.dumps({"prompt": "Never apologise"}), store)
+    hook.run(event, store)
     assert [i["text"] for i in Heard(home).items("default")] == ["Never apologise"]
 
 
