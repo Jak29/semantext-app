@@ -26,7 +26,8 @@ def _when(text):
     """An ISO 8601 time as an aware UTC datetime (one with no zone is read as UTC), or None: verdicts are ordered by
     time, never by their text."""
     try:
-        t = datetime.fromisoformat(text)
+        # a trailing Z is read as UTC here: fromisoformat takes it only from Python 3.11
+        t = datetime.fromisoformat(text[:-1] + "+00:00" if text[-1:] in ("Z", "z") else text)
     except (TypeError, ValueError):
         return None
     return (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)

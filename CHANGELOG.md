@@ -54,6 +54,9 @@ on at your console.
 - **A junction is refused on every Python.** The work store's writer and the run-record reader asked
   `Path.is_junction` / `os.path.isjunction`, which exist only from 3.12, so on 3.10 and 3.11 a junction at the work
   store was written through. Both now read the link from `lstat`, as the rules and places readers do.
+- **On Python 3.10 your acts and the verdicts are read.** Their times end in `Z`, which `datetime.fromisoformat`
+  takes only from 3.11, so on 3.10 every act of yours was "undecidable" and every verdict "no evidence found". The
+  span and the verdicts reader now read a trailing `Z` as UTC.
 - **The package says its own version.** 1.2.3 was released with `version = "1.2.2"` in its metadata; 1.3.0 says
   1.3.0.
 

@@ -80,7 +80,9 @@ FACTS = ("session", "turn", "turn_at")   # what the evidence says of the turn, e
 def utc_stamp(text) -> str | None:
     """A transcript record's own time ("2026-10-24T13:59:00.123Z") as the kernel's stamp, to the second, else None."""
     try:
-        t = datetime.fromisoformat(text) if isinstance(text, str) and len(text) <= 40 else None
+        # a trailing Z is read as UTC here: fromisoformat takes it only from Python 3.11
+        t = (datetime.fromisoformat(text[:-1] + "+00:00" if text[-1:] in ("Z", "z") else text)
+             if isinstance(text, str) and len(text) <= 40 else None)
     except ValueError:
         return None
     if t is None or t.tzinfo is None:
