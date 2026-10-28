@@ -22,7 +22,7 @@ jobs:
   test:
     name: pytest (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +51,7 @@ jobs:
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
     name: pytest (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:

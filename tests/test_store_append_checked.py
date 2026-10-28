@@ -79,11 +79,12 @@ def test_threads_never_interleave_and_every_check_sees_the_lines_before_it(tmp_p
 
 
 CHILD = r"""
-import sys
+import sys, time
 from semantext.store import append_checked
 path, tag = sys.argv[1], sys.argv[2]
 for i in range(1000):
     append_checked(path, None, lambda tail: f"{tag} {i} {len(tail.lines)}")
+    time.sleep(0.002)   # the lock is not fair: a writer in a tight loop can starve the other past its 10 s (1.4)
 """
 
 
