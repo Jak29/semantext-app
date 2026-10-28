@@ -152,7 +152,11 @@ def test_every_place_draws_as_pinned(tmp_path, monkeypatch):
     if os.environ.get("SEMANTEXT_WRITE_PIN") == "1":
         PIN.write_text(json.dumps(got, indent=1, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
         pytest.skip("the pin was written")
-    want = json.loads(PIN.read_text(encoding="utf-8"))
+    pinned = PIN.read_text(encoding="utf-8")
+    if not gates.WINDOWS:   # the pin was drawn on Windows; elsewhere the record says the executable bit was checked
+        assert gates.EXEC_WINDOWS in pinned
+        pinned = pinned.replace(gates.EXEC_WINDOWS, gates.EXEC_POSIX)
+    want = json.loads(pinned)
     assert sorted(got) == sorted(want)
     for key in sorted(want):
         assert got[key] == want[key], key

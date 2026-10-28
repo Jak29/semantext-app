@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -244,7 +245,8 @@ REFUSALS = [
     (("at",), KeyError, "bad-time"),
     (("subject",), [{"path": "../outside.py", "blob": "0" * 40}], "outside-roots"),
     (("subject",), [{"path": "secret/key.py", "blob": "0" * 40}], "closed-place"),
-    (("subject",), [{"path": "\\\\host\\share\\x.py", "blob": "0" * 40}], "outside-roots"),
+    (("subject",), [{"path": "\\\\host\\share\\x.py" if os.name == "nt" else "//host/share/x.py",   # a share, as
+                     "blob": "0" * 40}], "outside-roots"),                                          # each system writes it
     (("subject",), [], "bad-field"),
     (("subject",), [{"path": "src/hook.py", "blob": "XYZ"}], "bad-field"),
     (("checker", "name"), "two\nlines", "bad-checker-name"),

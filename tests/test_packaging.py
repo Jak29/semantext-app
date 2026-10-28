@@ -3,8 +3,14 @@
 pyproject lists its packages by hand, so a new subpackage (the gates split made one) is left out of an installed copy
 unless it is added there too. The suite runs from the source tree and would never notice.
 """
-import tomllib
 from pathlib import Path
+
+import pytest
+
+try:
+    import tomllib
+except ModuleNotFoundError:   # Python 3.10: tomli if installed, else this file is skipped there (3.11+ checks it)
+    tomllib = pytest.importorskip("tomli")
 
 ROOT = Path(__file__).resolve().parent.parent
 

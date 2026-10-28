@@ -30,6 +30,7 @@ def chain(base: Path, n: int, last: str) -> str:
 
 
 # ---------------------------------------------------------------- gates_config/F2: a file is known by its path
+@pytest.mark.skipif(os.name != "nt", reason="names holding a lone surrogate exist only on Windows file systems")
 def test_config_f2_two_files_that_show_alike_are_not_a_cycle(tmp_path):
     a, b = tmp_path / "\ud800", tmp_path / "\ud801"          # distinct names, both shown as U+FFFD
     touch(a / "config", "[include]\n\tpath = ~/config\n")

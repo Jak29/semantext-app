@@ -318,12 +318,14 @@ def test_the_hook_imports_a_pinned_set_and_no_registry(tmp_path):   # must refus
     assert "semantext.registry" not in mods and "semantext.api" not in mods and metadata is False
 
 
-NO_REACH = ("subprocess", "socket", "http", "urllib")   # the hook starts nothing and opens no connection
+# the hook starts nothing and opens no connection; urllib.parse only quotes text (pathlib imports it on 3.11 and 3.12)
+NO_REACH = ("subprocess", "socket", "http", "urllib.request")
 
 
 def _reach(extra: str, tmp_path) -> list[str]:
     code = (f"import sys, json, semantext.hook, semantext.envhook{extra}\n"
-            f"print(json.dumps(sorted(m for m in sys.modules if m.split('.')[0] in {list(NO_REACH)!r})))")
+            f"print(json.dumps(sorted(m for m in sys.modules if any(m == n or m.startswith(n + '.') "
+            f"for n in {list(NO_REACH)!r}))))")
     run = _python(code, tmp_path)
     assert run.returncode == 0, run.stderr
     return json.loads(run.stdout.strip().splitlines()[-1])

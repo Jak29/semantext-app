@@ -257,9 +257,13 @@ def record(text: str, root: str, roots: list[str], now: datetime, home=None) -> 
 
 # ---- the folders --------------------------------------------------------------------------------------------------
 def _linked(p: Path) -> bool:
+    """A link or a junction, read from lstat as the rules reader reads one (os.path.isjunction is 3.12's)."""
+    from .rules import _linked as linked   # here: rules imports this module
     try:
-        return p.is_symlink() or bool(getattr(os.path, "isjunction", lambda _: False)(p))
-    except OSError:
+        return linked(os.lstat(p))
+    except FileNotFoundError:
+        return False
+    except (OSError, ValueError):
         return True
 
 

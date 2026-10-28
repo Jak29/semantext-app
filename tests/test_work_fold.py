@@ -195,12 +195,13 @@ def test_f6_partner_exactly_two_days_ahead_is_not_flagged(w):
 
 # ---- F7: concurrency ------------------------------------------------------------------------------------------------
 CHILD = r"""
-import sys
+import sys, time
 from semantext.work.writer import Writer, Actor
 w = Writer(sys.argv[1], projects={"semantext"}, seats={"alpha", "beta"}, rate=10 ** 6)   # the cap is F9's arm
 a = Actor(sys.argv[2], "bound", "mcp")
 for i in range(int(sys.argv[3])):
     w.write(a, "create", {"project": "semantext", "title": f"{sys.argv[2]} {i}"})
+    time.sleep(0.002)   # the lock is not fair: a writer in a tight loop can starve the other past its 10 s (1.4)
 """
 PER_PROCESS = 1000  # the writer folds only what follows its cached, verified prefix (writer._folded)
 

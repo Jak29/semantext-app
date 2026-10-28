@@ -774,9 +774,10 @@ def test_which_settings_are_includes():
 
 
 def test_what_git_counts_as_an_absolute_path():
-    for text in ("/a", "\\a", "C:/a", "c:\\a", "C:a"):
+    windows_only = ("\\a", "C:/a", "c:\\a", "C:a")   # absolute on Windows; ordinary names elsewhere (V2)
+    for text in ("/a",) + (windows_only if gates.NT_PATHS else ()):
         assert gates.git_absolute(text), text
-    for text in ("a", "./a", "../a", "~a", "a/C:/b", ""):
+    for text in ("a", "./a", "../a", "~a", "a/C:/b", "") + (() if gates.NT_PATHS else windows_only):
         assert not gates.git_absolute(text), text
 
 

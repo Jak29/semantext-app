@@ -22,6 +22,7 @@ import json
 import threading
 import os
 import re
+import stat
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -380,8 +381,7 @@ class Writer:
         home = self.home
         for p in [self.path, self.head_path, self.pending_path, self.dir, *self.dir.parents]:
             if p.exists() or p.is_symlink():
-                if p.is_symlink() or getattr(p, "is_junction", lambda: False)() or (
-                        p.is_file() and os.stat(p).st_nlink > 1):
+                if _linked(p) or (p.is_file() and os.stat(p).st_nlink > 1):
                     raise WorkRefused("CONFLICT", f"{p} is a link, a junction or a second hard link; the work store "
                                                   f"is never written through one")
             if p == home:
@@ -389,6 +389,21 @@ class Writer:
         for name in (self.path.name, self.head_path.name, self.pending_path.name):
             if ":" in name:
                 raise WorkRefused("CONFLICT", "an alternate stream is never the work store")
+
+
+def _linked(p: Path) -> bool:
+    """A symbolic link, or a Windows junction or other link (a reparse point whose tag names another place), read
+    from lstat so it holds on every Python: Path.is_junction is 3.12's. One that cannot be examined counts as a link."""
+    try:
+        st = os.lstat(p)
+    except FileNotFoundError:
+        return False
+    except (OSError, ValueError):
+        return True
+    if stat.S_ISLNK(st.st_mode):
+        return True
+    return bool(getattr(st, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                and getattr(st, "st_reparse_tag", 0) & 0x20000000)   # the name-surrogate bit: names another place
 
 
 def _span_same(rec, roots) -> bool:

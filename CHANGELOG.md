@@ -51,6 +51,9 @@ on at your console.
   format 1, as git 2.39 does.
 
 ### Fixed
+- **A junction is refused on every Python.** The work store's writer and the run-record reader asked
+  `Path.is_junction` / `os.path.isjunction`, which exist only from 3.12, so on 3.10 and 3.11 a junction at the work
+  store was written through. Both now read the link from `lstat`, as the rules and places readers do.
 - **The package says its own version.** 1.2.3 was released with `version = "1.2.2"` in its metadata; 1.3.0 says
   1.3.0.
 
