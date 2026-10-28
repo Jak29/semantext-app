@@ -358,4 +358,6 @@ def test_five_megabytes_of_any_wrapper_is_read_quickly(tmp_path):
     start = time.perf_counter()
     for prompt, want in cases:
         assert whose(prompt, none)[0] == want
-    assert time.perf_counter() - start < 1.0
+    # linear reads take well under a second here; a quadratic one takes minutes. 5 s leaves room for a slow runner
+    # (CI's macOS took 1.1 s against the old 1 s bound) and still refuses the quadratic
+    assert time.perf_counter() - start < 5.0
