@@ -261,10 +261,8 @@ def test_8_last_as_a_link_is_refused_and_nothing_is_changed(world, tmp_path):   
         os.symlink(target, pluginpage.last_file(world.home))
     except (OSError, NotImplementedError):
         pytest.skip("this system does not let the test make a link")
-    with pytest.raises(pluginpage.AtTheTerminal) as e:
+    with pytest.raises(pluginpage.Refused, match="link"):   # at the proposal already, before the terminal is asked
         pluginpage.change(world.home, KEY, {"project": "beta"})
-    with pytest.raises(pluginpage.Refused, match="link"):
-        pluginpage.confirm(world.home, e.value.proposal)
     assert cfg(world)["project"] == "alpha" and target.read_text(encoding="utf-8") == "{}"
 
 

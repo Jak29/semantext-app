@@ -12,9 +12,16 @@ from semantext.store import Store
 # ---- the real user home is never read --------------------------------------------------------------------------------
 # Taken once, here, before any test moves the home: the folder every test must keep out of, and the folders under it a
 # run may still use (the temporary folder, this checkout, Python's own).
-REAL_HOME = os.path.normcase(os.path.abspath(os.path.expanduser("~")))
+def _spelled(path: str) -> str:
+    """The one spelling paths are compared in: Windows may name a folder by its short form (RUNNER~1), and a short
+    name is the same folder as its long one."""
+    path = os.path.abspath(path)
+    return os.path.normcase(os.path.realpath(path) if "~" in path else path)
+
+
+REAL_HOME = _spelled(os.path.expanduser("~"))
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED = tuple(a for a in (os.path.normcase(os.path.abspath(p)) for p in {
+ALLOWED = tuple(a for a in (_spelled(p) for p in {
     tempfile.gettempdir(), str(ROOT), sys.prefix, sys.base_prefix, sys.exec_prefix,
     site.getusersitepackages() if hasattr(site, "getusersitepackages") else sys.prefix,
     *(p for p in sys.path if p)} if p) if a != REAL_HOME)   # the home itself is never an allowed folder
@@ -38,7 +45,7 @@ def real_home_touch(event: str, args) -> str | None:
         if not isinstance(arg, (str, bytes, os.PathLike)):
             continue   # a file descriptor, a flag, a mode: no path
         try:
-            p = os.path.normcase(os.path.abspath(os.fsdecode(arg)))
+            p = _spelled(os.fsdecode(arg))
         except (TypeError, ValueError):
             continue
         if _under(p, REAL_HOME) and not any(_under(p, a) for a in ALLOWED):

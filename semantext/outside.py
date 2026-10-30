@@ -20,6 +20,7 @@ The audit of the registry (c696d0b) found the promise held only at load. Here, f
 """
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import threading
@@ -165,6 +166,7 @@ _WAITING: dict[str, int] = {}        # the plug-in's registration name -> its ca
 _TURN = threading.Condition(threading.Lock())
 _LAST: dict[tuple, dict] = {}        # (registration name, package, version) -> how its last call here ended
 _IDENT: dict[str, tuple] = {}        # the registration name -> (package, version) of the plug-in loaded under it now
+_ORDER = itertools.count()             # which call ended last: a clock can read the same twice
 MAX_LAST = 256                       # plug-ins whose last call is kept; the oldest is let go past that
 OUTCOMES = ("answered", "error", "late", "busy", "crowded")
 
@@ -207,7 +209,7 @@ def _ended(key: str, outcome: str, seconds: float, call: str = "call") -> None:
         key = (key,) + _IDENT.get(key, _ident(None, None))
         mine = _LAST.pop(key, {})
         mine[call] = {"outcome": outcome, "call": call, "seconds": round(max(0.0, seconds), 3),
-                      "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "t": time.monotonic()}
+                      "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "t": next(_ORDER)}
         _LAST[key] = mine
         while len(_LAST) > MAX_LAST:
             del _LAST[next(iter(_LAST))]
