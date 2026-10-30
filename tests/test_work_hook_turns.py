@@ -57,6 +57,21 @@ def test_the_hook_keeps_each_turns_span_beside_it(home, store):
     assert (turn.text, turn.origin, turn.transcript, turn.offset) == ("hello there", "own", str(t), first)
 
 
+def test_a_turn_record_that_cannot_be_kept_is_said_and_the_card_still_goes(home, store, monkeypatch):   # refuse
+    import errno
+    from semantext import store as store_module
+    t = transcript(user_dir(), typed("hello there"))
+    out = hook.run(event("hello there", t), store)   # must pass: kept, and nothing said
+    assert "turn's record was not kept" not in out and (turns_root(home) / f"{SESSION}.json").is_file()
+
+    def too_long(*a, **k):   # as Windows refuses a path past its 260-character limit
+        raise OSError(errno.ENAMETOOLONG, "The filename or extension is too long")
+    monkeypatch.setattr(store_module, "write_atomic", too_long)
+    out = hook.run(event("hello there", t), store)
+    assert "standing rules" in out and out.count("this turn's record was not kept") == 1
+    assert "too long" in out and "unverified" in out
+
+
 def test_a_relayed_turn_is_kept_as_relayed(home, store):
     t = transcript(user_dir(), typed("W-semantext-1 park", origin="peer"))
     hook.run(event("W-semantext-1 park", t), store)

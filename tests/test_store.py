@@ -267,6 +267,52 @@ def test_threads_writing_the_settings_at_once_raise_nothing_and_leave_valid_json
     assert store.state_problem is None and not list(store.root.glob("*.tmp"))
 
 
+def _refused_reads(monkeypatch, times):
+    """Path.read_text refuses state.json this many times, as Windows does while the file is being swapped in."""
+    from pathlib import Path
+    real, left = Path.read_text, {"n": times}
+
+    def read_text(self, *a, **k):
+        if self.name == "state.json" and left["n"]:
+            left["n"] -= 1
+            raise PermissionError(13, "in use")
+        return real(self, *a, **k)
+    monkeypatch.setattr(Path, "read_text", read_text)
+    monkeypatch.setattr("semantext.store.time.sleep", lambda _: None)
+
+
+def test_a_read_refused_for_a_while_on_a_busy_machine_still_reads_the_settings(store, monkeypatch):   # must pass
+    s = store.state()
+    s["hear_prompts"] = True
+    store.put_state(s)
+    _refused_reads(monkeypatch, 15)                      # longer than the three tries that lost this before
+    assert store.state()["hear_prompts"] is True and store.state_problem is None
+
+
+def test_defaults_from_a_read_that_was_refused_are_never_saved_over_the_settings(store, monkeypatch):   # must refuse
+    s = store.state()
+    s["hear_prompts"] = True
+    store.put_state(s)
+    kept = store.state_path.read_bytes()
+    from semantext.store import READ_TRIES
+    _refused_reads(monkeypatch, READ_TRIES)
+    stood_in = store.state()
+    assert store.state_problem and stood_in["hear_prompts"] is False
+    with pytest.raises(Refused, match="nothing is saved over it"):
+        store.put_state(stood_in)
+    assert store.state_path.read_bytes() == kept
+
+
+def test_a_damaged_settings_file_is_still_replaced_and_its_copy_kept(store):   # must pass: damaged is not refused
+    store.state_path.parent.mkdir(parents=True, exist_ok=True)
+    store.state_path.write_text("{ not json", encoding="utf-8")
+    s = store.state()
+    assert store.state_problem
+    store.put_state(s)
+    assert store.state()["active"] == "default" and store.state_problem is None
+    assert list(store.state_path.parent.glob("state-unreadable-*.json"))
+
+
 @pytest.mark.parametrize("prov", ["learned", ["LEARNED"], 7], ids=["a-string", "a-list", "a-number"])
 def test_a_provenance_that_is_not_a_mapping_reads_as_none_recorded(store, prov):
     # review of 1.2.2, S3: a plain-string provenance made the card's _line raise AttributeError in the hook

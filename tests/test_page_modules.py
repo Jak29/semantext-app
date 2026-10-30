@@ -114,8 +114,8 @@ def test_a_path_shaped_request_is_refused_before_any_plug_in_is_looked_at(plugin
     assert plugin.calls == [] and plugin.points[0].loads == 0
 
 
-@pytest.mark.parametrize("name", ["a.b", "Board", "x/y", "..", "b" * 65])
-def test_a_place_whose_name_is_not_a_plain_word_gets_no_module(plugin, name):
+def test_a_place_whose_name_is_not_a_plain_word_gets_no_module(plugin):
+    name = "Board"   # a plug-in's name (registry.NAME), but not a page module's (lower case only)
     plugin.points[:] = [Point(f"place.{name}", board_place(name), plugin.dist)]
     plugin.turn_on(f"place.{name}")
     e = entry(plugin.home, name)
@@ -123,6 +123,14 @@ def test_a_place_whose_name_is_not_a_plain_word_gets_no_module(plugin, name):
     with pytest.raises(pagemodule.NoModule, match="not a plain word"):
         pagemodule.locate(e)
     assert view.answer(name, home=plugin.home)["frame"]["outside"][0]["module"] is False
+
+
+@pytest.mark.parametrize("name", ["a.b", "x/y", "..", "b" * 65])
+def test_a_place_whose_name_is_no_plug_in_name_is_never_loaded(plugin, name):   # must refuse earlier still
+    plugin.points[:] = [Point(f"place.{name}", board_place(name), plugin.dist)]
+    plugin.turn_on(f"place.{name}")
+    assert entry(plugin.home, name) is None
+    assert any(p["kind"] == "bad name" for p in registry.installed()[1])
 
 
 @pytest.mark.parametrize("module,why", [

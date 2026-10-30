@@ -76,6 +76,9 @@ def cmd_work(store, args, out=print) -> int:
         _say(w.write(actor, "comment", {"id": args.id, "text": " ".join(args.words), **key}), "comment", out)
     elif a == "list":
         _list(w.state(), args, out)
+        said = w.seats_said()   # the seats' mode, said aloud: unchecked, or refused because they cannot be known
+        if said:
+            out(f"Seats: {said}.")
     elif a == "show":
         return _show(w.state(), args.id, out)
     return 0

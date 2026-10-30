@@ -1,6 +1,6 @@
 """Run records: what a checker that runs outside Semantext recorded about a rule, read and judged, never re-run.
 
-The shape is schema 1 (semantext/schemas/run-record-1.json; RUN-RECORD-SCHEMA.md). A record is one line of
+The shape is schema 1 (semantext/schemas/run-record-1.json; docs/run-record-schema.md). A record is one line of
 `runs/<checker>.jsonl` under a folder the sources file lists in "run_records". Each line that cannot be used is a
 problem with its reason, never dropped, and the newest usable record for a (rule, checker) pair decides.
 
@@ -35,7 +35,9 @@ from pathlib import Path
 
 from .. import jsonread
 from . import problem, read_lines
-from .closed import in_closed_place as is_closed_place   # the built-in rule
+# The strict built-in rule: a run record names a subject whose contents the page shows, so while the person's closures
+# are named and incomplete (or unknown) every path is closed here, as for a plug-in; with none named, nothing is.
+from .closed import in_closed_place_strict as is_closed_place
 
 SCHEMA = 1
 SCHEMA_FILE = Path(__file__).resolve().parents[1] / "schemas" / "run-record-1.json"
@@ -47,9 +49,10 @@ MAX_TEXT = 100                          # characters in a checker's name or vers
 MAX_FINDINGS = 100                      # findings shown from one record, each cut to 300 characters
 HEX = re.compile(r"[0-9a-f]{64}")
 BLOB = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-AT = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?Z")
+# ASCII digits only, as the schema writes it ([0-9]): \d would take any script's digits, and int() reads them too
+AT = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?Z", re.ASCII)
 ARMS = (("must_pass", "passed"), ("must_refuse", "refused"))
-OUTCOMES = ("clean", "with findings", "failed", "not proved")   # a record's own word for its run (RUN-RECORD-SCHEMA.md)
+OUTCOMES = ("clean", "with findings", "failed", "not proved")   # a record's own word for its run (docs/run-record-schema.md)
 NOT_GUARDED = ("failed", "not proved")                          # an outcome that no count can make guarded
 
 

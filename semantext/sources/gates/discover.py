@@ -13,10 +13,10 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-from ... import jsonread
-from .. import problem, under
+from ...pathrule import SeatsUnread, read_seats
+from .. import base_of, home_base, problem, under
 from .config import Expanded, SettingsReader, global_files, read_text, same_place, show
-from .values import BOM, C_SPACE, NT_PATHS, git_absolute, git_number, parse_bool, parse_config, value_problem
+from .values import C_SPACE, NT_PATHS, git_absolute, git_number, parse_bool, parse_config, value_problem
 
 MAX_WORKTREES = 500      # linked worktrees looked at in one repository
 MAX_GITFILE = 1 << 20    # git refuses a .git file longer than this
@@ -442,20 +442,22 @@ def read_roots(path: str, problems: list, group: str | None = None) -> tuple:
     """(the repositories the seats file names, the seats left out): each as (root name, seat or None, folder), for each
     root of kind "repo", and for the root whose path is {home}, one for every seat that declares a home. With a group,
     only the seats listed in it are read; the others are left out, by name."""
-    text = read_text(Path(path), problems)
-    if text is None:
-        return [], []
-    try:
-        data = jsonread.loads(text.lstrip(BOM), unique=True)   # a key twice: no roots, never the last one
-    except ValueError as e:
-        problems.append(problem(path, None, "bad-json", e))
+    try:   # read one way by every reader and the card hook (pathrule.read_seats): a key twice, no roots
+        data = read_seats(path)
+    except SeatsUnread as e:
+        problems.append(problem(path, None, "bad-json" if e.kind == "not-json" else e.kind, f"the seats file: {e}"))
         return [], []
     if not isinstance(data, dict) or not isinstance(data.get("roots"), list):
         problems.append(problem(path, None, "no-roots", "the seats file should hold a list of roots"))
         return [], []
-    base = data["base"] if isinstance(data.get("base"), str) else ""
+    base = ""
+    if data.get("base") is not None:   # judged as the places and inbox readers judge it (sources.base_of)
+        base, why = base_of(data["base"])
+        if base is None:
+            problems.append(problem(path, None, "bad-path", why))
+            base = ""   # no base, as the places reader then has: a root must be written in full
     seats = data["seats"] if isinstance(data.get("seats"), dict) else {}
-    found, left_out = [], []
+    found, left_out, said_no_base = [], [], False
     for k, root in enumerate(data["roots"], 1):
         if isinstance(root, dict) and root.get("kind") not in (None, "repo"):    # D8: a root of another kind is not
             continue                                                            # this reader's to check
@@ -463,15 +465,23 @@ def read_roots(path: str, problems: list, group: str | None = None) -> tuple:
             problems.append(problem(path, k, "bad-root", f"root {k} should have a name and a path"))
         elif root.get("kind") != "repo":
             continue
-        elif root["path"] == "{home}":
+        elif root["path"].strip() == "{home}":   # as the places reader reads a {home} root
+            # the base the homes are joined to (pathrule.home_base, as every reader and the card hook judge it): with
+            # none given, or one that is not an existing folder, no home is read, said once (a refused base is said)
+            home_base_, why = home_base(data.get("base"))
+            if home_base_ is None and (data.get("base") is None or base) and not said_no_base:
+                problems.append(problem(path, k, "no-base", why))
+                said_no_base = True   # once for the file, however many {home} roots it lists
             for seat, line in seats.items():
                 if group and not in_group(line, group):
                     if seat not in left_out:
                         left_out.append(seat)
                     continue
+                if home_base_ is None:
+                    continue
                 home = line.get("home") if isinstance(line, dict) else None
                 if isinstance(home, str) and home.strip():
-                    full, why = under(base, home)
+                    full, why = under(home_base_, home)
                     if full is None:
                         problems.append(problem(path, k, "bad-path", f"{seat}'s home: {why}"))
                     else:
@@ -480,7 +490,7 @@ def read_roots(path: str, problems: list, group: str | None = None) -> tuple:
                     problems.append(problem(path, k, "no-home",
                                             f"{seat} declares no home, so has no {root.get('name')} root"))
         else:
-            full, why = under(base, root["path"])   # the places reader's own join (the inbox's cards reader still joins its own way: 1.4)
+            full, why = under(base, root["path"])   # the one join the places and inbox readers make too
             if full is None:
                 problems.append(problem(path, k, "bad-path", f"root {k}: {why}"))
             else:

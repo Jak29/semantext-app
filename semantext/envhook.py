@@ -29,7 +29,7 @@ import re
 import sys
 from pathlib import Path
 
-from . import envcard, jsonread, provenance
+from . import envcard, jsonread, pathrule, provenance
 from .provenance import TAIL_BYTES
 
 SEGMENT = re.compile(r"[\r\n;|]|&&")  # one command per segment; a here-string's lines are segments of their own
@@ -188,8 +188,14 @@ class Config:
         self.commons = {c.lower() for c in d.get("commons") or ()}
         # read against the config's own folder, as `environments` is, never the session's working folder (review of
         # 1.2.2, E1)
-        roots = Path(d["roots"]) if d.get("roots") else None
-        self.roots = roots if roots is None or roots.is_absolute() or base is None else base / roots
+        # the seats ("roots") file found as every reader finds it (pathrule.seats_path): "~" or "~/" is the user's
+        # home, and a relative path is relative to this config's folder; "~name" is kept as written, for read_seats
+        # to refuse and the card to say
+        roots = d.get("roots")
+        try:
+            self.roots = pathrule.seats_path(roots, base) if roots else None
+        except pathrule.SeatsUnread:
+            self.roots = Path(roots)
         self.problems: list[str] = []   # what one run could not read and skipped (review of 1.2.2, E3)
         self.relay_form = d.get("relay_form", True)
         self.record_check = d.get("record_check", True)
@@ -270,25 +276,42 @@ def latest_scope(transcript, cfg: Config, chunk: int = CHUNK) -> str | None:
 
 
 def folder_seat(cwd, cfg: Config) -> str | None:
-    """The seat whose home folder holds this working folder (the deepest, if homes nest). None on any doubt."""
+    """The seat whose home folder holds this working folder (the deepest, if homes nest). None on any doubt.
+
+    The base and each home are read by the path rule every reader uses (semantext.pathrule: home_base, under), so a
+    session is given the seat whose home the inbox, places and gates readers name, and no seat whose home they
+    refuse."""
     if cfg.roots is None:
         return None
     try:
-        data = read_json(cfg.roots)
-        base = data["base"]
         here = os.path.normcase(os.path.normpath(str(cwd)))
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, TypeError):
+        return None
+    try:   # parsed as every reader parses it (a key given twice: no seats file, never the last one's value)
+        data = pathrule.read_seats(cfg.roots)
+    except pathrule.SeatsUnread as e:
+        cfg.problems.append(f"{cfg.roots}: {e}, so no folder seat was read")
+        return None
+    if not isinstance(data, dict):
         return None
     seats = data.get("seats") or {}
     if not isinstance(seats, dict):   # a list, say: no folder seat, and the card says why (review of 1.2.2, E3)
         cfg.problems.append(f"{cfg.roots}: 'seats' should map each seat's name to its home, so no folder seat was read")
+        return None
+    base, why = pathrule.home_base(data.get("base"))
+    if base is None:
+        if seats:
+            cfg.problems.append(f"{cfg.roots}: {why}, so no folder seat was read")
         return None
     best, depth = None, -1
     for name, seat in seats.items():
         home = seat.get("home") if isinstance(seat, dict) else None
         if not home:
             continue
-        h = os.path.normcase(os.path.normpath(os.path.join(base, home)))
+        full, _why = pathrule.under(base, home)
+        if full is None:   # a home every reader refuses gives no session its seat
+            continue
+        h = os.path.normcase(os.path.normpath(full))
         if (here == h or here.startswith(h + os.sep)) and len(h) > depth:
             best, depth = name.lower(), len(h)
     return best

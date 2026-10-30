@@ -150,7 +150,7 @@ def _outside(entry, path, ctx=None) -> dict:
     # the answer comes back as plain data: made into bounded, depth-checked JSON text in the worker (outside.run_json)
     owner = registry.key(entry.kind, entry.name)   # counted against the name the registry gave it, never the callable
     given = (cfg, ctx) if entry.reads_ctx else (cfg,)
-    part = outside.run_json(entry.obj.read, *given, owner=owner)
+    part = outside.run_json(entry.obj.read, *given, owner=owner, call="read")
     if not isinstance(part, dict):
         raise TypeError(f"its answer is a {type(part).__name__}, not a record")
     body = _capped(part, f"plug-in source.{entry.name}")
@@ -166,22 +166,26 @@ def _over_total(spent: int, n: int) -> None:
                          f"they may come to together, so it is not used")
 
 
-def _read(cfg: dict, world=None, reg=None, path=None, home=None) -> tuple[dict, list, int]:
+def _read(cfg: dict, world=None, reg=None, path=None, home=None, outside_reads=True) -> tuple[dict, list, int]:
     """Every reader's answer on this config, a problem for each reader that stopped, and the bytes the outside
     answers came to: one that fails costs the page that reader's part, never the rest. A reader the person turned on
     is read the same way, on its own keys; one whose answer would take the outside answers together over
-    outside.MAX_TOTAL is refused (the audit of 784faf6, note 11)."""
+    outside.MAX_TOTAL is refused (the audit of 784faf6, note 11). With outside_reads False no outside reader is read
+    at all (the Plug-ins place: no plug-in is called to draw it)."""
     got, failed, spent = {}, [], 0
     ctx = None
     for entry in (reg or BUILT_IN).entries("source"):
         name = entry.name
+        if not entry.builtin and not outside_reads:
+            continue
         if entry.reads_ctx and not entry.builtin and ctx is None:
             ctx = closed.context(home)   # once per build, so every reader judges against the same closures
         try:
             if entry.builtin:
                 got[name] = entry.obj.read(cfg, world)
             else:
-                body = _outside(entry, path, ctx)
+                # each plug-in its own sealed copy: one plug-in's change to its context never reaches another's
+                body = _outside(entry, path, closed.own_copy(ctx) if ctx is not None else None)
                 n = outside.size(body) or 0   # plain data by now (outside.run_json): no plug-in code runs here
                 _over_total(spent, n)
                 got[name], spent = body, spent + n
@@ -276,17 +280,21 @@ class _Sources:
     `sources[name]` is that source's answer for the group: the one part of this object a place outside the package may
     rely on (api.py, Place). A plug-in that could not be loaded is one more problem, under "plug-ins"."""
 
-    def __init__(self, home=None, world=None, reg=None):
+    def __init__(self, home=None, world=None, reg=None, outside_reads=True):
         self.home = home   # the home the page was started with: an outside place's build(sources, ctx) is given it
         self.reg = reg if reg is not None else registry.load_enabled(BUILT_IN, home)
         self.cfg, self.path, trouble = _config(home)
-        got, failed, self.spent = _read(self.cfg, world, self.reg, self.path, home)   # spent: outside bytes so far
+        got, failed, self.spent = _read(self.cfg, world, self.reg, self.path, home,   # spent: outside bytes so far
+                                        outside_reads)
         self.allowed = _allowed(self.cfg, got)
         self.got = _in_group(got, self.allowed)
         mine = {e.name for e in self.reg.entries("source") if not e.builtin}
-        self.problems = ([trouble] if trouble else []) + failed + [
+        # closures named but unusable close every path: said here, never only by what stops being read (a sources
+        # file that cannot be read is already the problem above)
+        declared = tuple(k for e in self.reg.entries("source") if not e.builtin for k in (e.obj.keys or ()))
+        self.problems = ([trouble] if trouble else closed.problems(home, declared)) + failed + [
             _said_by(name, p, name in mine) for name in self.reg.names("source")
-            for p in self.got[name].get("problems") or []
+            for p in self.got.get(name, {}).get("problems") or []
         ] + [{"reader": "plug-ins", **p} for p in self.reg.problems]
         self._cards = None
         self._projects = None
@@ -901,13 +909,20 @@ def sources_place(src: _Sources) -> dict:
             "routes": list(src.reg.names("place")), "word": word_of(src.cfg.get("name"))}
 
 
+def plugins_place(src: _Sources) -> dict:
+    from .. import pluginpage   # here: only this place needs it
+    return pluginpage.place(src)
+
+
 class Place:
-    """A built-in place, registered as an outside one is: its route, its title, the sources it reads, and build."""
+    """A built-in place, registered as an outside one is: its route, its title, the sources it reads, and build.
+    With reads_outside False, drawing it reads no outside source (the Plug-ins place calls no plug-in)."""
 
     kind = "place"
 
-    def __init__(self, name: str, title: str, build, needs: tuple):
+    def __init__(self, name: str, title: str, build, needs: tuple, reads_outside: bool = True):
         self.name, self.title, self.build, self.needs = name, title, build, needs
+        self.reads_outside = reads_outside
 
 
 _ALL = tuple(s.name for s in builtin.SOURCES)
@@ -919,7 +934,8 @@ for _place in (Place("waiting", "Waiting", waiting_place, ("waiting", "record", 
                Place("record", "Record", record_place, ("record",)),
                Place("rules", "Rules", rules_place, ("rules", "places")),
                Place("sources", "Sources", sources_place, _ALL),
-               Place("work", "Work", work_place, ("work", "waiting", "record"))):
+               Place("work", "Work", work_place, ("work", "waiting", "record")),
+               Place("plugins", "Plug-ins", plugins_place, (), reads_outside=False)):
     BUILT_IN.add("place", _place.name, _place)
 ROUTES = BUILT_IN.names("place")
 
@@ -955,7 +971,7 @@ def _built(entry, src: _Sources) -> dict:
         mine = {e.name for e in src.reg.entries("source") if not e.builtin}
         given = (_Copy(src.got, mine),) + ((closed.context(src.home),) if entry.reads_ctx else ())
         body = outside.run_json(entry.obj.build, *given,   # plain data back, its size and depth bounded
-                                owner=registry.key(entry.kind, entry.name))
+                                owner=registry.key(entry.kind, entry.name), call="build")
         if not isinstance(body, dict):
             raise TypeError(f"its answer is a {type(body).__name__}, not a record")
         body = {k: v for k, v in body.items() if k not in ("place", "frame")}
@@ -973,17 +989,55 @@ def _built(entry, src: _Sources) -> dict:
         return {"off": True, "failed": why}
 
 
+NO_HOME = "no home folder: this system gives none, and no Semantext home is set, so nothing is read"
+
+
+def _no_home(home) -> bool:
+    """Whether the home cannot be found: no home given, and the system gives none (paths.home raises)."""
+    if home is not None:
+        return False
+    try:
+        paths.home()
+        config_file(None)
+    except (RuntimeError, KeyError, OSError):
+        return True
+    return False
+
+
+def _answer_without_home(name: str) -> dict | None:
+    """A built-in route's answer when there is no home: its frame says so as a problem, and nothing is read."""
+    if str(name or "") not in ROUTES:
+        return None
+    said = {"reader": "sources", "source": "home", "line": None, "kind": "no home", "text": NO_HOME}
+    frame = {"name": None, "word": None, "group": None, "checked": _now(), "config": None, "waiting": 0, "seats": [],
+             "off": True, "problems": [said], "gaming": {"off": True, "state": "unknown", "file": None, "why": NO_HOME},
+             "outside": []}
+    return {"place": str(name), "frame": frame, "off": True, "failed": NO_HOME}
+
+
 def answer(name: str, home=None, world=None) -> dict | None:
     """The page's data for one route: waiting, projects, documents, map (also under the person's own word for the
     whole), record, rules, sources, or a place the person turned on. None for a name that is no route. Every answer
-    carries the frame."""
+    carries the frame. With no home at all (the system gives none, and none is set), every built-in route answers with
+    that said as a problem, never an exception."""
+    if _no_home(home):
+        return _answer_without_home(name)
+    try:
+        return _answer(name, home, world)
+    except RuntimeError:
+        if _no_home(home):   # the home went away while it was read: said, never raised
+            return _answer_without_home(name)
+        raise
+
+
+def _answer(name: str, home=None, world=None) -> dict | None:
     cfg, _path, _trouble = _config(home)
     reg = registry.load_enabled(BUILT_IN, home)
     place = _route(str(name or ""), cfg, reg)
     if place is None:
         return None
-    src = _Sources(home, world, reg)
     entry = reg.get("place", place)
+    src = _Sources(home, world, reg, outside_reads=getattr(entry.obj, "reads_outside", True) is not False)
     if entry.builtin:
         return {"place": place, "frame": src.frame(), **_built(entry, src)}
     body = _built(entry, src)

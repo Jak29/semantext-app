@@ -1,7 +1,7 @@
 // The page's DOM helpers, the only way any module makes an element.
 // Every piece of the person's text is set as text: elements are made with createElement, and words go in as text
-// nodes, never parsed as markup. The page only reads: it sends the X-Semantext header with every read, runs nothing,
-// and writes nothing anywhere.
+// nodes, never parsed as markup. The page reads, with the X-Semantext header on every read, and runs nothing. Its one
+// way to change anything is the Plug-ins tab's few changes (plugins.js), each a POST the server guards and records.
 
 export const $ = (id) => document.getElementById(id);
 const PROPS = new Set(["open", "hidden", "type", "value", "disabled", "checked", "tabIndex", "placeholder"]);

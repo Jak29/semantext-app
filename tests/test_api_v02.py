@@ -1,4 +1,4 @@
-"""semantext.api 0.2: what the first outside plug-in asked for (ECOSYSTEM.md, "semantext.api 0.2"). Each section is one
+"""semantext.api 0.2: what the first outside plug-in asked for (docs/plugin-api.md). Each section is one
 change, with must-pass and must-refuse arms."""
 from __future__ import annotations
 

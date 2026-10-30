@@ -163,6 +163,77 @@ class _Flight:
 _FLIGHTS: dict[str, _Flight] = {}   # the plug-in's registration name ("<kind>.<name>") -> its calls
 _WAITING: dict[str, int] = {}        # the plug-in's registration name -> its calls now waiting for a turn
 _TURN = threading.Condition(threading.Lock())
+_LAST: dict[tuple, dict] = {}        # (registration name, package, version) -> how its last call here ended
+_IDENT: dict[str, tuple] = {}        # the registration name -> (package, version) of the plug-in loaded under it now
+MAX_LAST = 256                       # plug-ins whose last call is kept; the oldest is let go past that
+OUTCOMES = ("answered", "error", "late", "busy", "crowded")
+
+
+CALLS_NAMED = ("call", "import", "signature", "read", "build", "resolve", "check_bytes")
+
+
+def _ident(origin, version) -> tuple:
+    return ("" if origin is None else str(origin), "" if version is None else str(version))
+
+
+def identify(key: str, origin, version) -> None:
+    """Say which package and version the plug-in loaded under a registration name is (registry.load_enabled, before
+    its import): its calls' health is kept under the three together, so another version installed under the same name
+    never shows this one's last call."""
+    with _TURN:
+        _IDENT[key] = _ident(origin, version)
+
+
+def forget(key: str) -> None:
+    """Let go of every last call kept under a registration name, of any package and version: done when the plug-in is
+    turned on or off, so its health starts again from nothing."""
+    with _TURN:
+        for k in [k for k in _LAST if k[0] == key]:
+            del _LAST[k]
+
+
+def forget_all() -> None:
+    """Every last call kept, let go (the tests start each from nothing)."""
+    with _TURN:
+        _LAST.clear()
+        _IDENT.clear()
+
+
+def _ended(key: str, outcome: str, seconds: float, call: str = "call") -> None:
+    """Keep how a call ended, for the page's Plug-ins tab: the words are the kernel's, never the plug-in's. `call` is
+    which call it was, as the kernel code that made it names it ("import", "read", ...)."""
+    call = call if call in CALLS_NAMED else "call"
+    with _TURN:
+        key = (key,) + _IDENT.get(key, _ident(None, None))
+        mine = _LAST.pop(key, {})
+        mine[call] = {"outcome": outcome, "call": call, "seconds": round(max(0.0, seconds), 3),
+                      "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "t": time.monotonic()}
+        _LAST[key] = mine
+        while len(_LAST) > MAX_LAST:
+            del _LAST[next(iter(_LAST))]
+
+
+LOADING = ("import", "signature")   # the kernel's own calls made to load a plug-in, every answer
+
+
+def _newest(records) -> dict | None:
+    got = max(records, key=lambda r: r["t"], default=None)
+    return {k: v for k, v in got.items() if k != "t"} if got else None
+
+
+def health(key: str, origin=None, version=None) -> dict:
+    """How a plug-in's calls stand in this process, by its registration name and the package and version it is: its
+    last call of its own work (a read, a build, a resolve or a check) and its last call made to load it (its import,
+    the read of its signature), each None when none was made here by THAT package and version; and how many of its
+    calls are past their budget and still run (by name: those threads are the name's, whatever was loaded). Reading
+    this runs nothing of the plug-in's."""
+    with _TURN:   # no package named: the one loaded under the name now
+        who = _IDENT.get(key, _ident(None, None)) if origin is None and version is None else _ident(origin, version)
+        mine = _LAST.get((key,) + who, {})
+        flight = _FLIGHTS.get(key)
+        return {"last": _newest(r for c, r in mine.items() if c not in LOADING),
+                "loading": _newest(r for c, r in mine.items() if c in LOADING),
+                "holding": len(flight.hanging) if flight else 0}
 
 
 def _hanging() -> int:
@@ -239,13 +310,13 @@ def as_json(value) -> str:
     return text
 
 
-def run_json(fn, *args, owner: str, budget: float | None = None):
+def run_json(fn, *args, owner: str, budget: float | None = None, call: str = "call"):
     """fn(*args) as run makes it, its answer turned into JSON text in the worker (as_json), and that bounded text
     parsed here: what comes back is plain data, of known size and depth, that no code of the plug-in's is part of."""
-    return jsonread.loads(run(fn, *args, owner=owner, budget=budget, post=as_json))
+    return jsonread.loads(run(fn, *args, owner=owner, budget=budget, post=as_json, call=call))
 
 
-def run(fn, *args, owner: str, budget: float | None = None, post=None):
+def run(fn, *args, owner: str, budget: float | None = None, post=None, call: str = "call"):
     """fn(*args) in a worker thread, its answer or its error, or Late after the budget. A late call's answer is never
     used: the thread is left to finish on its own (daemon), since a thread cannot be stopped from outside.
 
@@ -289,6 +360,27 @@ def run(fn, *args, owner: str, budget: float | None = None, post=None):
                 _TURN.notify_all()
 
     budget = seconds() if budget is None else budget
+    asked = time.monotonic()
+    try:
+        value = _run(work, me, key, budget, box)
+    except Crowded:
+        _ended(key, "crowded", time.monotonic() - asked, call)
+        raise
+    except Busy:
+        _ended(key, "busy", time.monotonic() - asked, call)
+        raise
+    except Late:
+        _ended(key, "late", time.monotonic() - asked, call)
+        raise
+    except RuntimeError:
+        _ended(key, "error", time.monotonic() - asked, call)
+        raise
+    _ended(key, "answered", time.monotonic() - asked, call)
+    return value
+
+
+def _run(work, me: list, key: str, budget: float, box: dict):
+    """run's turn, thread and wait, apart from keeping how the call ended (outside _TURN, which is not re-entrant)."""
     turn_by = time.monotonic() + budget   # the longest it waits for a turn; once it has one, it has its whole budget
     t = threading.Thread(target=work, name="semantext-plugin", daemon=True)
     me.append(t)

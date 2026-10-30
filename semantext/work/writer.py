@@ -96,11 +96,32 @@ class Writer:
         return {s for s in map(slug, names) if s}
 
     def seats(self) -> set[str] | None:
+        """The seat names a reviewer, a to_seat or an assignment is checked against: those given, else the seats
+        file's. None when no seats file is configured at all, a mode in which there is nothing to check a seat against
+        and those checks are not made (a legitimate mode, said here). A seats file that is configured but cannot
+        be known is never None: it is WorkRefused, so every check that needs the seats refuses rather than skips."""
         if self._seats is not None:
             return set(self._seats)
         from ..sources import kernel
-        rows = kernel.seat_rows(self.home)
-        return {r["seat"] for r in rows} if rows else None
+        names, why = kernel.seat_names(self.home)
+        if why:
+            raise WorkRefused("UNKNOWN_ID", f"the seats cannot be known, so no seat can be checked: {why}")
+        return names
+
+    def seats_said(self) -> str | None:
+        """One line for the Work place and `semantext work list` when the seats are not checked as usual: when no
+        seats are configured (nothing to check a reviewer, a to_seat or an assignment against), or when a seats file
+        is configured but cannot be known (then those are refused). None when the seats are known."""
+        if self._seats is not None:
+            return None
+        from ..sources import kernel
+        names, why = kernel.seat_names(self.home)
+        if why:
+            return f"the seats cannot be known, so a reviewer, a to_seat and an assignment are refused: {why}"
+        if names is None:
+            return ("no seats file is configured, so a reviewer, a to_seat and an assignment are not checked against "
+                    "any seat")
+        return None
 
     def state(self) -> dict:
         """The folded store, read without the file lock (a reader never blocks the writer), through the same cache."""
@@ -241,7 +262,9 @@ class Writer:
             raise WorkRefused("MALFORMED", "the actor is not one the kernel knows how to stamp")
         if event == "create" and fields["project"] not in self.projects():
             raise WorkRefused("UNKNOWN_ID", f"{fields['project']!r} is not a project in the seats or projects file")
-        seats = self.seats()
+        needs = [k for k in ("reviewer", "to_seat") if k in fields] or (
+            ["value"] if event == "person_act" and fields["act"] == "assign" else [])
+        seats = self.seats() if needs else None   # refuses, never skips, when a seats file is given but unknowable
         for k in ("reviewer", "to_seat"):
             if k in fields and seats is not None and fields[k] not in seats:
                 raise WorkRefused("UNKNOWN_ID", f"{fields[k]!r} is not a seat")
@@ -376,17 +399,22 @@ class Writer:
         return {"item": copy.deepcopy(st["items"].get(fields.get("id"))), "proposal": True}
 
     def _contained(self):
-        """The containment set before a write: no link or junction from the store folder up to the home, at the log or
-        the head; no second hard link."""
+        """The containment set before a write: no link or junction from the store folder up to the home, at the log,
+        the head, the pending record, or the log's lock and its gate (store.file_lock opens both, made when missing, so
+        a link planted at either would be followed); no second hard link; and nothing but a plain file at a lock."""
         home = self.home
-        for p in [self.path, self.head_path, self.pending_path, self.dir, *self.dir.parents]:
+        lock = self.path.with_name(self.path.name + ".lock")
+        gate = lock.with_name(lock.name + ".gate")
+        for p in [self.path, self.head_path, self.pending_path, lock, gate, self.dir, *self.dir.parents]:
             if p.exists() or p.is_symlink():
                 if _linked(p) or (p.is_file() and os.stat(p).st_nlink > 1):
                     raise WorkRefused("CONFLICT", f"{p} is a link, a junction or a second hard link; the work store "
                                                   f"is never written through one")
+                if p in (lock, gate) and not p.is_file():
+                    raise WorkRefused("CONFLICT", f"{p} is not a plain file, so it is not taken as the store's lock")
             if p == home:
                 break
-        for name in (self.path.name, self.head_path.name, self.pending_path.name):
+        for name in (self.path.name, self.head_path.name, self.pending_path.name, lock.name, gate.name):
             if ":" in name:
                 raise WorkRefused("CONFLICT", "an alternate stream is never the work store")
 

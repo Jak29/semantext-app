@@ -37,10 +37,11 @@ exception: with no "gaming" key it is read from the "inbox" folder, where the in
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
 import re
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path
 
 from .. import jsonread, paths
 from .builtin import config_keys
@@ -65,7 +66,14 @@ def load_config(path: str | Path | None = None, keys=None) -> dict:
     # a key given twice is refused, never last-one-wins (the audit of 784faf6, protection item 9): every caller says
     # the file cannot be read, as a problem line
     data = jsonread.loads(p.read_text(encoding="utf-8-sig"), unique=True)
-    return {k: data[k] for k in (KEYS if keys is None else keys) if _kept(k, data.get(k))}
+    out = {k: data[k] for k in (KEYS if keys is None else keys) if _kept(k, data.get(k))}
+    seats = out.get("seats")
+    if isinstance(seats, str) and (seats.startswith("~") or not Path(seats).is_absolute()):
+        try:   # one rule for every reader and the card hook: a relative seats path is relative to this file's folder,
+            out["seats"] = str(seats_path(seats, p.parent))   # never the process's (pathrule.seats_path); a full
+        except SeatsUnread:                                    # path is kept exactly as written
+            pass   # "~name": left as written, for read_seats to refuse as every reader refuses it
+    return out
 
 
 LISTS = ("run_records",)        # a key that may also hold a list of texts (the run-record folders)
@@ -117,38 +125,76 @@ def refused_keys(path: str | Path | None, keys) -> list[dict]:
             for k in keys if k in data and data[k] not in (None, "", []) and not _kept(k, data[k])]
 
 
-def rooted(rel: str) -> bool:
-    """Whether a path names its own start: a drive (D:\\x, or D:x), a root (\\Windows, /etc), or a share (\\\\srv\\x,
-    //srv/x, \\\\?\\...), read the Windows way and the POSIX way alike, whatever this system is."""
-    w = PureWindowsPath(rel)
-    return bool(w.drive or w.root or PurePosixPath(rel).root)
+# The path rule (semantext/pathrule.py), the one judgement of a base and join of a home or root, for every reader and
+# the card hook; kept under these names here for the readers that import them from this package.
+from ..pathrule import DRIVE, base_of, home_base, inexact as _inexact, rooted, under  # noqa: E402,F401
+from ..pathrule import SeatsUnread, seats_path  # noqa: E402
 
 
-def under(base: str | None, rel) -> tuple[str | None, str | None]:
-    """A folder as a seats file writes it, in full: (the path, None), or (None, why it cannot be). The one join of a
-    seats file's homes and roots, for the places reader and the gates reader alike (places._under, discover.read_roots).
-
-    With a base, the path is put under it and must stay there: one that steps out with "..", or that names its own
-    start (rooted: a drive, a root or a share) is refused, since joined to the base it would leave it (Path("C:\\seats")
-    / "D:\\other" is D:\\other; the Fable review of 70f2d3c, finding 5). With no base, the path must be written in
-    full."""
-    if not isinstance(rel, str) or not rel.strip():
-        return None, "has no path"
-    rel = rel.strip()
-    if ".." in re.split(r"[\\/]", rel):
-        return None, f"a path may not step out with '..': {rel}"
-    if base and rooted(rel):
-        return None, (f"{rel} names a drive, a root or a share of its own, so it would leave the base folder; a path "
-                      f"under the base is written without one")
-    full = Path(base) / rel if base else Path(rel)
-    if not full.is_absolute():
-        return None, f"{rel} is not a full path, and the seats file gives no base folder to put it under"
-    return str(full), None
+MAX_TEXT = 300   # characters in a problem's text
+PATH_KEPT = 30   # characters a long word keeps when it is shortened: its start, a hash between ellipses, and its end
 
 
 def problem(source: str | Path, line: int | None, kind: str, text: str) -> dict:
-    """One thing a reader could not use. Every reader returns these instead of dropping the line."""
-    return {"source": str(source), "line": line, "kind": kind, "text": str(text)[:300]}
+    """One thing a reader could not use. Every reader returns these instead of dropping the line. The text is at most
+    MAX_TEXT characters, made to fit by fit(), which shortens its long words and then its middle, and keeps its end,
+    the reason, whole."""
+    return {"source": str(source), "line": line, "kind": kind, "text": fit(str(text))}
+
+
+def fit(text: str, limit: int = MAX_TEXT) -> str:
+    """A text cut to `limit` characters, shortening its subject before its reason: a long home folder once took the
+    "so its requests are not read" off the end.
+
+    The subject is the span from the first to the last word that is a path (holds a / or a \\) or is over PATH_KEPT
+    characters; what comes before it says whose problem it is, and what comes after it is the reason. In order, and
+    only as far as needed:
+      1. each long word is shortened in its middle, the longest first, keeping a short hash of the whole word
+         ("C:\\Use…[a1b2c3]…\\alder");
+      2. the subject is shortened in its middle (a path of many short parts split by spaces, say), keeping a short
+         hash of the whole subject, so two subjects that differ only in the middle never read alike;
+      3. if the text still does not fit (no subject, or a reason or a start that alone is over the cap), its END is
+         cut, with an ellipsis: then, and only then, a reason loses its end, never its start.
+    Whenever anything is cut, a hash of what was cut away's whole stays in the text, except in step 3."""
+    if len(text) <= limit:
+        return text
+    tokens = re.split(r"(\s+)", text)
+    marked = [i for i, t in enumerate(tokens) if not t.isspace() and t and ("/" in t or "\\" in t or len(t) > PATH_KEPT)]
+    over = len(text) - limit
+    for i in sorted((i for i in marked if len(tokens[i]) > PATH_KEPT), key=lambda i: -len(tokens[i])):
+        t = tokens[i]
+        tokens[i] = _shorten(t, max(PATH_KEPT, len(t) - over))
+        over -= len(t) - len(tokens[i])
+        if over <= 0:
+            return "".join(tokens)
+    if marked:   # 2. the subject, from its first to its last path or long word, shortened in its middle
+        first, last = marked[0], marked[-1]
+        head, reason = "".join(tokens[:first]), "".join(tokens[last + 1:])
+        subject = "".join(tokens[first:last + 1])
+        whole = "".join(re.split(r"(\s+)", text)[first:last + 1])   # the subject before step 1, for its hash
+        room = limit - len(head) - len(reason)
+        if len(subject) <= room:
+            return head + subject + reason
+        if room >= len(_mark(whole)) + 2:
+            return head + _shorten(subject, room, whole) + reason
+        text = head + subject + reason   # the start or the reason alone is over the cap: step 3 cuts the end
+    else:
+        text = "".join(tokens)
+    return text if len(text) <= limit else text[:limit - 1] + "\u2026"   # 3. only now is the end cut
+
+
+def _mark(word: str) -> str:
+    """The short hash that stands where the middle of `word` was cut: "…[a1b2c3]…"."""
+    return "\u2026[" + hashlib.sha256(word.encode("utf-8", "surrogatepass")).hexdigest()[:6] + "]\u2026"
+
+
+def _shorten(word: str, size: int, whole: str | None = None) -> str:
+    """A word shortened to at most `size` characters in its middle, with the short hash of the whole word (or of
+    `whole`, what it was before an earlier shortening) where the middle was."""
+    mark = _mark(whole if whole is not None else word)
+    keep = max(2, size - len(mark))
+    head = keep // 2
+    return word[:head] + mark + word[len(word) - (keep - head):]
 
 
 MAX_FILE = 16 * 1024 * 1024   # bytes read_lines reads of one file; a larger one is refused, never read whole

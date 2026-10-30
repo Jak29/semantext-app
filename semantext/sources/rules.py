@@ -35,7 +35,7 @@ highest of four:
   guarded once  the newest run record of some checker passed both arms for it, but the rule's words, a file it checked
                 or the record's age no longer hold (runs.py says which);
   guarded       the newest run record of some checker passed both arms for it, on its words and the bytes in place now,
-                within the age bound (runs.py; RUN-RECORD-SCHEMA.md). Nothing else makes a rule guarded: the guards file
+                within the age bound (runs.py; docs/run-record-schema.md). Nothing else makes a rule guarded: the guards file
                 below names checkers and their arms, and the page shows them, but a list of what should have a record
                 is not a record (the ecosystem review, section 2).
 

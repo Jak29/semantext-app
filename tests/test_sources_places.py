@@ -171,10 +171,14 @@ def test_a_seats_file_of_the_wrong_shape_is_reported(tmp_path, text, kind):
 
 
 def test_a_file_over_its_limit_is_not_read_and_says_so(world, monkeypatch):
-    monkeypatch.setattr(places, "MAX_SEATS", 20)
+    from semantext import pathrule   # the seats file's cap is the one every reader and the card hook read it by
+    cap = pathrule.MAX_SEATS
+    monkeypatch.setattr(pathrule, "MAX_SEATS", 20)
     loaded = places.load(world.cfg)
     assert loaded["agents"] == [] and "too-big" in kinds(loaded) and loaded["map"]["places"] == 4
-    monkeypatch.undo()
+    # put back only the cap: monkeypatch.undo() would undo the run's own redirect of the home too (conftest), and the
+    # reader (which reads the closures) would then open the real ~/.semantext
+    monkeypatch.setattr(pathrule, "MAX_SEATS", cap)
     monkeypatch.setattr(places, "MAX_MAP", 20)
     loaded = places.load(world.cfg)
     assert loaded["map"]["places"] is None and "too-big" in kinds(loaded) and len(loaded["agents"]) == 3
@@ -320,7 +324,9 @@ def test_a_base_that_is_not_a_full_folder_path_is_reported(world, base):
     loaded = places.load(world.cfg)
     assert "shape" in kinds(loaded) and loaded["base"] is None
     assert all(a["home"] is None for a in loaded["agents"])
-    assert kinds(loaded).count("bad-path") == 5 and loaded["projects"] == []             # 3 homes and 2 roots
+    # the refused base is said once, and no home is joined to it (pathrule.home_base, as every reader): only the two
+    # roots, which then name no full path, are each a bad path
+    assert kinds(loaded).count("bad-path") == 2 and loaded["projects"] == []
 
 
 def test_two_seats_that_differ_only_in_spaces_are_one_agent_and_said(world):
@@ -489,7 +495,10 @@ def test_two_seats_with_one_home_are_said_to_share_it_not_merged_in_silence(worl
     resave(world, data)
     loaded = places.load(world.cfg)
     shared = [p for p in loaded["problems"] if p["kind"] == "shared-home"]
-    assert len(shared) == 1 and "Ada, Bram" in shared[0]["text"] and str(world.desk / "ada") in shared[0]["text"]
+    text, home = shared[0]["text"], str(world.desk / "ada")
+    assert len(shared) == 1 and "Ada, Bram" in text and text.endswith("listed under each of them")
+    # the folder is named whole, or, when the text would be over its cap, with its middle shortened (sources.fit)
+    assert home in text or (home[:8] in text and home[-8:] + ":" in text and "…" in text)
     assert "duplicate-root" not in kinds(loaded)            # the seats file lists that folder once: it is not "twice"
     assert [p["name"] for p in loaded["projects"]] == ["main", "tools", "Ada home", "Cleo home"]   # one folder, one
     assert by(loaded["projects"], "Ada home")["home_of"] == ["Ada", "Bram"]

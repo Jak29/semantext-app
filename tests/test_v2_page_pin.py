@@ -103,7 +103,11 @@ at("record", "J-404");
 S.q.record = "first"; at("record"); pins["record/ searched"] = pins["record/"]; S.q.record = "";
 S.facet = "parked"; at("record"); pins["record/ parked"] = pins["record/"]; S.facet = "all";
 at("record");
-const drawer = (kind, arg) => { S.drawer = { kind, arg }; renderDrawer(true);
+PG.said = { acts: true, text: "not changed on the page: it would widen what the plug-in reads (ledger_file). Confirm it at your own console", command: "semantext plugins confirm 2" };
+PG.where = "source.ledger"; at("plugins"); pins["plugins/ refused"] = pins["plugins/"];
+PG.said = null; S.open.add("plugins:builtin"); at("plugins"); pins["plugins/ built-ins open"] = pins["plugins/"];
+S.open.clear(); at("plugins");
+const drawer =(kind, arg) => { S.drawer = { kind, arg }; renderDrawer(true);
   pins["drawer " + kind + " " + JSON.stringify(arg)] = { kind: $("drawer-kind").textContent, title: $("drawer-title").textContent,
     body: texts($("drawer-body")), controls: controls($("drawer-body")) }; };
 for (const id of Object.keys(DATA.map.agents || {})) drawer("agent", { id });
@@ -130,9 +134,48 @@ def drawn(tmp_path, monkeypatch) -> dict:
     monkeypatch.setattr(places, "_node_id", lambda kind, *parts: real(kind, *(roots.sub("/fixture", p).replace("\\", "/")
                                                                               for p in parts)))
     data = {r: view.answer(r) for r in ROUTES}
+    data["plugins"] = plugins_answer(tmp_path, monkeypatch)
     # the times the world's files were made, and the time the gates were read, are now: each is written as one time
     now = {v for v in walk(data) if isinstance(v, tuple)}
     return run("const DATA = " + json.dumps(plain(data, roots, {v for _, v in now})) + ";\n" + DRAW)
+
+
+class Ledger:
+    """An outside source the pin's world has installed and turned on: named for the pin alone, so no other test's call
+    into a plug-in of this name changes its health."""
+    kind, name, title, keys = "source", "ledger", "Ledger", ("ledger_file", "ledger_label")
+
+    def read(self, config):
+        return {"off": False, "problems": []}
+
+
+def plugins_answer(tmp_path, monkeypatch) -> dict:
+    """The Plug-ins place for the world, with two installed packages: one whose source is on and declares its settings,
+    with one change recorded at a fixed time, and one whose place is not on and declares nothing."""
+    import importlib.metadata
+    from semantext import registry
+    from plugin_fakes import Point, package
+    declared = {"plugins": {"source.ledger": {"reads": ["the ledger file you name"], "settings": [
+        {"key": "ledger_file", "type": "path", "title": "Ledger file", "required": True},
+        {"key": "ledger_label", "type": "text", "title": "Label"}]}}}
+    on = package(tmp_path / "site-ledger", name="semantext-ledger", version="1.0", module="semantext_ledger",
+                 declared=declared)
+    off = package(tmp_path / "site-board", name="semantext-board", version="0.2", module="semantext_board")
+    points = [Point("source.ledger", Ledger, on, value="semantext_ledger.reader:SOURCE"),
+              Point("place.board", lambda: None, off, value="semantext_board.reader:PLACE")]
+    home = tmp_path / "plugins-home"
+    home.mkdir()
+    registry.write_enabled({"source.ledger": {"origin": "semantext-ledger", "version": "1.0", "at": NOW}}, home)
+    before = {"values": {"ledger_label": "old"}, "absent": []}   # taken out: the world's sources file has no label,
+    after = {"values": {}, "absent": ["ledger_label"]}            # so the record is what stands, and can be rolled back
+    (home / "plugin-changes.jsonl").write_text(json.dumps(
+        {"n": 1, "at": NOW, "who": "page", "what": "settings", "field": "settings", "plugin": "source.ledger",
+         "before": before, "after": after}) + "\n", encoding="utf-8")
+    with monkeypatch.context() as m:
+        m.setattr(importlib.metadata, "entry_points", lambda **kw: [p for p in points if kw.get("group") == registry.GROUP])
+        from semantext import pluginpage   # the lines are drawn for one shell wherever the pin is checked
+        m.setattr(pluginpage, "_shell", lambda shell: "powershell")
+        return view.answer("plugins", home=home)
 
 
 def walk(x, key=None):

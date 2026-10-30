@@ -2,7 +2,7 @@
 
 A plug-in is a source (a reader of the person's files), a place (a part of the page), or a checker (something that
 runs outside the package and leaves run records). The other kinds the ecosystem names are reserved: listed, empty, and
-refused if a package offers one (ECOSYSTEM.md, "Ship order": the registry plus Source, Place and Checker first).
+refused if a package offers one (docs/plugin-api.md, "Kinds": the registry plus Source, Place and Checker first).
 
 The built-in parts register here exactly as an outside one does, so the way in is proven by use. An outside plug-in is
 an installed Python package declaring an entry point in the group `semantext.plugins`, named "<kind>.<name>" so that
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +33,9 @@ KINDS = ("source", "place", "checker")                                       # o
 RESERVED = ("card-format", "evidence-policy", "door", "tool", "exporter")    # named, empty, refused
 BUILT_IN = "built-in"   # the words shown for a built-in's origin; never how one is told apart (Entry.builtin)
 ENABLED_FILE = "plugins.json"
+# A plug-in's name, after its kind: letters, digits, _ and -, so "<kind>.<name>" holds one dot and nothing a shell, a
+# path or a page would read as more than a word (an entry point named "source.x$(calc)" is refused, never listed).
+NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 # What each open kind must offer: the attributes the page or the command line reaches (api.py states the contracts).
 NEEDS = {"source": ("name", "keys", "read"), "place": ("name", "title", "build"), "checker": ("name", "records")}
 
@@ -89,7 +93,7 @@ def ctx_shape(read, owner: str) -> tuple[bool | None, str | None]:
     ctx was then called without it, and judged closed places against the default home (the recheck of 17021c2, NH4).
     A caller given None skips that call for this answer, with a problem line; the next answer asks again."""
     try:
-        got = outside.run(_shape_takes_ctx, read, owner=owner)
+        got = outside.run(_shape_takes_ctx, read, owner=owner, call="signature")
     except outside.Busy as e:
         return None, f"Busy: {e}"
     except outside.Late as e:
@@ -138,13 +142,21 @@ class Registry:
         whatever that name says ("built-in" included)."""
         if kind not in KINDS:
             raise ValueError(f"{kind!r} is not a kind of plug-in that is open ({', '.join(KINDS)})")
-        if not isinstance(name, str) or not name or name != name.strip():
-            raise ValueError(f"a plug-in needs a plain name, not {name!r}")
+        if not isinstance(name, str) or not NAME.fullmatch(name):
+            raise ValueError(f"a plug-in's name is letters, digits, _ and - (at most 64), not {str(name)[:80]!r}")
         if name in self._by[kind]:
             raise ValueError(f"there is already a {kind} named {name!r} ({self._by[kind][name].origin})")
         missing = [a for a in NEEDS[kind] if not hasattr(obj, a)]
         if missing:
             raise ValueError(f"a {kind} needs {', '.join(missing)}")
+        if kind == "source":
+            from .sources.closed import RESERVED_KEYS   # here: the registry is read before the sources package
+            reserved = {r.casefold() for r in RESERVED_KEYS}   # in any case, as the page and load_enabled judge them
+            taken = [k for k in (getattr(obj, "keys", None) or ()) if isinstance(k, str)
+                     and k.strip().casefold() in reserved]
+            if taken:   # else load_config would hand a plug-in the person's closures as its own settings
+                raise ValueError(f"its keys name {', '.join(map(repr, taken))}, which are reserved: the person's "
+                                 f"closures, given to a plug-in in its ReadContext and never as settings")
         builtin = origin is None
         if builtin and not _own_code(obj):
             raise ValueError(f"a {kind} added with no origin is a built-in, and a built-in is Semantext's own code; "
@@ -226,6 +238,11 @@ def _declared() -> tuple[list[Installed], list[dict]]:
             problems.append(_problem(ep.name, "unnamed", f"{origin} declares {ep.name!r}; a plug-in's entry point is "
                                                          f"named <kind>.<name>, the kind one of {', '.join(KINDS)}"))
             continue
+        if not NAME.fullmatch(name):
+            problems.append(_problem(repr(str(ep.name)[:80]), "bad name",
+                                     f"{origin} declares a plug-in named {str(ep.name)[:80]!r}; a name is letters, "
+                                     f"digits, _ and - (at most 64), so it is not listed and never loads"))
+            continue
         found.append(Installed(name, kind, origin, version, ep, dist))
     return found, problems
 
@@ -294,7 +311,8 @@ def load_enabled(base: Registry, home=None) -> Registry:
             continue
         try:   # importing it runs its package's code: in the worker, under the budget, as its other calls are (the
             # Fable review of 70f2d3c, F2: an import that blocked held every load_enabled, so every page answer)
-            obj = outside.run(i.point.load, owner=key)
+            outside.identify(key, i.origin, i.version)   # its calls' health is this package and version's
+            obj = outside.run(i.point.load, owner=key, call="import")
         except Exception as e:  # noqa: BLE001  a plug-in that fails to import, or is late, is a problem line
             reg.problems.append(_problem(key, "failed to load", f"{type(e).__name__}: {e}"))
             continue
@@ -311,6 +329,14 @@ def load_enabled(base: Registry, home=None) -> Registry:
         if getattr(obj, "name", None) != i.name:
             reg.problems.append(_problem(key, "wrong name", f"its entry point says {i.name!r}, the object says "
                                                             f"{getattr(obj, 'name', None)!r}"))
+            continue
+        from . import pluginpage   # here: the reserved keys, read only when one loads, are the ones the page refuses:
+        kept = pluginpage.reserved_keys(home)   # Semantext's own, and the keys your sources file reads closures from
+        asked = tuple(getattr(obj, "keys", ()) or ()) + tuple(getattr(obj, "needs", ()) or ())
+        taken = [k for k in asked if type(k) is str and k.strip().casefold() in kept]
+        if taken:   # its keys would be given Semantext's own settings, or the closures: it is not loaded
+            reg.problems.append(_problem(key, "reserved key", f"its keys name {taken[0]!r}, a key of Semantext's own "
+                                                              f"or of your closures, so it is not loaded"))
             continue
         try:
             reg.add(i.kind, i.name, obj, origin=i.origin, version=i.version, dist=i.dist)

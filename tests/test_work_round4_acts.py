@@ -140,3 +140,15 @@ def test_the_writer_refuses_a_record_of_another_session(w):
     say(w, f"{ident} park", record=transcript_record(f"{ident} park", session="s-other", turn="t1",
                                                      at=NOW - timedelta(seconds=60)))
     refused("UNDECIDABLE", w.person_act, "s1", {"id": ident, "act": "park"})
+
+
+def test_the_same_record_under_another_sha_string_is_not_a_second_use(w):
+    # used-once is keyed on span.sha256, so it holds only while the span's sha256 is compared with the record's bytes
+    ident = new(w, "alpha")
+    sp = put(w, transcript_record(f"{ident} park\n{ident} 5", session="s1", turn="t9", at=NOW - timedelta(seconds=60)))
+    a = plant(w, forged(ident, "park", sp))
+    assert history_row(w, ident, a)["applied"]                                # must pass: the record's first use
+    rec = forged(ident, "priority", dict(sp, sha256="0" * 64))                # the same bytes, another string for the key
+    rec["value"], rec["evidence"]["line"] = 5, f"{ident} 5"
+    b = plant(w, rec)
+    assert not history_row(w, ident, b)["applied"] and shown(w, ident)["priority"] is None   # must refuse

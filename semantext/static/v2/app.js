@@ -9,6 +9,7 @@ import * as documents from "./documents.js";
 import * as map from "./map.js";
 import * as record from "./record.js";
 import * as work from "./work.js";
+import * as plugins from "./plugins.js";
 import { drawOutside, outsidePlace, renderOutsideTabs } from "./outside.js";
 
 // ---------------------------------------------------------------- the state of the page
@@ -29,7 +30,7 @@ export function applyTarget(place, attr) {
   el.classList.add("target");
   if (!t.focused) { t.focused = true; S.moved = true; el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }
 }
-export const ROUTE = { waiting: "waiting", projects: "projects", documents: "documents", map: "map", record: "record", work: "work" };
+export const ROUTE = { waiting: "waiting", projects: "projects", documents: "documents", map: "map", record: "record", work: "work", plugins: "plugins" };
 export const DRAWER_ROUTE = { agent: "map", rules: "rules", gates: "projects", docs: "projects" };
 // A built-in place's route, or a place a plug-in adds (the frame lists those): its route is its own name.
 export const routeOf = (place) => ROUTE[place] || (outsidePlace(S.frame, place) ? place : null);
@@ -87,7 +88,7 @@ function parseHash() {
   const head = cut < 0 ? raw : raw.slice(0, cut);
   const sub = cut < 0 ? null : raw.slice(cut + 1) || null;
   if (!head) return { place: "waiting", sub: null };
-  if (head === "waiting" || head === "projects" || head === "documents" || head === "record" || head === "work") return { place: head, sub };
+  if (head === "waiting" || head === "projects" || head === "documents" || head === "record" || head === "work" || head === "plugins") return { place: head, sub };
   if (head === "map" || (S.frame && S.frame.word && head === S.frame.word)) return { place: "map", sub };
   if (outsidePlace(S.frame, head)) return { place: head, sub };
   return { place: null, head, sub };
@@ -129,7 +130,7 @@ export async function route() {
 
 // Each place is a module: render(data, el) draws it from its route's answer, and mount(el), where a place has one,
 // makes the parts it keeps between drawings. A place a plug-in adds is drawn by its own page module (outside.js).
-const PLACES = { waiting, projects, documents, map, record, work };
+const PLACES = { waiting, projects, documents, map, record, work, plugins };
 export function mount() { $("place").replaceChildren(); $("bar-place").replaceChildren(); if (PLACES[S.place] && PLACES[S.place].mount) PLACES[S.place].mount($("place")); }
 export function fill() {
   const own = PLACES[S.place];

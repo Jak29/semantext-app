@@ -153,14 +153,14 @@ export const DRAW = {
 };
 
 // A rule, with how firmly it is held and the source of that level: the run records of checkers that run outside the
-// page (RUN-RECORD-SCHEMA.md), the regression cases that name it, and, said as claims, the checkers the guards file
+// page (docs/run-record-schema.md), the regression cases that name it, and, said as claims, the checkers the guards file
 // names and the guards the card mentions.
 export function recordedBy(v) { return "(recorded by " + v.checker + " " + v.version + " at " + v.at + "; not re-run by this page)"; }
 export function armsWords(v) {
   const p = v.arms.must_pass, f = v.arms.must_refuse;
   return "must-pass " + p.passed + " of " + p.ran + " passed, must-refuse " + f.refused + " of " + f.ran + " refused";
 }
-// A record's findings never change its level, and are never hidden behind a passing count (RUN-RECORD-SCHEMA.md).
+// A record's findings never change its level, and are never hidden behind a passing count (docs/run-record-schema.md).
 export const withFindings = (n) => (n ? ", with " + plural(n, "finding") : "");
 // A record's own outcome is said as it wrote it; "failed" or "not proved" earns nothing, whatever the counts say.
 export const outcomeWords = (v) => (v.outcome ? " Its outcome: " + v.outcome + "." : "");

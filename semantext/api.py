@@ -1,8 +1,8 @@
 """semantext.api: the one surface a plug-in imports, and nothing else of the package is public.
 
-Version 0.2, and experimental: it stays 0.x until each kind has a user that is not a built-in (ECOSYSTEM.md, "Settled
-from the reviews"; the ecosystem review, section 5), since until then a contract is only the built-ins' shape. 0.2 is
-what the first outside plug-ins asked for (ECOSYSTEM.md, "semantext.api 0.2"); everything in 0.1 still works as it did.
+Version 0.2, and experimental: it stays 0.x until each kind has a user that is not a built-in (docs/plugin-api.md,
+"Stability"; the ecosystem review, section 5), since until then a contract is only the built-ins' shape. 0.2 is what
+the first outside plug-ins asked for (docs/plugin-api.md, the whole contract); everything in 0.1 still works as it did.
 
 A plug-in is an installed package with an entry point in the group `semantext.plugins`, named "<kind>.<name>", that
 points at an object of one of the three kinds below. Installing it turns nothing on: the person turns it on at a
@@ -33,14 +33,31 @@ What changed in 0.2:
   - A Source's keys may hold lists: of plain texts and numbers, or of flat records (at most 200 entries, 16 plain
     fields each); any other shape is a problem line of that source. Before, every list was dropped.
   - is_closed_place(path, ctx=None) takes a ReadContext as well as a home. It is True for every path while the
-    closures are not known: none named (no "closed" key, no "closures_file"), or not readable. It takes the \\\\?\\
-    prefix off a Windows path before comparing (before, \\\\?\\C:\\...\\closed\\x compared open).
+    closures are not known: none named (no "closed" key and no "closures_file"; closed names alone never make them
+    known), or not readable.
+    It takes the \\\\?\\ prefix off a Windows path before comparing (before, \\\\?\\C:\\...\\closed\\x compared open).
+    Since 1.4 a "closed_names" list closes by name in any folder, in the closures-file format
+    (entries with an id, a form and its fields: segment, segment-pair, segment-prefix-except,
+    segment-or-dotted-prefix, substring, suffix), and ReadContext carries those names as `names`. A list given as null
+    ("closed_paths": null: not supplied yet) is unknown, so every path is closed. A plug-in is judged by a closures
+    file's closed paths only when the file says the list is complete ("closed_paths_complete": true) and it holds every
+    path the file knows to be closed; until then every path is closed to a plug-in (the built-in readers read the
+    known paths as a lower bound).
   - A Place may serve documents by row: resolve(row_id) and check_bytes(data), at /api/v2/doc/<name>/<row_id>. A
     resolve may name a byte span of a file, (path, start, end), so a row of a larger file is sent alone.
   - Each call into a plug-in has a time budget (5 s, SEMANTEXT_PLUGIN_SECONDS) and its answer has caps (200 problems,
     300 characters a field, 2 MB of JSON, 8 MB for one page's together); SystemExit is caught, KeyboardInterrupt is
     not. A plug-in's attributes are read once, at load, and must be plain values. A Place is given a copy of the
     sources' answers. A name two packages declare loads neither.
+  - Since Semantext 1.4, still 0.2: seat_rows and named_roots judge the base and join a home by the one path rule
+    every reader and the card hook use (semantext/pathrule.py), so they agree: a home the rule refuses is None, and
+    with no base, a refused one, or one that is not an existing folder, no home is read (docs/plugin-api.md lists
+    what the rule refuses and what it does not).
+
+Beside the code, as data (not part of this module, and optional): a package may ship semantext-plugin.json next to
+the module its entry point names, declaring for each of its plug-ins what it reads and its settings (each a key of
+`keys`, typed text, path, paths or list). The page's Plug-ins tab shows both before the plug-in is on, and draws its
+settings form from it; a plug-in that declares none gets no form. manifest.py gives the shape.
 
 Stated limits (SECURITY.md, "Plug-ins", says each):
   - A plug-in is code in the person's process: none of the above is a sandbox, only what the kernel does on its side.
@@ -116,9 +133,16 @@ def seat_rows(ctx=None) -> list[dict]:
 class Source(Protocol):
     """A reader of files the person already keeps. `keys` are the keys of the person's sources file it reads (each a
     text, or a list of texts and numbers). `read(config, ctx)` is given those keys and the build's ReadContext (`home`,
-    and `closures`: the person's closed folders, or None when they cannot be known), and returns a record: its data,
-    "problems" (a list of problem(...) records, one for every line it could not use), and "off": True when a key it
-    needs is missing. It opens files for reading only, and asks is_closed_place(path, ctx) before opening one.
+    `closures`: the person's closed folders, or None when they cannot be known, and `names`: the closed names, as
+    closed.Name, each an entry of a closures file's "closed_names" (its id, its form and its literals folded), which
+    close a folder or file by name in any folder), and returns a record: its data, "problems" (a list of
+    problem(...) records, one for every line it could not use), and "off": True when a key it needs is missing. It opens
+    files for reading only, and asks is_closed_place(path, ctx) before opening one. A plug-in that prunes its own walk
+    must ask is_closed_place of each folder too: `ctx.closures` alone leaves out every closed name. A ReadContext built
+    by hand with `names=()` (the default) closes no name; one built with names that are not closed.Name (texts,
+    records) is refused with a TypeError, and one whose fields are set after it was made closes every path. A Source
+    may not declare a closures key (every key of manifest.CLOSURE_KEYS, compared by case folding) among its `keys`:
+    such a plug-in is not added.
 
     `needs` (optional, a tuple of keys) IS part of the contract: the keys it cannot run without. The page reads it to
     say which settings a source that is off is missing (all of `keys` when it declares none).

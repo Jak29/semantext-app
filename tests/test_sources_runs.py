@@ -1,4 +1,4 @@
-"""Run records (RUN-RECORD-SCHEMA.md, schema 1): "guarded" comes only from a run record, on the bytes in place now.
+"""Run records (docs/run-record-schema.md, schema 1): "guarded" comes only from a run record, on the bytes in place now.
 
 Every row of the schema's table has an arm that must pass and one that must refuse, and every refusal reason is planted
 and named. The cards, the files checked and the records are all written here, in a temporary folder; the clock is
@@ -287,7 +287,7 @@ def test_counts_that_agree_with_detail_are_read(world):            # must pass b
     assert rule_of(load(world))["held"] == "guarded"
 
 
-# ---------------------------------------------------------------- the record's own outcome (RUN-RECORD-SCHEMA.md)
+# ---------------------------------------------------------------- the record's own outcome (docs/run-record-schema.md)
 @pytest.mark.parametrize("outcome", ["clean", "with findings", None])
 def test_a_clean_outcome_with_passing_counts_is_guarded(world, outcome):   # must pass
     write(world, good(world, **({"outcome": outcome} if outcome else {}), findings=["one"]))
@@ -409,6 +409,25 @@ def test_findings_that_are_not_a_list_of_texts_are_a_problem(world, findings):
 
 # ---------------------------------------------------------------- the first outside checker's own record
 SAMPLE = Path(__file__).with_name("data") / "sample_run_record.jsonl"
+
+
+FULLWIDTH = str.maketrans("0123456789", "０１２３４５６７８９")
+
+
+@pytest.mark.parametrize("at", [
+    "2026-10-23T21:00:00Z".translate(FULLWIDTH),          # every digit fullwidth
+    "2026-10-23T21:00:0０Z",                          # one fullwidth digit
+    "٢٠٢٦-10-23T21:00:00Z",          # Arabic-Indic digits for the year
+    "2026-10-23T21:00:00.１Z",                        # in the fraction
+])
+def test_a_time_in_digits_of_another_script_is_not_a_time(at):   # must refuse: the schema says [0-9]
+    with pytest.raises(runs.Refused) as e:
+        runs.parse_at(at)
+    assert e.value.kind == "bad-time"
+
+
+def test_a_time_in_ascii_digits_is_read(at="2026-10-23T21:00:00.5Z"):   # must pass
+    assert runs.parse_at(at) == datetime(2026, 10, 23, 21, 0, 0, 500000, tzinfo=timezone.utc)
 
 
 def test_the_first_outside_checkers_record_parses(tmp_path):

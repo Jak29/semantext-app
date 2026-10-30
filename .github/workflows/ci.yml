@@ -35,6 +35,8 @@ jobs:
             python-version: "3.14"
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the whole history and its tags: a test compares the closures with 1.3.0's own (v1.3.0)
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -64,6 +66,8 @@ jobs:
             python-version: "3.14"
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the whole history and its tags: a test compares the closures with 1.3.0's own (v1.3.0)
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}

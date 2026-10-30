@@ -229,7 +229,7 @@ _JS, _CSS = "text/javascript; charset=utf-8", "text/css; charset=utf-8"
 V2_FILES = {f"/v2/{name}": (name, _CSS if name.endswith(".css") else _JS) for name in (
     "style.css", "app.js", "dom.js", "words.js", "parts.js", "frame.js", "cards.js", "drawers.js", "markdown.js",
     "waiting.js", "projects.js", "documents.js", "map.js", "record.js", "outside.js", "work.js", "workboard.js",
-    "workitem.js")}
+    "workitem.js", "plugins.js")}
 # The v2 page and each of its files carry this policy. Scripts only from this server's own files (no inline script
 # and no handler attributes; tests/test_v2_page.py checks index.html), styles only from its stylesheet (no style
 # attribute and no <style>: the audit of c607024 found 'unsafe-inline' there only for literal spacing, now classes in
@@ -241,6 +241,8 @@ V2_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 
 
 
 DOC_PREFIX = "/api/v2/doc/"   # /api/v2/doc/<place>/<row_id>: the serve hook by row
+PLUGINS_PREFIX = "/api/v2/plugins/"   # POST /api/v2/plugins/<act>: the Plug-ins tab's changes, and what each takes
+PLUGIN_ACTS = {"on": ("plugin",), "off": ("plugin",), "settings": ("plugin", "settings"), "rollback": ("change",)}
 PLUGIN_FILE = re.compile(r"(" + pagemodule.NAME.pattern + r")\.js")
 
 
@@ -268,8 +270,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, code: int, body, ctype="application/json; charset=utf-8", extra: dict | None = None):
         try:   # strict JSON only: a bare NaN or Infinity is not JSON, and the page's JSON.parse refuses the whole answer
+            # a lone surrogate in an answer (a request's own text said back) is written as U+FFFD, never an error
             data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False,
-                                                                   allow_nan=False).encode("utf-8")
+                                                                   allow_nan=False).encode("utf-8", "replace")
         except ValueError:
             code, data = 500, json.dumps({"error": "the answer held a number JSON cannot carry (NaN or Infinity), so "
                                                    "it is not sent"}).encode("utf-8")
@@ -336,18 +339,53 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass   # a client that stalls past the timeout, or goes away, still gets the refusal (or nothing)
 
-    def _body(self) -> dict:
+    def _body(self, unique: bool = False) -> dict:
         n = int(self.headers.get("Content-Length") or 0)
         if n < 0:
             raise Refused("bad Content-Length")
         if n > MAX_BODY:
             raise Refused("request too large")
         try:
-            return jsonread.loads(self.rfile.read(n) or b"{}")
+            return jsonread.loads(self.rfile.read(n) or b"{}", unique=unique)
         except jsonread.NotJSON as e:
             if e.deep:   # before, a RecursionError here left the page with no answer and the console with a traceback
                 raise Refused(DEEP_BODY) from None
             raise
+
+    def _plugin_change(self, act: str):
+        """One act of the Plug-ins tab, asked for by the page itself: do_POST has already refused one from another
+        page, from no page, from a plug-in's page module, or that is not a plain fetch. The body is read strictly: a
+        key given twice, or a field the act does not take, is refused. Only turning a plug-in off is made here.
+        Turning one on, and every settings change or rollback (kept as a proposal), is answered 403 with the one line
+        that does it at the console."""
+        from . import pluginpage   # here: only these changes need it
+        fields = PLUGIN_ACTS.get(act)
+        if fields is None:
+            self._drain()
+            return self._send(404, {"error": "not found"})
+        b = self._body(unique=True)
+        if not isinstance(b, dict):
+            raise Refused("the request is a record")
+        extra = [k for k in b if k not in fields]
+        if extra:
+            raise Refused(f"{act} takes {', '.join(fields)}, not {str(extra[0])[:40]!r}")
+        home = self.store.root
+        try:
+            if act == "on":
+                pluginpage.turn_on(home, b.get("plugin"))
+            elif act == "off":
+                made = pluginpage.turn_off(home, b.get("plugin"))
+            elif act == "settings":
+                made = pluginpage.change(home, b.get("plugin"), b.get("settings"))
+            else:
+                made = pluginpage.roll_back(home, b.get("change"))
+        except pluginpage.Proposed as e:   # a record was made: accepted, not refused, and not changed
+            return self._send(202, {"proposed": e.proposal, "line": e.command, "said": str(e),
+                                    "note": pluginpage.command_note(home)})
+        except pluginpage.AtTheTerminal as e:   # turning a plug-in on: refused here, the line to type instead
+            return self._send(403, {"error": str(e), "command": e.command, "proposal": e.proposal,
+                                    "note": pluginpage.command_note(home)})
+        return self._send(200, {"ok": True, "change": made})
 
     def do_GET(self):
         if not self._host_ok():
@@ -466,6 +504,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         st = self.store
         try:
+            if u.path.startswith(PLUGINS_PREFIX):   # the Plug-ins tab's changes (pluginpage.py)
+                return self._plugin_change(u.path[len(PLUGINS_PREFIX):])
             b = self._body()
             r = {"ok": True}
             if u.path == "/api/active":
@@ -525,10 +565,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, r)
         except Refused as e:
             return self._send(400, {"error": str(e)})
-        except (ValueError, KeyError, TypeError, AttributeError) as e:
-            return self._send(400, {"error": f"bad request: {e}"})
+        except jsonread.NotJSON as e:   # json's own words, or ours, about the request's text: no path, no value of yours
+            return self._send(400, {"error": f"bad request: {e.args[0] if e.args else 'not JSON'}"[:300],
+                                    "error_id": "NotJSON"})
+        except (ValueError, KeyError, TypeError, AttributeError) as e:   # a fixed message and the kind, as for a 500:
+            # the words of an error no one wrote for the page may carry a path or a value
+            return self._send(400, {"error": "bad request", "error_id": type(e).__name__})
         except OSError as e:
             return self._send(500, fault("could not write your files", e))
+        except Exception as e:  # noqa: BLE001  a change that fails in a way no one foresaw is a plain answer, never a
+            # dropped connection; its words are not sent (they may carry a path or the request's own text)
+            return self._send(500, {"error": "the change could not be made", "error_id": type(e).__name__})
 
 
 class LocalServer(ThreadingHTTPServer):

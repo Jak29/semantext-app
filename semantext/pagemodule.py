@@ -1,7 +1,7 @@
 """Page modules: the one ES module an enabled outside place may ship, and how the server finds it.
 
-ECOSYSTEM.md names a Place as build(sources) "plus one page module render(data, el) using the shared text-only DOM
-helpers". The smallest safe shape of that:
+A Place is build(sources) plus one page module, render(data, el, helpers), using the shared text-only DOM helpers
+(docs/plugin-api.md, "The page module"). The smallest safe shape of that:
 
   - The plug-in's Place object declares `page_module`: a path to a .js file, relative, written with forward slashes,
     exactly as it appears among its own distribution's installed files (importlib.metadata's RECORD). Nothing else is

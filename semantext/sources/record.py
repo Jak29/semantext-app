@@ -42,8 +42,10 @@ SUPERSEDED = "superseded"
 REQUIRED = ("date", "to", "subject", "status", "words", "reading", "source")   # a decision without one is a problem
 NOTE_REQUIRED = ("on", "text", "quote", "source")
 CARD_FIELDS = ("subject", "words", "offer", "reading", "source")
-PIN = re.compile(r"(?P<repo>[a-z]+)@(?P<commit>[0-9a-f]{7,40}):(?P<file>[^:]+):(?P<line>\d+)(?:-(?P<last>\d+))?")
-DATE = re.compile(r"\d{4}-\d\d-\d\d")
+# ASCII digits only ([0-9], re.ASCII): \d would take any script's digits, and int() reads them too
+PIN = re.compile(r"(?P<repo>[a-z]+)@(?P<commit>[0-9a-f]{7,40}):(?P<file>[^:]+):(?P<line>[0-9]+)(?:-(?P<last>[0-9]+))?",
+                 re.ASCII)
+DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
 # A card id as a request to you carries it: one or two capitals, a date, and a time of day, and sometimes a number after
 # that (O-20991010-195202-2 is another card than O-20991010-195202, so the number is part of the id). The register's own
 # ids start with J and are decisions, not cards. A card is found wherever it stands, unless a letter or a digit touches

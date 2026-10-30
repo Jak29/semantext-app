@@ -54,7 +54,7 @@ def unshipped(patterns, folder: str = "static") -> set:
         p.relative_to(pkg).as_posix() for p in shipped}
 
 
-# The run-record schema is read by checkers outside the package (RUN-RECORD-SCHEMA.md: "a checker reads that file,
+# The run-record schema is read by checkers outside the package (docs/run-record-schema.md: "a checker reads that file,
 # never imports the package"), so an installed copy must carry it.
 def test_the_run_record_schema_ships_in_the_wheel():
     assert (ROOT / "semantext" / "schemas" / "run-record-1.json").is_file()

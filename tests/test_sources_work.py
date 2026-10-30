@@ -18,7 +18,9 @@ def by_id(a):
 # ---- the empty store ------------------------------------------------------------------------------------------------
 def test_an_empty_home_is_an_empty_board_and_no_problem(tmp_path):
     a = answer(tmp_path)
-    assert a["off"] is False and a["store"]["exists"] is False and a["items"] == [] and a["problems"] == []
+    # no problem but the one line that says the seats' mode: with no seats file configured, nothing checks a seat
+    assert a["off"] is False and a["store"]["exists"] is False and a["items"] == []
+    assert [p["kind"] for p in a["problems"]] == ["seats"] and "not checked" in a["problems"][0]["text"]
     assert a["asks"] == [] and a["counts"] == {}
     # must refuse: a store with one event is not empty
     writer(tmp_path).write(bound("Alder"), "create", {"project": "lab", "title": "One"})
@@ -128,7 +130,7 @@ def test_a_store_over_the_read_cap_is_not_folded(tmp_path, monkeypatch):
     build(tmp_path)
     monkeypatch.setattr(work, "READ_CAP", 100)
     a = answer(tmp_path)
-    assert a["items"] == [] and [p["kind"] for p in a["problems"]] == ["too large"]
+    assert a["items"] == [] and [p["kind"] for p in a["problems"] if p["kind"] != "seats"] == ["too large"]
     monkeypatch.setattr(work, "READ_CAP", 10 ** 9)
     assert answer(tmp_path)["items"]
 
@@ -212,18 +214,19 @@ def _load(tmp_path, register):
 
 def test_an_unreadable_register_is_a_problem_and_its_decisions_are_unknown(tmp_path, monkeypatch):
     ident = _decision_world(tmp_path)
+    from semantext.sources import record
+
+    def boom(cfg):
+        raise PermissionError("denied")
     for reg, broken in ((tmp_path / "no-register.jsonl", None), (tmp_path / "register.jsonl", "raise")):
-        if broken:
-            reg.write_text("", encoding="utf-8")
-            from semantext.sources import record
-            def boom(cfg):
-                raise PermissionError("denied")
-            monkeypatch.setattr(record, "load", boom)
-        a = _load(tmp_path, reg)
-        assert any(p["kind"] == "register-unreadable" for p in a["problems"]), a["problems"]
-        [c] = by_id(a)[ident]["clauses"]
-        assert c["state"] == "unknown" and "register" in c["why"], c
-        monkeypatch.undo()
+        with monkeypatch.context() as m:   # only record.load is put back: undo() would undo the home redirect too
+            if broken:
+                reg.write_text("", encoding="utf-8")
+                m.setattr(record, "load", boom)
+            a = _load(tmp_path, reg)
+            assert any(p["kind"] == "register-unreadable" for p in a["problems"]), a["problems"]
+            [c] = by_id(a)[ident]["clauses"]
+            assert c["state"] == "unknown" and "register" in c["why"], c
 
 
 def test_partner_a_readable_register_meets_the_decision_and_says_no_problem(tmp_path):

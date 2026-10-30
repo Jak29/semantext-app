@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import jsonread
-from .store import Refused, now, stamp
+from .store import Refused, _open_lock, now, stamp
 
 MAX_TITLE, MAX_TEXT, MAX_OPTIONS, CARD_LINES = 120, 1000, 9, 5
 MAX_RULE = 400        # the same limit as a rule taught at the user's own terminal
@@ -156,9 +156,12 @@ def age(stamp: str) -> str:
 @contextmanager
 def file_lock(lock_path: Path, busy: str, tries: int = 200):
     """One writer at a time, across processes. The lock is the operating system's, so nothing is left behind. About
-    five seconds of patience on every platform (tries of 25 ms each), then a clear refusal."""
+    five seconds of patience on every platform (tries of 25 ms each), then a clear refusal. The lock file is opened
+    as the store's are (store._open_lock): only a plain file with one name is a lock, never a folder, a link, a
+    junction or a second hard link standing at its name, which would be followed, or lock another file's bytes."""
+    lock_path = Path(lock_path)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock_path, "a+b") as f:
+    with os.fdopen(_open_lock(lock_path), "r+b") as f:
         if os.name == "nt":
             import msvcrt
             for _ in range(tries):

@@ -264,7 +264,11 @@ def test_an_unreadable_sources_file_is_a_problem_not_a_failure(world):
     world.config.write_text("{ not json", encoding="utf-8")
     for name in view.ROUTES:
         got = place(name)
-        assert [p["reader"] for p in got["frame"]["problems"]] == ["sources"]
+        said = got["frame"]["problems"]
+        # the sources file's own problem, and Work's one line saying what follows from it: the seats cannot be known,
+        # so its seat checks refuse (said aloud, never a silent mode)
+        assert [p["reader"] for p in said if p["reader"] != "work"] == ["sources"]
+        assert [p["kind"] for p in said if p["reader"] == "work"] in ([], ["seats"])
     assert place("waiting")["off"] is True
     assert view.status_line() == view.UNAVAILABLE
     world.write_config()   # must-refuse: the same file, mended, answers again

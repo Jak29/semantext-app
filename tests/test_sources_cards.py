@@ -14,6 +14,7 @@ import io
 import json
 import os
 import pathlib
+import re
 from pathlib import Path
 
 import pytest
@@ -1007,18 +1008,397 @@ def test_a_home_that_is_missing_or_leaves_the_base_is_a_problem_and_the_others_s
     assert [p["text"].split()[0] for p in out["problems"]] == ["Birch's", "Cedar's", "Dune", "Elm's", "Fir"]
 
 
-def test_a_home_written_as_a_full_path_is_read_when_it_is_inside_the_base_and_not_when_it_is_outside(world):
+def test_a_home_written_as_a_full_path_is_a_problem_inside_the_base_or_outside_it_as_the_other_readers_judge_it(world):
     outside = world.root / "outside"
     outside.mkdir()
     (outside / FILE).write_text(json.dumps(ask("X-1")) + "\n", encoding="utf-8")
+    world.put("Alder", ask("A-1"))
+    world.write_seats({"Alder": {"home": "alder"}})
+    assert [(c["seat"], c["id"]) for c in world.load()["cards"]] == [("Alder", "A-1")]   # must pass: written under it
     world.write_seats({"Alder": {"home": str(world.base / "alder")}, "Birch": {"home": str(outside)},
                        "Cedar": {"home": str(world.base / "teams" / ".." / "alder")}})
-    world.put("Alder", ask("A-1"))
-    out = world.load()
-    assert [(c["seat"], c["id"]) for c in out["cards"]] == [("Alder", "A-1")]   # must pass: the full path inside
+    out = world.load()   # must refuse: a full path names its own start, inside the base or not, and a ".." step
+    assert out["cards"] == []
     assert [(s["seat"], s["home"] is not None) for s in out["seats"]] == [
-        ("Alder", True), ("Birch", False), ("Cedar", False)]   # must refuse: outside, and one with a ".." step
-    assert [p["text"].split()[0] for p in out["problems"]] == ["Birch's", "Cedar's"]
+        ("Alder", False), ("Birch", False), ("Cedar", False)]
+    assert [p["text"].split()[0] for p in out["problems"]] == ["Alder's", "Birch's", "Cedar's"]
+    assert all(p["text"].endswith("so its requests are not read") for p in out["problems"])
+
+
+BASES = {   # how the seats file writes the base -> read (True) or refused (False), the same by every reader
+    "plain": (lambda b: str(b), True),
+    "trailing separator": (lambda b: str(b) + os.sep, True),
+    "forward slashes": (lambda b: str(b).replace("\\", "/"), True),
+    "the user's home": (lambda b: "~/" + b.name, True),          # ~ is expanded, for every reader
+    "trailing space": (lambda b: str(b) + " ", False),            # must refuse: never trimmed onto the real folder
+    "leading space": (lambda b: " " + str(b), False),
+    "tab": (lambda b: str(b) + "\t", False),
+    "line break": (lambda b: str(b) + "\n", False),
+    "NUL": (lambda b: str(b) + "\x00", False),
+    "trailing dot": (lambda b: str(b) + ".", False),              # Windows opens base. as base
+    "a stream": (lambda b: str(b) + ":x", False),                 # a colon past the drive: a stream, not a folder
+    "relative": (lambda b: b.name, False),
+    "the long-path prefix": (lambda b: "\\\\?\\" + str(b), False),   # a prefix that turns off the path's own reading
+    "a step up": (lambda b: str(b / "x" / ".." ), False),         # a base is written as the folder itself
+    "climbing out of ~": (lambda b: "~/../" + b.parent.name + "/" + b.name, False),
+    # ~\ is expanded where expanduser reads a backslash as a separator (Windows); elsewhere it is no full path
+    "the user's home with a backslash": (lambda b: "~\\" + b.name, os.name == "nt"),
+}
+
+
+@pytest.mark.parametrize("label", sorted(BASES))
+def test_every_reader_judges_the_base_alike(tmp_path, monkeypatch, label):
+    from semantext.sources import kernel, places
+    from semantext.sources.gates import discover
+    spell, read = BASES[label]
+    monkeypatch.setenv("HOME", str(tmp_path))          # ~ is tmp_path, on every system
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    base = tmp_path / "base"
+    (base / "alder").mkdir(parents=True)
+    seats_file, sources = tmp_path / "seats.json", tmp_path / "sources.json"
+    seats_file.write_text(json.dumps({"base": spell(base), "seats": {"Alder": {"groups": ["g"], "home": "alder"}},
+                                      "roots": [{"name": "home", "path": "{home}", "kind": "repo"}]}), encoding="utf-8")
+    sources.write_text(json.dumps({"seats": str(seats_file)}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    said = {"inbox": [], "gates": []}
+    inbox = [r["home"] for r in cards._seats(str(seats_file), said["inbox"]) if r["home"]]
+    got = places.load({"seats": str(seats_file)})
+    placed, said["places"] = [a["home"] for a in got["agents"] if a["home"]], got["problems"]
+    gates = [str(f) for _, _, f in discover.read_roots(str(seats_file), said["gates"])[0]]
+    rows = [r["home"] for r in kernel.seat_rows() if r["home"]]
+    roots = [r["path"] for r in kernel.named_roots()]
+    want = [str(base / "alder")] if read else []
+    assert inbox == placed == gates == rows == roots == want, (label, inbox, placed, gates, rows, roots)
+    if not read:   # refused, and each reader says so
+        assert all(said[r] for r in said), (label, said)
+
+
+def _three_readers(seats_file) -> dict:
+    """Each seat's home as the inbox, the places reader and the gates reader read it from one seats file: seat ->
+    (inbox, places, gates), each the folder in full or None when that reader refused it, with the seats each reader
+    said a problem about."""
+    from semantext.sources import places
+    from semantext.sources.gates import discover
+    inbox_problems, gates_problems = [], []
+    inbox = {r["seat"]: r["home"] for r in cards._seats(str(seats_file), inbox_problems)}
+    read = places.load({"seats": str(seats_file)})
+    placed = {a["name"]: a["home"] for a in read["agents"]}
+    found, _ = discover.read_roots(str(seats_file), gates_problems)
+    gates = {seat: str(folder) for _, seat, folder in found}
+    return {seat: (inbox.get(seat), placed.get(seat), gates.get(seat)) for seat in inbox}, \
+        {"inbox": inbox_problems, "places": read["problems"], "gates": gates_problems}
+
+
+def test_the_inbox_places_and_gates_readers_judge_every_spelling_of_a_home_alike(tmp_path, monkeypatch):
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(tmp_path / "no-sources.json"))
+    base, outside = tmp_path / "base", tmp_path / "outside"
+    for folder in (base / "alder", base / "birch", base / "teams" / "cedar", outside):
+        folder.mkdir(parents=True)
+    homes = {
+        "Plain": ("alder", base / "alder"),                        # must pass: written under the base
+        "Nested": ("teams/cedar", base / "teams" / "cedar"),
+        "Dot": (".", base),                                          # the base itself
+        "DotSlash": ("./birch", base / "birch"),
+        "FullInside": (str(base / "alder"), None),                   # must refuse: a full path names its own start
+        "FullOutside": (str(outside), None),
+        "Up": ("../outside", None),                                  # steps out with ".."
+        "UpInside": ("teams/../alder", None),
+        "DriveRelative": ("C:alder", None),                          # read the Windows way on every system
+        "Rooted": ("/alder", None),
+        "Share": ("\\\\server\\share", None),
+        # a path is read exactly as written: trimmed, each of these would be a real folder the file never named
+        "LeadSpace": (" birch", None),
+        "TrailSpace": ("birch ", None),
+        "Tab": ("alder\t", None),
+        "Newline": ("alder\n", None),
+        "NoBreakSpace": (" alder", None),
+        # a control character, which no folder name should hold
+        "Nul": ("alder\x00x", None),
+        "Return": ("al\rder", None),
+        "Ctrl": ("al\x01der", None),
+        "Del": ("al\x7fder", None),
+        # a part ending in a dot or a space, or a colon past a drive: Windows opens these as another folder or a stream
+        "TrailDot": ("teams.", None),
+        "DotThenPart": ("teams./cedar", None),
+        "DotsAndSpaces": ("teams\\cedar. . .", None),
+        "ThreeDots": ("teams/.../cedar", None),
+        "PartSpace": ("teams /cedar", None),
+        "Stream": ("alder:stream", None),
+        "IndexStream": ("teams/cedar::$INDEX_ALLOCATION", None),
+        "DotInside": ("v1.2", base / "v1.2"),                       # must pass: a dot inside a name is a name
+        # a name Windows keeps for a device, in any case, with or without an extension
+        "Device": ("nul", None),
+        "DeviceExt": ("con.txt", None),
+        "DeviceCase": ("teams/Com1", None),
+        "Console": ("CONIN$", None),
+        "DeviceSpace": ("con .txt", None),                           # the shape os.path.isreserved reads: a device
+        "DeviceSpaces": ("aux  .d", None),                           # name, any spaces, then an extension or nothing
+        "DeviceSpaceExt": ("nul .x", None),
+        "ConsoleSpace": ("CONIN$ .x", None),
+        "Superscript": ("COM¹", None),
+        "NotDevice": ("conference", base / "conference"),           # must pass: a name that starts like one
+        "NotDeviceToo": ("con-notes", base / "con-notes"),
+    }
+    (base / "v1.2").mkdir()
+    (base / "conference").mkdir()
+    (base / "con-notes").mkdir()
+    seats_file = tmp_path / "seats.json"
+    seats_file.write_text(json.dumps({
+        "base": str(base),
+        "seats": {seat: {"names": [seat], "groups": ["posters"], "home": h} for seat, (h, _) in homes.items()},
+        "roots": [{"name": "home", "path": "{home}", "kind": "repo"}],
+    }), encoding="utf-8")
+    got, said = _three_readers(seats_file)
+    assert sorted(got) == sorted(homes)
+    for seat, (_, want) in homes.items():
+        inbox, placed, gates = got[seat]
+        if want is None:   # refused by all three, and said as a problem by each
+            assert (inbox, placed, gates) == (None, None, None), seat
+            assert all(any(p["text"].startswith(seat + "'s home") for p in said[r]) for r in said), (seat, said)
+        else:              # read by all three as the same folder, with no problem about it
+            assert inbox == placed == gates == str(want), (seat, inbox, placed, gates)
+            assert not any(p["text"].startswith(seat + "'s home") for r in said for p in said[r]), (seat, said)
+    # what a plug-in is given agrees too: a seat row's home is a named root, and a refused home is neither
+    from semantext.sources import kernel
+    sources = tmp_path / "sources.json"
+    sources.write_text(json.dumps({"seats": str(seats_file)}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    rows = {r["seat"]: r["home"] for r in kernel.seat_rows()}
+    assert rows == {seat: None if want is None else str(want) for seat, (_, want) in homes.items()}
+    assert sorted(r["path"] for r in kernel.named_roots()) == sorted(h for h in rows.values() if h)
+    # and the card hook gives a session the seat whose home the readers read, and never one whose home they refuse,
+    # not even in the folder a plain join of the spelling would name
+    for seat, (spelled, want) in homes.items():
+        if want is not None:
+            assert _hook_seat(seats_file, want, tmp_path) == seat.lower(), seat
+        elif "\x00" not in spelled:
+            raw = os.path.normpath(os.path.join(str(base), spelled))
+            assert _hook_seat(seats_file, raw, tmp_path) != seat.lower(), (seat, raw)
+
+
+def _hook_seat(seats_file, cwd, tmp_path):
+    """The seat the card hook gives a session working in `cwd`, from this seats file."""
+    from semantext import envhook
+    cfg = envhook.Config({"environments": str(tmp_path / "envs"), "core": "core", "headers": {},
+                          "roots": str(seats_file)})
+    return envhook.folder_seat(cwd, cfg)
+
+
+@pytest.mark.parametrize("base", ["absent", "missing"])
+def test_no_base_or_a_base_that_is_not_there_reads_no_home_in_any_reader(tmp_path, monkeypatch, base):
+    from semantext import envhook
+    from semantext.sources import kernel, places
+    from semantext.sources.gates import discover
+    there = tmp_path / "base"
+    (there / "alder").mkdir(parents=True)
+    homes = {"Alder": {"groups": ["g"], "home": "alder"}, "Full": {"groups": ["g"], "home": str(there / "alder")}}
+    data = {"seats": homes, "roots": [{"name": "home", "path": "{home}", "kind": "repo"}]}
+    if base == "missing":
+        data["base"] = str(tmp_path / "no-such-folder")
+    seats_file, sources = tmp_path / "seats.json", tmp_path / "sources.json"
+    sources.write_text(json.dumps({"seats": str(seats_file)}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+
+    def every_reader():
+        said = {"inbox": [], "gates": []}
+        inbox = [r["home"] for r in cards._seats(str(seats_file), said["inbox"]) if r["home"]]
+        got = places.load({"seats": str(seats_file)})
+        placed, said["places"] = [a["home"] for a in got["agents"] if a["home"]], got["problems"]
+        gates = [str(f) for _, s, f in discover.read_roots(str(seats_file), said["gates"])[0] if s]
+        rows = [r["home"] for r in kernel.seat_rows() if r["home"]]
+        roots = [r["path"] for r in kernel.named_roots()]
+        cfg = envhook.Config({"environments": str(tmp_path / "envs"), "core": "core", "headers": {},
+                              "roots": str(seats_file)})
+        hook = envhook.folder_seat(there / "alder", cfg)
+        return (inbox, placed, gates, rows, roots, hook), said, cfg.problems
+
+    seats_file.write_text(json.dumps(data), encoding="utf-8")
+    got, said, hook_said = every_reader()   # must refuse: no reader reads a home, a full one included
+    assert got == ([], [], [], [], [], None), got
+    kinds = {"inbox": "seats file", "places": "no-base", "gates": "no-base"}
+    assert all([p["kind"] for p in said[r]].count(k) == 1 for r, k in kinds.items()), said   # each says it once
+    assert len(hook_said) == 1 and "no seat's home is read" in hook_said[0]
+    # the homes are dropped, never the seats: the inbox and places list the same seats, each with no home, so a check
+    # of who is a seat (the work writer's) never finds the list empty because the base was wrong
+    named = sorted(r["seat"] for r in cards._seats(str(seats_file), []))
+    assert named == sorted(a["name"] for a in places.load({"seats": str(seats_file)})["agents"]) == ["Alder", "Full"]
+    assert kernel.seat_names() == ({"Alder", "Full"}, None)
+    data["base"] = str(there)               # must pass: the same file with its base there
+    seats_file.write_text(json.dumps(data), encoding="utf-8")
+    got, _, _ = every_reader()
+    alder = str(there / "alder")
+    assert got[:5] == ([alder], [alder], [alder], [alder], [alder]) and got[5] == "alder", got
+
+
+def _every_reader(seats_file, tmp_path, cwd):
+    """(inbox, places, gates, seat_rows, named_roots homes, the hook's seat in cwd), and what each reader said."""
+    from semantext import envhook
+    from semantext.sources import kernel, places
+    from semantext.sources.gates import discover
+    said = {"inbox": [], "gates": []}
+    inbox = [r["home"] for r in cards._seats(str(seats_file), said["inbox"]) if r["home"]]
+    got = places.load({"seats": str(seats_file)})
+    placed, said["places"] = [a["home"] for a in got["agents"] if a["home"]], got["problems"]
+    gates = [str(f) for _, s, f in discover.read_roots(str(seats_file), said["gates"])[0] if s]
+    rows = [r["home"] for r in kernel.seat_rows() if r["home"]]
+    roots = [r["path"] for r in kernel.named_roots()]
+    cfg = envhook.Config({"environments": str(tmp_path / "envs"), "core": "core", "headers": {},
+                          "roots": str(seats_file)})
+    return (inbox, placed, gates, rows, roots, envhook.folder_seat(cwd, cfg)), said, cfg.problems
+
+
+@pytest.mark.parametrize("label", ["the base twice", "a seat twice", "a home twice", "NaN", "a number out of range",
+                                   "half of a surrogate pair"])
+def test_a_seats_file_any_reader_refuses_is_refused_by_every_reader_and_the_hook(tmp_path, monkeypatch, label):
+    first, second = tmp_path / "first", tmp_path / "second"
+    for b in (first, second):
+        (b / "alder").mkdir(parents=True)
+    b1, b2 = json.dumps(str(first)), json.dumps(str(second))
+    roots = '"roots": [{"name": "home", "path": "{home}", "kind": "repo"}]'
+    seat = '"alder": {"groups": ["g"], "home": "alder"}'
+    good = '{"base": %s, "seats": {%s}, %s}' % (b2, seat, roots)
+    bad = {   # each one JSON keeps quietly (the last of two keys wins), or Python's parser takes and the inbox's refuses
+        "the base twice": '{"base": %s, "base": %s, "seats": {%s}, %s}' % (b1, b2, seat, roots),
+        "a seat twice": '{"base": %s, "seats": {"alder": {"home": "x"}, %s}, %s}' % (b2, seat, roots),
+        "a home twice": '{"base": %s, "seats": {"alder": {"groups": ["g"], "home": "x", "home": "alder"}}, %s}'
+                        % (b2, roots),
+        "NaN": '{"base": %s, "seats": {%s}, "weight": NaN, %s}' % (b2, seat, roots),
+        "a number out of range": '{"base": %s, "seats": {%s}, "weight": 1e999, %s}' % (b2, seat, roots),
+        "half of a surrogate pair": '{"base": %s, "seats": {%s}, "note": "\\ud800", %s}' % (b2, seat, roots),
+    }[label]
+    seats_file, sources = tmp_path / "seats.json", tmp_path / "sources.json"
+    sources.write_text(json.dumps({"seats": str(seats_file)}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    seats_file.write_text(bad, encoding="utf-8")
+    got, said, hook_said = _every_reader(seats_file, tmp_path, second / "alder")   # must refuse
+    assert got == ([], [], [], [], [], None), (label, got)
+    assert all(said[r] for r in said) and hook_said, (label, said, hook_said)
+    seats_file.write_text(good, encoding="utf-8")                                    # must pass
+    got, _, _ = _every_reader(seats_file, tmp_path, second / "alder")
+    alder = str(second / "alder")
+    assert got == ([alder], [alder], [alder], [alder], [alder], "alder"), (label, got)
+
+
+@pytest.mark.parametrize("spelled, read", [("~/seats.json", True), ("~nobodyxyz/seats.json", False)])
+def test_every_reader_and_the_hook_find_the_seats_file_by_one_rule(tmp_path, monkeypatch, spelled, read):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    (tmp_path / "base" / "alder").mkdir(parents=True)
+    (tmp_path / "seats.json").write_text(json.dumps({
+        "base": str(tmp_path / "base"), "seats": {"alder": {"groups": ["g"], "home": "alder"}},
+        "roots": [{"name": "home", "path": "{home}", "kind": "repo"}]}), encoding="utf-8")
+    sources = tmp_path / "sources.json"
+    sources.write_text(json.dumps({"seats": spelled}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    got, said, hook_said = _every_reader(spelled, tmp_path, tmp_path / "base" / "alder")
+    alder = str(tmp_path / "base" / "alder")
+    if read:      # must pass: "~/" is the user's home for every reader, as for a base
+        assert got == ([alder], [alder], [alder], [alder], [alder], "alder"), got
+    else:         # must refuse: another user's home, by every reader, each saying so
+        assert got == ([], [], [], [], [], None), got
+        assert all(said[r] for r in said) and hook_said, (said, hook_said)
+
+
+def test_a_relative_seats_path_is_relative_to_the_file_that_names_it_for_every_reader(tmp_path, monkeypatch):
+    from semantext import envhook
+    from semantext.sources import kernel, load_config, places
+    from semantext.sources.gates import discover
+    settings, elsewhere = tmp_path / "settings", tmp_path / "elsewhere"
+    for folder, home in ((settings, "alder"), (elsewhere, "decoy")):   # a decoy seats.json in the working folder
+        (folder / "base" / home).mkdir(parents=True)
+        (folder / "seats.json").write_text(json.dumps({
+            "base": str(folder / "base"), "seats": {home: {"groups": ["g"], "home": home}},
+            "roots": [{"name": "home", "path": "{home}", "kind": "repo"}]}), encoding="utf-8")
+    (settings / "sources.json").write_text(json.dumps({"seats": "seats.json"}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(settings / "sources.json"))
+    monkeypatch.chdir(elsewhere)   # must refuse the working folder's file: the path is the sources file's
+    cfg = load_config(settings / "sources.json")
+    alder = str(settings / "base" / "alder")
+    assert cfg["seats"] == str(settings / "seats.json")
+    assert [r["home"] for r in cards._seats(cfg["seats"], []) if r["home"]] == [alder]
+    assert [a["home"] for a in places.load(cfg)["agents"] if a["home"]] == [alder]
+    assert [str(f) for _, s, f in discover.read_roots(cfg["seats"], [])[0] if s] == [alder]
+    assert [r["home"] for r in kernel.seat_rows() if r["home"]] == [alder] and kernel.seat_names() == ({"alder"}, None)
+    hook_cfg = envhook.Config({"environments": "envs", "core": "c", "headers": {}, "roots": "seats.json"}, settings)
+    assert hook_cfg.roots == settings / "seats.json" and envhook.folder_seat(settings / "base" / "alder", hook_cfg) \
+        == "alder"   # the card hook: relative to its own config's folder, the same rule
+
+
+def test_the_seats_file_is_read_with_its_cap_never_past_it(tmp_path, monkeypatch):
+    from semantext import pathrule
+    asked = []
+
+    class Endless:   # a file that is longer than its size said: the read must stop at the cap
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self, n=-1):
+            asked.append(n)
+            return b" " * (n if n >= 0 else 10 ** 9)
+    monkeypatch.setattr(pathrule, "MAX_SEATS", 64)
+    monkeypatch.setattr(pathrule, "open", lambda *a, **k: Endless(), raising=False)
+    with pytest.raises(pathrule.SeatsUnread) as e:   # must refuse, having read no more than one byte past the cap
+        pathrule.read_seats(tmp_path / "seats.json")
+    assert e.value.kind == "too-big" and asked == [65]
+    monkeypatch.undo()
+    (tmp_path / "seats.json").write_text('{"seats": {}}', encoding="utf-8")   # must pass: under the cap
+    assert pathrule.read_seats(tmp_path / "seats.json") == {"seats": {}}
+
+
+def test_a_problem_shortens_its_paths_and_keeps_its_reason_whole():
+    from semantext.sources import MAX_TEXT, problem
+    long_path = "C:\\" + "\\".join(["a-very-long-folder-name"] * 20) + "\\alder"
+    said = problem("x", None, "seats file", f"Alder's home: {long_path} names a drive, a root or a share of its own, so "
+                                            f"it would leave the base folder, so its requests are not read")
+    text = said["text"]   # must refuse the old cut: the reason at the end is whole, the path is shortened
+    assert len(text) <= MAX_TEXT and text.endswith("so its requests are not read") and "\u2026" in text
+    assert text.startswith("Alder's home: C:\\") and "alder names a drive" in text
+    short = "Alder's home folder C:\\x\\alder does not exist"   # must pass: a text that fits is left as it is
+    assert problem("x", None, "k", short)["text"] == short
+    reason = ", so its requests are not read"
+    for subject in ("x" * 400,                                      # one long word, no slash
+                    "C:\\" + "\\".join(["a b"] * 120)):              # a path of many short parts split by spaces
+        got = problem("x", None, "k", f"Alder's home: {subject}{reason}")["text"]
+        assert len(got) <= MAX_TEXT and got.endswith(reason) and got.startswith("Alder's home: "), got
+        assert re.search(r"\u2026\[[0-9a-f]{6}\]\u2026", got), got   # the cut keeps the hash of what was cut
+    for one in ("C:\\" + "\\".join(["folder"] * 30) + "\\one\\" + "\\".join(["folder"] * 30) + "\\alder",
+                "C:\\" + "\\".join(["a b"] * 60) + "\\one\\" + "\\".join(["a b"] * 60)):   # one word, or spaced
+        two = one.replace("\\one\\", "\\two\\")   # two paths that differ only in the middle never read alike
+        texts = [problem("x", None, "k", f"Alder's home: {p}{reason}")["text"] for p in (one, two)]
+        assert texts[0] != texts[1] and all(t.endswith(reason) and len(t) <= MAX_TEXT for t in texts), texts
+    words = "word " * 100   # no path and no long word: no subject, so only the end can be cut, said by an ellipsis
+    got = problem("x", None, "k", f"Alder's home: {words}{reason}")["text"]
+    assert len(got) == MAX_TEXT and got.startswith("Alder's home: word") and got.endswith("\u2026")
+    long_reason = ", so " + "its requests are not read " * 15   # a reason that alone is over the cap: its START stays
+    got = problem("x", None, "k", f"Alder's home: C:\\x\\alder{long_reason}")["text"]
+    assert len(got) == MAX_TEXT and "C:\\x\\alder, so its requests" in got and got.endswith("\u2026")
+
+
+@pytest.mark.parametrize("spelled, read", [
+    ("~", True), ("~/base", True),                          # the user's own home, for every reader
+    ("~nobodyxyz", False), ("~nobodyxyz/base", False),        # another user's home: never guessed at, on any system
+    ("~/../Other", False),                                    # climbing out of your own home
+])
+def test_a_base_under_tilde_is_the_users_own_home_and_never_another_users(tmp_path, monkeypatch, spelled, read):
+    from semantext.sources import base_of
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    full, why = base_of(spelled)
+    if read:
+        assert full == (os.path.join(str(tmp_path), spelled[2:]) if len(spelled) > 1 else str(tmp_path)), full
+    else:
+        assert full is None and ("another user's home" in why or "steps up with '..'" in why), why
+
+
+def test_a_base_written_with_the_long_path_prefix_is_refused_as_a_prefix_not_a_stream(tmp_path):
+    from semantext.sources import base_of
+    full, why = base_of("\\\\?\\" + str(tmp_path))      # must refuse, and say why rightly
+    assert full is None and "prefix" in why and "stream" not in why
+    full, why = base_of(str(tmp_path))                   # must pass: the same folder without it
+    assert full == str(tmp_path) and why is None
 
 
 def test_a_missing_inbox_folder_is_a_problem_but_the_cards_still_show(world):

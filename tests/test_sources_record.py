@@ -865,3 +865,24 @@ def test_reading_changes_nothing_and_needs_no_right_to_write(tmp_path):
     after = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in tmp_path.iterdir()}
     assert len(out["entries"]) == 2 and out["problems"] == []
     assert after == before                              # the same files, bytes and times, and nothing new beside them
+
+
+FULLWIDTH = str.maketrans("0123456789", "０１２３４５６７８９")
+PIN_TEXT = "box@" + "0123456789abcdef" * 2 + "01234567:docs/NOTES.md:12-15"
+
+
+@pytest.mark.parametrize("date", ["2026-10-23".translate(FULLWIDTH), "2026-10-2３", "٢٠٢٦-10-23"])
+def test_a_date_in_digits_of_another_script_is_not_a_date(date):   # must refuse: YYYY-MM-DD in ASCII digits
+    assert record.DATE.fullmatch(date) is None
+
+
+@pytest.mark.parametrize("line", ["１２", "1２", "١٢"])
+def test_a_pin_whose_line_is_in_digits_of_another_script_is_not_a_pin(line):   # must refuse
+    assert record.PIN.fullmatch(PIN_TEXT.replace(":12-15", f":{line}-15")) is None
+    assert record.PIN.fullmatch(PIN_TEXT.replace(":12-15", f":12-{line}")) is None
+
+
+def test_a_date_and_a_pin_in_ascii_digits_are_read():   # must pass
+    assert record.DATE.fullmatch("2026-10-23")
+    m = record.PIN.fullmatch(PIN_TEXT)
+    assert m and (m.group("line"), m.group("last")) == ("12", "15")

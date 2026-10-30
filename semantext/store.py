@@ -7,9 +7,11 @@ lost: undoing a rule archives it in its file, and undo-last restores the previou
 from __future__ import annotations
 
 import difflib
+import errno
 import json
 import os
 import re
+import stat
 import tempfile
 import time
 import threading
@@ -49,7 +51,12 @@ RESERVED = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"
 
 def valid_name(name) -> bool:
     return isinstance(name, str) and bool(NAME_RE.fullmatch(name)) and name not in RESERVED
-OLLAMA_MANIFESTS = Path.home() / ".ollama" / "models" / "manifests" / "registry.ollama.ai" / "library"
+
+
+def ollama_manifests() -> Path:
+    """Where Ollama keeps the names of the models on this machine, worked out when asked, never at import: the user's
+    home is read then, so a run that points the home elsewhere (the tests) never lists the real one."""
+    return Path.home() / ".ollama" / "models" / "manifests" / "registry.ollama.ai" / "library"
 
 # The switches on the page. Each one is a rule, so the card stays the single place the AI reads.
 FEATURES = {
@@ -141,18 +148,26 @@ def sweep_temps(folder) -> int:
     return gone
 
 
+READ_TRIES = 21   # 50 ms apart: about a second
+
+
 def read_settled(path, binary: bool = False):
     """A file's text (or bytes), read as the store reads its own files: Windows refuses a read for a moment while
-    write_atomic swaps the file in, so a PermissionError is tried again, three tries 50 ms apart, before it is
-    raised."""
+    write_atomic swaps the file in, and for longer on a busy machine, so a PermissionError is tried again for about a
+    second, as write_atomic tries its swap, before it is raised."""
     path = Path(path)
-    for attempt in range(3):
+    for attempt in range(READ_TRIES):
         try:
             return path.read_bytes() if binary else path.read_text(encoding="utf-8")
         except PermissionError:
-            if attempt == 2:
+            if attempt == READ_TRIES - 1:
                 raise
             time.sleep(0.05)
+
+
+class _NotRead(dict):
+    """Settings at their defaults because state.json could not be READ just now (the system refused it), not because
+    it is damaged. put_state refuses these: saving them would put the defaults over settings that are still there."""
 
 
 def write_atomic(target, data) -> None:
@@ -217,26 +232,147 @@ def file_lock(lock_path, timeout: float = LOCK_TIMEOUT):
     """An exclusive lock on <lock_path>, held across processes and threads: the operating system's own lock on its
     first byte (msvcrt.locking on Windows, fcntl.flock elsewhere), which the system releases when the holder's process
     ends, however it ends. So there is no stale-lock rule, and none is needed: a lock file left behind is only a file
-    and never blocks anyone. Waits up to `timeout` seconds, then refuses."""
+    and never blocks anyone. Waits up to `timeout` seconds, then refuses.
+
+    No holder can shut out a waiter, by a turnstile: a writer first takes the gate, a second lock on <lock_path>.gate
+    (a second file, since flock locks a whole file; the same on Windows, for one rule on both), then the lock itself,
+    then lets the gate go. A writer waiting for the lock waits standing in the gate, so a holder that lets the lock go
+    and wants it again must pass the gate first, where the waiter already stands. With two writers that is exact: the
+    waiter goes next. With three or more, only the one standing in the gate is sure to go next; the others wait for
+    the gate itself, which the operating system gives to whoever asks first once it is let go, so their order is
+    first-come at best, not a queue, and a wait grows with the number of writers (measured worst waits of about 12, 55,
+    78 and 113 ms for 2, 3, 4 and 6 writers in tight loops). Without the gate the system picks whoever asks first after
+    a release, and a writer in a tight loop asks first nearly every time, so even with two the other could wait past
+    its timeout (seen in CI). The wait at the gate counts against the same `timeout`."""
     lock_path = Path(lock_path)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o644)
     deadline = time.monotonic() + timeout
+    fd = _open_lock(lock_path)
     try:
-        while True:
+        if _GATED:
+            gate = _open_lock(lock_path.with_name(lock_path.name + ".gate"))
             try:
-                _lock_byte(fd, True)
-                break
-            except OSError:
-                if time.monotonic() >= deadline:
-                    raise Refused(f"{lock_path.name} is held by another writer for over {timeout:g} s; try again")
-                time.sleep(0.005)
+                _wait_for(gate, deadline, lock_path, timeout)
+                try:
+                    _wait_for(fd, deadline, lock_path, timeout)
+                finally:
+                    _lock_byte(gate, False)
+            finally:
+                os.close(gate)
+        else:
+            _wait_for(fd, deadline, lock_path, timeout)
         try:
             yield
         finally:
             _lock_byte(fd, False)
     finally:
         os.close(fd)
+
+
+_GATED = True   # the turnstile; off only in the test that shows a tight loop wins the bare lock without it
+
+
+def _open_lock(path: Path) -> int:
+    """The lock file (or the gate) opened, made when it is not there. Only a plain file with one name is ever a lock:
+    a folder, a link or a junction standing at the name is refused before it is opened (a link would be followed, and
+    the lock made wherever it leads), and so is a second hard link (the lock would be taken on another file's bytes,
+    and on Windows a byte lock on it can fail, or hold up whoever uses that file). Where the system can, the open itself
+    refuses a link (O_NOFOLLOW). Where it cannot (Windows), something swapped in between the look and the open is
+    caught after it: the file opened must be, by its identity (device and file number), the one the name was before
+    the open, and the one the name is after it; and it must still be one plain file with one name.
+
+    Two limits, said rather than hidden. The identity check needs a file system that gives file numbers; on one that
+    does not (FAT, some network drives: st_ino is 0) the swap check does not run, and only the checks by name do. And
+    on Windows a link planted at the name in the moment between the look and the open is followed by the open itself:
+    the lock is then refused, but the open may already have made an empty file where the link leads."""
+    before = _plain_lock(path)
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    except OSError as e:
+        if _not_plain(path) or e.errno in (errno.ELOOP, errno.EISDIR):   # it changed after the look, or it is a link
+            raise Refused(f"{path.name} is {_standing(path) or 'a link or a folder'}, not a lock file; it is not taken "
+                          f"as a lock") from None
+        raise
+    try:
+        opened = os.fstat(fd)
+        after = _plain_lock(path)
+        if not stat.S_ISREG(opened.st_mode):
+            raise Refused(f"{path.name} is not a plain file, so it is not taken as a lock")
+        if opened.st_nlink > 1:
+            raise Refused(f"{path.name} has another name on disk (a hard link), so it is not taken as a lock")
+        if after is None or any(st is not None and _identity(st) and _identity(st) != _identity(opened)
+                                for st in (before, after)):
+            raise Refused(f"{path.name} changed while it was opened (something else was put at its name), so it is "
+                          f"not taken as a lock")
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _identity(st) -> tuple | None:
+    """A file's identity, (device, file number), or None where the file system gives no file number (st_ino 0: FAT,
+    some network drives), and then no identity is compared (see _open_lock)."""
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
+def _plain_lock(path: Path):
+    """What lstat says stands at a lock's name: None when nothing does, its stat when it is one plain file with one
+    name; Refused for anything else."""
+    what = _standing(path)
+    if what:
+        raise Refused(f"{path.name} is {what}, not a lock file; it is not taken as a lock")
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    if st.st_nlink > 1:
+        raise Refused(f"{path.name} has another name on disk (a hard link), so it is not taken as a lock")
+    return st
+
+
+NAME_SURROGATE = 0x20000000   # a reparse tag with this bit names another place: a symbolic link or a junction
+
+
+def _not_plain(path: Path) -> bool:
+    """Whether something other than a plain file stands at `path` (_standing says what). Nothing there is plain: the
+    lock is made."""
+    return _standing(path) is not None
+
+
+def _standing(path: Path) -> str | None:
+    """What stands at `path` when it is not a plain file, in words, read from lstat so it holds on every Python: "a
+    folder", "a link or a junction" (a symbolic link, or a Windows reparse point whose tag names another place), or
+    "something that is not a plain file". None when nothing is there, or a plain file is: a reparse point whose tag
+    names no other place, such as a cloud-storage placeholder of a file (OneDrive's), is that file, as places._linked
+    and the work writer read one."""
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        return "something that cannot be looked at"
+    if stat.S_ISLNK(st.st_mode) or (getattr(st, "st_file_attributes", 0)
+                                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+                                    and getattr(st, "st_reparse_tag", 0) & NAME_SURROGATE):
+        return "a link or a junction"
+    if stat.S_ISDIR(st.st_mode):
+        return "a folder"
+    if not stat.S_ISREG(st.st_mode):
+        return "something that is not a plain file"
+    return None
+
+
+def _wait_for(fd: int, deadline: float, lock_path: Path, timeout: float) -> None:
+    """Takes the operating system's lock on fd, asking again every few milliseconds until the deadline, then refuses."""
+    while True:
+        try:
+            _lock_byte(fd, True)
+            return
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise Refused(f"{lock_path.name} is held by another writer for over {timeout:g} s; try again")
+            time.sleep(0.005)
 
 
 def _lock_byte(fd: int, on: bool) -> None:
@@ -471,6 +607,8 @@ class Store:
             except (ValueError, OSError) as e:
                 self.state_problem = (f"{self.state_path} could not be read ({e}), so the settings are at their "
                                       f"defaults until it is fixed or replaced")
+                if isinstance(e, OSError):
+                    s = _NotRead(s)
         s["log"] = s["log"] if isinstance(s.get("log"), list) else []
         s["pending"] = s["pending"] if isinstance(s.get("pending"), list) else []
         if not valid_name(s["active"]) or not (self.profiles_dir / s["active"] / "SEMANTICS.yaml").is_file():
@@ -479,7 +617,10 @@ class Store:
 
     def put_state(self, s: dict) -> None:
         """Written whole or not at all: to a temporary file, then put in place, so a crash never leaves it empty. An
-        unreadable file it replaces is kept beside it first."""
+        unreadable file it replaces is kept beside it first. Settings that stood in only because the file could not be
+        read just now are refused, so they never go over the real ones."""
+        if isinstance(s, _NotRead):
+            raise Refused(f"{self.state_path} could not be read just now, so nothing is saved over it; try again")
         s["log"] = s["log"][-60:]
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         if self.state_path.exists() and not self.state_path.is_file():
@@ -1104,7 +1245,8 @@ class Store:
 
     # ---- models: names only, nothing is started or downloaded --------------------------------------------------
     @staticmethod
-    def local_models(base: Path = OLLAMA_MANIFESTS) -> list[str]:
+    def local_models(base: Path | None = None) -> list[str]:
+        base = ollama_manifests() if base is None else base
         if not base.is_dir():
             return []
         return sorted(f"{m.name}:{t.name}" for m in base.iterdir() if m.is_dir() for t in m.iterdir() if t.is_file())

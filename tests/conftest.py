@@ -1,6 +1,97 @@
+import os
+import site
+import sys
+import tempfile
+import threading
+from pathlib import Path
+
 import pytest
 
 from semantext.store import Store
+
+# ---- the real user home is never read --------------------------------------------------------------------------------
+# Taken once, here, before any test moves the home: the folder every test must keep out of, and the folders under it a
+# run may still use (the temporary folder, this checkout, Python's own).
+REAL_HOME = os.path.normcase(os.path.abspath(os.path.expanduser("~")))
+ROOT = Path(__file__).resolve().parents[1]
+ALLOWED = tuple(a for a in (os.path.normcase(os.path.abspath(p)) for p in {
+    tempfile.gettempdir(), str(ROOT), sys.prefix, sys.base_prefix, sys.exec_prefix,
+    site.getusersitepackages() if hasattr(site, "getusersitepackages") else sys.prefix,
+    *(p for p in sys.path if p)} if p) if a != REAL_HOME)   # the home itself is never an allowed folder
+WATCHED = ("open", "os.listdir", "os.scandir", "os.mkdir", "os.rename", "os.remove", "os.rmdir", "os.chmod",
+           "os.symlink", "os.link", "shutil.copyfile", "shutil.rmtree")
+TOUCHED: list = []        # (test, event, path) for every touch of the real home outside ALLOWED, in this process
+_now = ["<collection>"]   # the test running now
+_guard = threading.local()
+
+
+def _under(path: str, folder: str) -> bool:
+    return path == folder or path.startswith(folder.rstrip("\\/") + os.sep)
+
+
+def real_home_touch(event: str, args) -> str | None:
+    """The real-home path an audit event touches, or None: a path under REAL_HOME and under none of ALLOWED. Every
+    path the event names is looked at, not only the first: a rename's, a link's or a copy's destination too."""
+    if event not in WATCHED or not args:
+        return None
+    for arg in (args[:1] if event == "open" else args):   # open's other arguments are its mode text and flags
+        if not isinstance(arg, (str, bytes, os.PathLike)):
+            continue   # a file descriptor, a flag, a mode: no path
+        try:
+            p = os.path.normcase(os.path.abspath(os.fsdecode(arg)))
+        except (TypeError, ValueError):
+            continue
+        if _under(p, REAL_HOME) and not any(_under(p, a) for a in ALLOWED):
+            return p
+    return None
+
+
+def _audit(event, args):
+    if getattr(_guard, "on", False):
+        return
+    _guard.on = True   # the hook's own work raises no events it would see again
+    try:
+        p = real_home_touch(event, args)
+        if p is not None:
+            TOUCHED.append((_now[0], event, p))
+    finally:
+        _guard.on = False
+
+
+sys.addaudithook(_audit)   # for the whole run; an audit hook cannot be taken off, and it only records
+
+
+def pytest_runtest_setup(item):
+    _now[0] = item.nodeid
+
+
+def pytest_runtest_teardown(item):
+    _now[0] = "<between tests>"
+
+
+def pytest_collection_modifyitems(session, config, items):
+    """The check that no test touched the real home runs last, after every other test of the run."""
+    last = [i for i in items if i.name == "test_no_test_of_the_run_touched_the_real_user_home"]
+    items[:] = [i for i in items if i not in last] + last
+
+
+@pytest.fixture(autouse=True)
+def away_from_the_real_home(tmp_path_factory, monkeypatch):
+    """Every test runs with the user's home, the Semantext home and the sources file pointed into a temporary folder,
+    so nothing that works out "the user's home" (Path.home, expanduser, the default Semantext home, the sources file,
+    git's global settings, Ollama's models) can reach the real one. A test that needs its own home sets it over this."""
+    user = tmp_path_factory.mktemp("user-home")
+    for name in ("HOME", "USERPROFILE"):
+        monkeypatch.setenv(name, str(user))
+    drive, rest = os.path.splitdrive(str(user))
+    monkeypatch.setenv("HOMEDRIVE", drive or "")
+    monkeypatch.setenv("HOMEPATH", rest or str(user))
+    monkeypatch.setenv("SEMANTEXT_HOME", str(user / ".semantext"))
+    monkeypatch.delenv("SEMANTEXT_SOURCES", raising=False)   # the sources file is then the temporary home's, absent
+    monkeypatch.setenv("APPDATA", str(user / "AppData" / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(user / "AppData" / "Local"))
+    for name in ("XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL", "OLLAMA_MODELS"):
+        monkeypatch.delenv(name, raising=False)
 
 # The variables an AI tool sets in its agent's shell. They change who Semantext thinks is asking, and whether a
 # terminal may answer, so every test starts from a plain shell; a test that needs one sets it itself. (A suite run
@@ -13,6 +104,13 @@ AGENT_VARIABLES = ("CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_SANDBOX", "COD
 def plain_shell(monkeypatch):
     for name in AGENT_VARIABLES:
         monkeypatch.delenv(name, raising=False)
+    # A console review is measured at the console's width (pluginpage.width()): every test sees the same 100 columns,
+    # whatever terminal runs the suite; a test of the width itself puts the real one back.
+    monkeypatch.setattr("semantext.pluginpage.width", lambda: 100)
+    # How each plug-in's last call ended is kept per process (outside.health); tests reuse plug-in names, so each test
+    # starts from nothing, never from the last call of another test's plug-in of the same name.
+    from semantext import outside
+    outside.forget_all()
 
 
 @pytest.fixture(autouse=True)

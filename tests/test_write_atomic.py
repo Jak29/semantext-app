@@ -61,6 +61,6 @@ def test_a_reader_meeting_the_swap_tries_again(store, monkeypatch):
     monkeypatch.setattr(Path, "read_text", busy)
     monkeypatch.setattr(st.time, "sleep", lambda s: None)
     assert store.state()["feed"] is False and store.state_problem is None
-    # must refuse: still busy after three tries, it degrades as before (the defaults, and the problem named)
-    fails["left"] = 3
+    # must refuse: still busy after every try, it degrades as before (the defaults, and the problem named)
+    fails["left"] = st.READ_TRIES
     assert store.state()["feed"] is True and store.state_problem

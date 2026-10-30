@@ -34,7 +34,7 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
 own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
 
-> **Status: version 1.3.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+> **Status: version 1.4.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 
@@ -86,6 +86,22 @@ then open `http://127.0.0.1:8765/v2`:
 - **The map**, one click away, labelled with your own word for the whole: your groups, workspaces and agents, with a
   mark wherever your word is waiting or a gate is open.
 - **Record**: every decision you have given, verbatim, as threads, with what each one superseded.
+- **Plug-ins**: every plug-in, built in or installed, with the package and version it came from, whether it is on
+  (installed is not on), its health, what it declares it reads, and its settings. **The page proposes; your console
+  applies.** The page turns a plug-in off, and that is the one thing it changes itself. A settings change from its
+  form, or a rollback of one, is kept as a proposal, labelled for you to read (widens, narrows, unknown, order changed), and applied
+  by `semantext plugins confirm <n>` at your own console, which shows exactly what it changes (every list entry put in
+  or taken out, or the whole list before and after when its order changed, every value in full and in plain ASCII,
+  nothing collapsed or cut; a difference longer than 60 rows at the console's width is read with `semantext plugins show <n> --full`
+  first, whose review code you give back to `confirm <n> --reviewed-full <code>`) and refuses a proposal that was
+  superseded, or whose settings moved on since. Turning a plug-in on is yours alone too:
+  `semantext plugins enable <kind>.<name>` first shows every setting it will be given, every key it may read without
+  declaring it, and every settings change made since it was last off, and turns it on only if none of that changed
+  before your yes. Every change is recorded in `plugin-changes.jsonl` in your home: at most 64 KB a record, 30
+  proposals and settings rollbacks a minute, rotated once at 4 MB, and the last change to each setting kept for good in
+  `plugin-last-changes.json` (SECURITY.md, "Plug-ins"). A package declares its settings, their defaults and what it
+  reads in a `semantext-plugin.json` beside its module (see `semantext/manifest.py`); one that declares none gets no
+  form.
 
 `semantext statusline` prints one line for Claude Code's status bar: what is waiting for your word. Every reader is
 checked against the tool that owns its data, on real files and on planted faults; see `CHANGELOG.md`.
@@ -473,8 +489,12 @@ environment and checks that it imports, runs and uninstalls cleanly.
 - [Claude Code](docs/claude-code.md), and [AGENT-README.md](AGENT-README.md) for setting up any agent.
 - [The inbox](docs/inbox.md): how your AI asks, and how you answer.
 - [The back-test](docs/backtest.md): how the card does against the times you corrected your AI.
+- [The plug-in API](docs/plugin-api.md): what a source, a place or a checker is given, gives back, and may not do; and
+  [the run-record schema](docs/run-record-schema.md) a checker writes.
 - [Architecture](docs/architecture.md), [How Semantext is tested](docs/laws-and-metrics.md) and the [FAQ](docs/faq.md).
-- [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md).
+- [SECURITY.md](SECURITY.md) and [the security floor](docs/security-floor.md), what Semantext promises to refuse and
+  the tests that hold each promise.
+- [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md).
 
 ## License
 

@@ -25,7 +25,7 @@ from semantext.sources import gates, view
 from semantext.sources.gates import World as GitWorld
 from test_v2_view import World, append, ask
 
-ROUTES = ("sources", "waiting", "projects", "documents", "map", "record", "rules", "hollow")   # the last is the word
+ROUTES = ("sources", "waiting", "projects", "documents", "map", "record", "rules", "plugins", "hollow")   # the last is the word
 PAGE = paths.static_dir() / "v2" / "index.html"
 
 

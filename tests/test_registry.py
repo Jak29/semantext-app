@@ -1,4 +1,5 @@
-"""The registry, the one stable surface, and turning plug-ins on (ECOSYSTEM.md and the ecosystem review of 23 October).
+"""The registry, the one stable surface, and turning plug-ins on (docs/plugin-api.md, and the ecosystem review of 23
+October).
 
 Each rule here has both arms: what must pass and what must be refused. The plug-ins are defined in this file, offered
 through a stand-in for importlib.metadata.entry_points; nothing is installed.
@@ -104,7 +105,7 @@ def test_enabled_is_loaded_and_listed_with_its_origin(home, offered, capsys):   
     assert e is not None and (e.origin, e.version) == ("semantext-jira", "0.3") and points[0].loads == 1
     assert cli.main(["--home", str(home), "plugins"]) == 0
     row = next(line for line in capsys.readouterr().out.splitlines() if " tickets " in line)
-    assert "semantext-jira 0.3" in row and row.rstrip().endswith("on")
+    assert "package: semantext-jira  version: 0.3" in row and row.rstrip().endswith("on")
 
 
 def test_a_plugin_that_raises_on_load_is_a_problem_and_the_rest_load(home, offered):
@@ -209,8 +210,9 @@ def test_an_outside_place_that_stops_costs_only_itself(home, offered):
 
 def test_built_in_places_and_keys_are_what_they_were():
     # The fixed tuples these replaced (1.2.2): the registry must give the same routes, in order, and the same keys.
-    # One place and one source more since: Work (PM-DESIGN slice 2), after the others, so their order is kept.
-    assert view.ROUTES == ("waiting", "projects", "documents", "map", "record", "rules", "sources", "work")
+    # One place and one source more since: Work (PM-DESIGN slice 2), after the others, so their order is kept; and
+    # one more place, Plug-ins (1.4), after Work.
+    assert view.ROUTES == ("waiting", "projects", "documents", "map", "record", "rules", "sources", "work", "plugins")
     # Two keys more since: the run-record folders and their age bound, read by the rules reader (runs.py). The Work
     # source adds two, for its verdict clauses (slice 2b): its store lies in the Semantext home.
     assert set(KEYS) == {"name", "seats", "group", "requests", "changes", "inbox", "register", "notes", "cards", "map",
@@ -235,6 +237,35 @@ def test_enable_refuses_until_closed_places_are_named(home, offered, monkeypatch
     monkeypatch.setattr("builtins.input", lambda _p: "source.tickets")
     assert cli.main(["--home", str(home), "plugins", "enable", "source.tickets"]) == 1
     assert "name your closed places first" in capsys.readouterr().err and not registry.enabled_file(home).exists()
+
+
+def test_enable_says_the_true_state_of_named_but_incomplete_closures(home, offered, monkeypatch, capsys, tmp_path):
+    points, _ = offered                                                       # must refuse, and say why truly
+    points.append(Point("source.tickets", Tickets))
+    c = tmp_path / "format-closures.json"
+    c.write_text(json.dumps({"schema": "estate.closures/0", "closed_names": [], "closed_paths": None,
+                             "closed_paths_complete": False, "known_closed_paths": [str(tmp_path / "shut")]}),
+                 encoding="utf-8")
+    f = tmp_path / "sources-naming-it.json"
+    f.write_text(json.dumps({"closures_file": str(c), "closures_key": "closed_paths"}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(f))
+    monkeypatch.setattr("builtins.input", lambda _p: "source.tickets")
+    assert cli.main(["--home", str(home), "plugins", "enable", "source.tickets"]) == 1
+    err = capsys.readouterr().err
+    assert "incomplete" in err and "closed_paths_complete" in err and "name your closed places first" not in err
+    assert not registry.enabled_file(home).exists()
+
+
+def test_enable_says_named_closures_cannot_be_used(home, offered, monkeypatch, capsys, tmp_path):   # must refuse
+    points, _ = offered
+    points.append(Point("source.tickets", Tickets))
+    f = tmp_path / "bad-sources.json"
+    f.write_text(json.dumps({"closed": ["relative/path"]}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(f))
+    monkeypatch.setattr("builtins.input", lambda _p: "source.tickets")
+    assert cli.main(["--home", str(home), "plugins", "enable", "source.tickets"]) == 1
+    err = capsys.readouterr().err
+    assert "cannot be used" in err and "full paths" in err and "name your closed places first" not in err
 
 
 def test_enable_refuses_in_an_agents_shell(home, offered, monkeypatch, named):   # must refuse
@@ -292,8 +323,8 @@ def test_check_says_not_checked_and_never_passes(home, capsys):
 
 # ---- the card hook loads no plug-in -----------------------------------------------------------------------------
 HOOK_MODULES = ["semantext", "semantext.agents", "semantext.envcard", "semantext.envhook", "semantext.feed",
-                "semantext.heard", "semantext.hook", "semantext.inbox", "semantext.jsonread", "semantext.paths",
-                "semantext.provenance",
+                "semantext.heard", "semantext.hook", "semantext.inbox", "semantext.jsonread", "semantext.pathrule",
+                "semantext.paths", "semantext.provenance",
                 "semantext.sender", "semantext.store"]
 
 

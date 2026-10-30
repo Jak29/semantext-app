@@ -211,6 +211,53 @@ def test_a_busy_feed_is_skipped_and_the_card_still_goes(store, home):
         out = hook.run(event("hi"), store)
         took = time.monotonic() - t
     assert "standing rules" in out and took < 2 and lines(home) == []
+    assert "the feed was not kept" not in out   # must pass: a busy moment is not a fault, and is not said
+
+
+def test_a_feed_lock_that_is_not_a_plain_file_is_said_once_and_the_card_still_goes(store, home):   # must refuse
+    (home / "feed.lock").mkdir(parents=True)   # a folder squatting at the lock's name: a fault, never silent
+    out = hook.run(event("hi"), store)
+    assert "standing rules" in out and lines(home) == []
+    assert out.count("the feed was not kept") == 1 and "a folder" in out
+    assert "the feed was not kept" not in hook.run(event("again"), store)   # the same fault: said once, not per prompt
+    (home / "feed.lock").rmdir()
+    assert "the feed was not kept" not in hook.run(event("fixed"), store) and len(lines(home)) == 1   # kept again
+    (home / "feed.lock").unlink()
+    (home / "feed.lock").mkdir()
+    assert "the feed was not kept" in hook.run(event("broken again"), store)   # cleared once kept: said again
+
+
+def test_a_system_refusal_at_the_feeds_lock_is_said_not_swallowed(store, home, monkeypatch):   # must refuse
+    from semantext import feed as feed_module
+
+    def refused_by_the_system(*a, **k):
+        raise PermissionError(13, "Access is denied")
+    monkeypatch.setattr(feed_module, "file_lock", refused_by_the_system)
+    out = hook.run(event("hi"), store)
+    assert "standing rules" in out and "the feed was not kept: PermissionError: Access is denied" in out
+
+
+@pytest.mark.parametrize("what", ["a folder", "a second hard link"])
+def test_the_inbox_lock_is_never_taken_on_what_stands_at_its_name(tmp_path, what):   # must refuse
+    from semantext.store import Refused
+    lock, other = tmp_path / "inbox.lock", tmp_path / "someone-elses.txt"
+    other.write_bytes(b"not a lock")
+    if what == "a folder":
+        lock.mkdir()
+    else:
+        os.link(other, lock)   # the lock would be taken on another file's bytes
+    with pytest.raises(Refused, match="not taken as a lock"):
+        with file_lock(lock, "busy"):
+            pass
+    assert other.read_bytes() == b"not a lock"
+
+
+def test_the_inbox_lock_left_behind_as_a_plain_file_is_taken_again(tmp_path):   # must pass
+    lock = tmp_path / "inbox.lock"
+    lock.write_bytes(b"left by a writer that ended")
+    with file_lock(lock, "busy"):
+        held = True
+    assert held and lock.is_file()
 
 
 # ---------------------------------------------------------------- what a line says

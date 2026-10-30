@@ -6,6 +6,218 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-30
+
+Closes by name as well as by path, a Plug-ins tab on which the page proposes and the console applies, a fair store lock, one rule for reading a seat's folder, and a written security floor. Outside plug-ins read nothing until your closed places are named in full, and none loads until you turn it on at your console.
+
+### Added
+- **The plug-in API, written down** (`docs/plugin-api.md`): the 0.2 contract, from the code. And the run-record
+  format a checker writes (`docs/run-record-schema.md`). The code cited both under names that were never in the
+  repository; a test now fails if the package cites a `docs/` page that is not there.
+- **The security floor** (`docs/security-floor.md`): every refusal Semantext promises, with the tests that hold it. A
+  test fails if any test it names is renamed or deleted.
+- A test that holds the trailing `Z` on every Python: the 1.3.0 fix had none that could fail on 3.11 or later.
+- **Closures by name.** A `"closed_names"` list, in the sources file or in the closures file (under
+  `"closures_names_key"`, `"closed_names"` when not given), closes a folder or file by its name in any folder, beside
+  the closed paths, in the closures-file format (schema `estate.closures/0`): entries with an
+  `id`, a `form` and that form's fields (`segment`, `segment-pair`, `segment-prefix-except`,
+  `segment-or-dotted-prefix`, `substring`, `suffix`). Matching follows the file's own rules: a search over the whole
+  path string, so a substring matches anywhere; case-insensitive as Python's IGNORECASE takes it or wider; both
+  separators; a single trailing newline as an end; the path as given, written in full and with links resolved. A path
+  is closed when any of four legs closes it: the field matcher on the path as given (not normalised), composed (NFC)
+  and decomposed (NFD), and the entry's own `regex` (at most 2,000 characters): so it closes more than the regex, never
+  less, by construction. It also reads a path as Windows does (stream suffix, trailing dots and spaces), closing only
+  more. Where an entry's fields and regex disagree on its own examples, the page says so. `is_closed_place`, the
+  built-in readers' check and the card readers apply names wherever they apply paths. **Closed names add closures;
+  they never by themselves make the closures known:** for a plug-in and the strict view, known needs what 1.3.0
+  needed (a `"closed"` list, or a closures file read by its rules), and names then close more. A sources file with
+  `"closed_names"` and neither is none named for a plug-in, as in 1.3.0 (every path closed, `semantext plugins enable`
+  refuses), and its names close what they name for the built-in readers and the strict view. In a sources file shaped
+  like the closures-file format (its schema or its keys, and no closures file), `"closed_names"` is one of the format's
+  keys there: said, not read. `ReadContext` gains `names` (empty by default, so a context made by hand without it closes no name). It
+  fails closed as the paths do: an entry without an id (or one given twice), with an unknown form, a missing field or
+  a field it does not have; a literal that is empty or dot-only, starts or ends with white space, holds a control,
+  format or separator character (an inner ASCII space aside), is only combining marks, or holds a separator, a `:` or
+  a glob character (refused so one list means the same on every system and no entry is read as a pattern); a list
+  given as null (`"closed_paths": null`: not supplied yet), whichever key is read; another version of the format's `schema` (another tool's is read by 1.3.0's rule); names in a
+  closures file that says no schema; a key a schema file's schema does not have; or a `matching` version this code
+  does not know: each makes the closures unknown, and every path closed, with a reason naming the entry and field. A
+  closures file must still hold its paths key, as in 1.3.0; its names key is needed when `"closures_names_key"` names
+  it. A `ReadContext` built by hand with names that are not `Name`s is refused
+  (TypeError). See SECURITY.md, "Closed names".
+- **A complete list for plug-ins, a lower bound for the readers.** A closures file with a schema is known to a plug-in
+  only when the list under the key `closures_key` names (`closed` when not given) is a list, `closed_paths_complete` is exactly true and every `known_closed_paths` entry is
+  in it; otherwise every path is closed to a plug-in, with the reason said. The built-in readers read
+  `known_closed_paths` beside every name, by component, as given and through links, and the page says the list is
+  incomplete. The Places reader refuses a named root that is, or holds, a closed path (each listed path and the root
+  compared as given and with links resolved, so a junction or 8.3 spelling of either is caught). Two-separator forms
+  are closed while any closure exists, on every system, `\\.\C:\` (a device path) included, as in 1.3.0; only
+  `\\?\C:\` is read as the drive, as 1.3.0 read it. The closures-file format is read only in a closures file the
+  sources file names, and only when it says the format's schema; a path record (`{"path": ...}`) is read only there.
+  The sources file keeps 1.3.0's closures rules (with `closed_names` beside them), and the format's keys written in it
+  mean nothing there and are said, when no `closures_file` is named ("this looks like a closures file (...); those keys are not read in your sources file, so nothing is closed by them. Point closures_file at it to use it"), never
+  closing anything. **Nothing 1.3.0 read changes meaning, with one deliberate exception: a closures file in the
+  closures-file format (schema `estate.closures/0`), new in 1.4, is read by that format's rules. Where its complete
+  list is not supplied, it is read by the built-in card readers and the root rule as a lower bound (its known paths and
+  names), and stays unknown to plug-ins and the strict view; and its path records are read as its paths, where 1.3.0
+  found them unreadable. Every other change closes more** (listed under Changed). A test holds twenty-one 1.3.0-shaped
+  sources files to the closures 1.3.0 gave, and judges a fixed set of paths (on Windows also written with `\\?\` and
+  `\\.\`) in the plug-in, built-in and strict views as 1.3.0 judges them; it asserts the exception case by case, and
+  that each closes-more file closes every path 1.3.0 closed. It runs against the 1.3.0 tree itself (CI fetches the
+  whole history for it).
+- **Closures are said aloud** on the page as "closures" problems: closures that cannot be used (also in the refusal
+  of `semantext plugins enable`, and from `closed.why_unknown()`); a closed name that closes nearly every path (a
+  substring, suffix or prefix under 3 characters), kept as the person's choice; and a list shaped like closures under
+  a key of the sources file no reader reads, which closes nothing. The Plug-ins tab, its rows, `semantext plugins
+  enable` and Work say the true state (`closed.closures_state`): none named, named and incomplete, or named and
+  unreadable, with the reason and what fixes it.
+- **A strict view of the closures for the run-record reader** (`closed.strict_closures`): with no closures named,
+  nothing is closed, as for every built-in reader; named and incomplete, or unknown, every path is, as for a plug-in,
+  since a run record's subject is shown. SECURITY.md says which reader uses which of the three views, and why.
+- **A Plug-ins place on the v2 page** (`/api/v2/plugins`, `plugins.js`): every plug-in, built in or installed, with
+  its package and version, its trust state (installed, not on; on; on, not loaded; turned on, not installed; turned
+  on, but its name is no longer allowed), its health, what it declares it reads, and its settings with their values.
+  Drawing it calls no plug-in and never loads the entry point of one that is off.
+- **A package declares its settings and what it reads as data**, in `semantext-plugin.json` beside the module its
+  entry point names (`semantext/manifest.py`): each setting a key of the sources file, typed `text`, `path`, `paths`
+  or `list`, with an optional `default`, `required` and `widens`. A declaration not of the shape, or taking a key of
+  Semantext's own or of the closures (in any case), is refused whole.
+- **The page proposes; the console applies** (the owner's choice). The page turns a plug-in off (never held to the
+  page's rate limit), and never turns one on (it shows `semantext plugins enable <kind>.<name>`). It never writes a
+  plug-in's settings: a change from the settings form, and a rollback of one, is kept as a proposal, labelled
+  `widens`, `narrows` or `unknown`, or `order changed` (never `narrows`) from the declarations for you to read (the
+  label decides nothing), answered 202 Accepted, and applied by **`semantext plugins confirm <n>`** at your own
+  console. **What confirm applies is shown exactly, or it refuses:** entries added at the end, or only taken out, as
+  such; any other list change (an order changed above all), and a list set for the first time, as the whole list
+  before and after, one numbered entry a line; every other value whole; entries compared as written (`1`, `1.0` and
+  `true` differ). Every line `semantext plugins` prints goes through one renderer: printable ASCII alone and one to
+  one, every other character as its escape and the backslash as `\\`, nothing deleted, collapsed or cut. A review over
+  60 rows at the console's width (its header counted) is read with **`semantext plugins show <n> --full`**, which ends
+  with a review code, and applied with `confirm <n> --reviewed-full <code>`. A proposal is applied only on exactly the
+  sources file it was made on (its sha256 and its path) with no change recorded to its keys since; it expires after an
+  hour; a newer one for the same setting supersedes it, and a superseded proposal is never applied in place of another
+  (both are named; the newer is confirmed by its own number). Open proposals are kept by number in
+  `plugin-proposals.json`, so one is found however many records follow it. No proposal is made on a sources file that
+  is also the closures file, and no record, rollback or proposal writes a reserved key (the key `closures_key` names
+  included, in any case); a plug-in whose `keys` or `needs` name one is never loaded. A proposal number is ASCII digits
+  alone.
+- **The console is the point of review:** `semantext plugins enable` shows, before you type the name, every setting
+  the plug-in declares (with its value now, or its declared default when not set), every other key of the sources file
+  it may read without declaring it, the keys Semantext keeps for itself, and every settings change recorded since it
+  was last turned off, with who and when, all of it exactly and uncut in printable ASCII (over 60 rows, read with
+  `semantext plugins show <kind>.<name> --full` and its code given to `enable --reviewed-full`). The review is
+  snapshotted (the sources file, the declaration, the package's version, and the last change to the plug-in and to
+  each key it will be given), and the plug-in is turned on only if the snapshot still holds after the yes; a page
+  turning another plug-in off, or proposing, never refuses it.
+- **A change log**, `<home>/plugin-changes.jsonl`, appended to and never rewritten, never through a link or a second
+  hard link, with the console's enable and disable too, every writer under one lock (`plugins.lock`). Each record is
+  written, then the last change to its key or plug-in in `plugin-last-changes.json` (never rotated; refused if it is
+  not one plain file with one name, or unreadable; never reset), and only then the change. A record whose file does
+  not now hold its "after", with no later record to explain it, is shown "not applied". Bounded: 64 KB a record, 30
+  proposals and settings rollbacks a minute, rotated once at 4 MB (the rotated file is dropped at the next rotation),
+  and only its last 512 KB is read. Numbers never start again: a log moved aside goes on from the highest number known,
+  and a number that does not go up is said as a problem.
+- The line to type holds no free text: a plug-in's name is a plain word, and `--home` is shown only for a home of
+  letters, digits, spaces and `\ / : . _ -` (quoted for a POSIX shell whenever it holds a backslash or a space), else
+  left out with a note to type it where `SEMANTEXT_HOME` is set; lines are for PowerShell on Windows and a POSIX shell
+  elsewhere, never cmd.exe.
+- A plug-in's name is letters, digits, `_` and `-`; an entry point named otherwise is a problem, never listed or
+  loaded. One left on from before under such a name says so, and the page offers no Off it would refuse.
+- Path settings refuse `.` and `..` parts, parts ending in a dot or a space, device names (in the path rule's shape, `con .txt` too), `:` past a drive letter,
+  and verbatim prefixes written with any mix of slashes; a text holding a lone surrogate, or a control, format or bidi
+  character or a line or paragraph separator, is refused. An error in a POST that no one wrote for the page is a fixed answer with its kind
+  (400 or 500), never its words and never a dropped connection.
+- **Health:** the kernel keeps how each plug-in's last call ended (answered, raised, late, busy, crowded), its own
+  work apart from the calls that load it.
+
+### Changed
+- **The inbox joins a seat's home the way the places and gates readers do.** A home written as a full path, even one
+  inside the base folder, is now a problem in the inbox too. The three readers and the card hook (which gives a
+  session its seat) judge the base and read a home or a root by one rule (`semantext/pathrule.py`), exactly as
+  written, on every system: one that holds a control character, has a space before or after it, has a part ending in
+  a dot or a space, holds a colon past a drive letter, is written with the `\\?\` prefix, or has a part that is a
+  device name (CON, NUL, COM1, `con .txt`, ...: refused on every system because many Windows versions read them as
+  devices; recent Windows 11 does not) is refused; `~name` and a `..` step are refused in a base; and with no base,
+  or one that is not an existing folder, no home is read by any of them. The seats file itself is parsed one way by
+  all four, as the person's inbox parses it, with no key given twice. Before, the inbox read `" birch"` as a folder
+  whose name starts with a space, the gates reader trimmed it, only the places reader refused control characters, the base was read three ways, the hook joined homes its own
+  way (a `..` home gave a session that seat), and a missing base read no homes in the inbox but every full-path home
+  in the others. `docs/plugin-api.md` lists what the rule refuses and what it does not. `semantext.api.seat_rows` and
+  `named_roots` follow it.
+- A closures file that says the closures-file format's schema and holds, under a key that is not one of the keys read, a list shaped like closures (all full paths,
+  or all name records), such as `"closed_paths"` beside `"closed"`, now makes the closures unknown, so every path is
+  closed; before, the list was passed over in silence. A closures file without that schema keeps 1.3.0's rule
+  (`{"closed": [], "closed_paths": ["..."]}` is known). Prose, texts and other records beside the lists are left alone.
+- A plug-in may no longer declare a closures key (`"closed"`, `"closed_names"`, `"closures_file"`, `"closures_key"`,
+  `"closures_names_key"`, and the closures-file format's `"schema"`, `"closed_paths"`, `"closed_paths_complete"`,
+  `"known_closed_paths"`, `"known_open_paths_near"`), compared by Unicode case folding, as its own: such a plug-in is
+  not added. Before, one declaring `"closed"` was handed the list as a setting.
+- The run-record reader (and the Work runs reader through it) reads with the strict view: while the closures are
+  unknown, or are a closures file in the closures-file format not marked complete (`closed_paths_complete` not true,
+  or `closed_paths` null), every path is closed to it, so it reads no run folder and no subject; 1.3.0 read a schema
+  file's list as complete. With no closures named, or closures that are known, it reads as in 1.3.0.
+- **These files now close more than in 1.3.0 (never less):** a sources file with `"closed_names"` and no `"closed"`
+  list or closures file (still none named for a plug-in, as in 1.3.0; its names now close what they name for the
+  built-in readers and the strict view, which 1.3.0 left open); `"closed_names"` beside a `"closed"` list or a
+  closures file (known as before, the names closing more); a sources file with
+  `"closed_names": null` beside its list (`{"closed": [...], "closed_names": null}`); a sources file naming
+  `"closures_names_key"` with no closures file (`{"closed": [], "closures_names_key": "x"}`); a `closures_file` with
+  `"closures_names_key"` naming a closures file that does not say the schema (names without the schema are unknown);
+  a closures file holding `"closed_names"` that says no schema, with or without `"closures_names_key"`; a closures file
+  whose schema is another version of the format (`estate.closures/1`); an entry on a list in a form that cannot be
+  compared (`{"closed": ["\\\\server\\share\\x"]}`, or `\\.\C:\x`), which closes every path in every view with the
+  closures still known, and is said on the page; and a closures file in the closures-file format not marked complete (unknown to plug-ins and the strict view, its
+  list a lower bound for the built-in readers, as 1.3.0 read it). Each is unknown, or reads more as closed, with the
+  reason said.
+
+### Fixed
+- **A settings read refused on a busy machine no longer costs you your settings.** On Windows a read can be refused while the file is being swapped in. After 150 ms of that the settings stood at their defaults, and the next save wrote those defaults over the real ones. A refused read is now tried for about a second, and defaults that stood in for a read that was refused are never saved; a damaged file is still replaced, with a copy kept.
+- **A writer in a tight loop no longer shuts another out of the store's lock.** A writer waiting for it now goes
+  before a holder that asks again, so a tight loop can no longer keep another out past its 10 s timeout (seen in CI).
+  With two writers the waiter goes next; with three or more the gate is first-come, not a queue. A folder, a link, a
+  junction or a second hard link at the lock's name is refused, at the work store's lock and gate and at the inbox's
+  and the feed's locks too (a cloud placeholder of a plain file is a plain file); the card hook says, as one line,
+  when the feed's lock was refused for what stands at its name, and stays silent when the feed was only busy. The
+  wait is a turnstile of two OS locks (a second file, `<lock>.gate`), so there is still no stale-lock rule.
+- **The work writer's seat checks fail closed.** When a seats file is configured but cannot be used (unreadable, no
+  table of seats, a `"seats"` that is not a path, a misspelt key, `SEMANTEXT_SOURCES` naming nothing), a reviewer, a
+  to_seat and an assignment are refused with the reason, never skipped; a wrong base drops the homes, never the seats.
+  The one mode without seat checks, no seats configured at all, is said on the Work place and in `semantext work
+  list`.
+- **A problem's text keeps its reason.** Texts over 300 characters were cut at the end, losing the reason after a long
+  path. Now the long words are shortened in the middle first, then the span of paths, each cut keeping a short hash of
+  what it cut; only a text with no path, or whose start or reason alone is over the cap, has its end cut, with an
+  ellipsis (and then the reason keeps its start).
+- **No home folder is a problem, never a failure.** Where the system gives no home (and no Semantext home is set), the
+  Places reader failed, and every route of the page raised; now the closures are unknown and said so, and every
+  built-in route answers with "no home folder" as a problem.
+- A plug-in given a `ReadContext` whose fields (or whose names' fields) are set after it was made finds every path
+  closed: it is sealed once, when made, and never sealed anew. Each plug-in is given its own sealed copy, so one
+  plug-in's change to its context never reaches another's. The seal stops accidents, not a hostile plug-in running in
+  the same process (SECURITY.md says why).
+- The Plug-ins place answered with an error where a Semantext home was set and the system gave no home folder; it
+  answers now, as every route does.
+- The key `"closures_key"` names is found one way for reading the closures and for reserving it from plug-ins
+  (`closed.keys_named`): exactly as written, reserved in lower case as written and trimmed.
+- The Plug-ins tab offered a settings form on a sources file that is also the closures file, where it proposes
+  nothing; it offers none there now, and says why.
+- The page's Plug-ins tab and `semantext plugins enable` said "not named" for closures that were named and
+  incomplete, or named and unreadable; they say the true state now.
+- The Plug-ins tab's files (the change log, the rotated log, the last-changes file, the proposals) are no longer
+  written while one has a second name on disk (a hard link), nor through a link or at a folder.
+
+### Documented
+- SECURITY.md now says which built-in readers apply the closures, and which do not (the places reader's `.identity`
+  and `MASTER.md` title reads, the gates, the gaming check, the rules reader, the Record reader
+  and the git-index evidence policy), as was already so in 1.3.0; and that a plug-in is handed the closed paths and
+  names in its ReadContext. It also says which view of the closures each reader uses (plug-in, strict, lower bound).
+- `docs/plugin-api.md` now describes 1.4: closed names and `ReadContext.names`, the complete-list rule for plug-ins,
+  the reserved keys, the `semantext-plugin.json` declaration, and the Plug-ins tab (the page proposes, the console
+  applies).
+- The security floor holds eleven more promises: the Plug-ins tab only proposes and turns off; closures by name fail
+  closed; a partial list of closed paths is never read as complete by a plug-in; a root that holds a closed path is
+  not walked; nothing 1.3.0 read changes meaning, with one deliberate exception; every spelling of a closed place is closed; answering is the person's act; the page answers only itself; MCP answers nothing; an agent touches only its own requests; the readers named refuse a hard link.
+
 ## [1.3.0] - 2026-10-28
 
 Two new things, Work and the v2 page, and the first plug-in API. Outside plug-ins stay off: none reads anything until

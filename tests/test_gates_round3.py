@@ -19,11 +19,18 @@ def test_config_f1_show_writes_any_lone_surrogate_as_a_replacement():
     assert config.show("C:\\plain\\path") == "C:/plain/path"
 
 
-def test_config_f1_a_seats_root_holding_a_lone_surrogate_is_a_missing_root(tmp_path):
+def test_config_f1_a_seats_root_holding_a_lone_surrogate_is_a_problem_never_an_exception(tmp_path):
+    # Since 1.4 the seats file is read one way by every reader and the card hook (pathrule.read_seats, as the person's
+    # inbox parses it): a lone surrogate written as an escape refuses the whole file, said as a problem, never read.
+    # Before, this reader kept the root as a missing root, and later as a bad path.
     data = '{"roots": [{"name": "r", "kind": "repo", "path": "' + (tmp_path / "nowhere").as_posix() + '/caf\\ud800"}], ' \
            '"seats": {}}'
     assert "\ud800" in json.loads(data)["roots"][0]["path"]
     path = touch(tmp_path / "roots.json", data)
     out = load({"seats": str(path)}, world(tmp_path))
-    assert [p["kind"] for p in out["problems"]] == ["missing-root"]
-    assert out["repos"][0]["present"] is False and out["repos"][0]["root"].endswith("/caf\ufffd")
+    assert [p["kind"] for p in out["problems"]] == ["bad-json"] and out["repos"] == []
+    json.dumps(out, ensure_ascii=False).encode("utf-8")   # the answer holds no lone surrogate: it can be sent
+    # must pass: the same root without the surrogate is read, a missing root
+    path = touch(tmp_path / "roots.json", data.replace("\\ud800", ""))
+    out = load({"seats": str(path)}, world(tmp_path))
+    assert [p["kind"] for p in out["problems"]] == ["missing-root"] and out["repos"][0]["present"] is False

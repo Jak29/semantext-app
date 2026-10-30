@@ -145,6 +145,24 @@ def test_while_the_closures_are_not_known_no_verdicts_file_is_read_and_it_says_w
     assert judged(VERDICT, cfg, ctx=closed.ReadContext("", ()))[0] == "met"           # must pass: named, none closed
 
 
+def test_an_incomplete_list_of_closed_paths_is_said_as_such(tmp_path, monkeypatch):   # must refuse, truly said
+    cfg = files(tmp_path, [row()])
+    fmt = tmp_path / "format.json"
+    fmt.write_text(json.dumps({"schema": "estate.closures/0", "closed_names": [], "closed_paths": None,
+                               "closed_paths_complete": False,
+                               "known_closed_paths": [str(tmp_path / "shut")]}), encoding="utf-8")
+    sources = tmp_path / "sources-naming-it.json"
+    sources.write_text(json.dumps({"closures_file": str(fmt), "closures_key": "closed_paths"}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    state, why, _ = judged(VERDICT, cfg, ctx=closed.context(tmp_path))
+    assert state == "unknown" and "incomplete" in why and "not named" not in why, why
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"closed": ["relative"]}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(bad))
+    state, why, _ = judged(VERDICT, cfg, ctx=closed.context(tmp_path))
+    assert state == "unknown" and "cannot be read" in why and "not named" not in why, why
+
+
 # ---- whose evidence: a maker or an originator the evidence does not name is unknown, never independent ----------
 @pytest.mark.parametrize("by", [None, ""], ids=["no-by", "empty-by"])
 def test_a_run_record_that_names_no_maker_is_unknown_never_independent(world, by):

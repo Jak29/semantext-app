@@ -165,11 +165,15 @@ def sender_name(prompt) -> str:
 SESSION_RE = re.compile(r"[A-Za-z0-9_-]{1,64}", re.ASCII)   # the session names the work kernel's reader accepts
 
 
-def keep_turn(root, event: dict, prompt, transcript, own: bool, basis: str) -> None:
+def keep_turn(root, event: dict, prompt, transcript, own: bool, basis: str) -> str | None:
     """The session's newest turn, for the work kernel (PM-DESIGN, follow-ups to A1, (a)): paths.turns_dir/<session>.json
     holds whose words they were, on what basis, when, and where the turn's own record lies in the transcript (path,
     byte offset, length). The words themselves are not copied: they stay in the transcript, and the kernel reads them
-    from the span. One small file per session, replaced each turn. Never raises, never blocks the prompt."""
+    from the span. One small file per session, replaced each turn. Never raises, never blocks the prompt.
+
+    Returns None, or the fault in one line when the record could not be kept, for the hook to say: without it the
+    person's acts in this session read "unverified". On Windows a Semantext home whose path is long can pass the
+    260-character limit for the record's file (and the temporary file it is written through), and the write fails."""
     try:
         session = event.get("session_id")
         if not isinstance(session, str) or not SESSION_RE.fullmatch(session) or not isinstance(transcript, str):
@@ -186,8 +190,11 @@ def keep_turn(root, event: dict, prompt, transcript, own: bool, basis: str) -> N
         folder = turns_dir(root)
         folder.mkdir(parents=True, exist_ok=True)
         write_atomic(folder / f"{session}.json", json.dumps(rec))
-    except Exception:  # noqa: BLE001  the turn record is for the work kernel; the card goes out whatever happens here
-        pass
+    except Exception as e:  # noqa: BLE001  the turn record is for the work kernel; the card goes out whatever happens
+        why = getattr(e, "strerror", None) or type(e).__name__
+        return (f"this turn's record was not kept ({why}), so an act typed in this session reads unverified; on "
+                f"Windows a long Semantext home path can pass the 260-character limit")
+    return None
 
 
 def stamp_utc() -> str:
@@ -218,7 +225,7 @@ def run(event_text: str, store: Store | None = None) -> str:
     except Exception:  # noqa: BLE001  the evidence could not be read: the short card for this one prompt, and the
         kind, basis = NOTICE, "error"            # feed says why (audit of f342d88, protection finding 2)
     own = kind == USER
-    keep_turn(store.root, event, prompt, transcript, own, basis)
+    turn_fault = keep_turn(store.root, event, prompt, transcript, own, basis)   # said after the card, if any
     # Kept as heard only when the tool's own record says the user typed it, the bar a typed answer has: the text
     # alone can be fooled (a relay behind a zero-width space, or in lower case), and nothing marked is not a yes.
     if own and basis == "transcript" and state.get("hear_prompts") and isinstance(prompt, str) and prompt.strip():
@@ -254,12 +261,17 @@ def run(event_text: str, store: Store | None = None) -> str:
     if state.get("feed", True):
         try:
             asked = [r for r in inbox.requests().values() if mine(r, who)]
-            Feed(store.root).add(record(who, WORDS[kind], basis, served,
-                                        [r["id"] for r in asked if r["status"] == "answered" and not r["read"]],
-                                        [r["id"] for r in asked if r["status"] == "open"], sender_name(prompt),
-                                        noticed(store, name, prompt, recorded) if own else []))
+            feed = Feed(store.root)
+            feed.add(record(who, WORDS[kind], basis, served,
+                            [r["id"] for r in asked if r["status"] == "answered" and not r["read"]],
+                            [r["id"] for r in asked if r["status"] == "open"], sender_name(prompt),
+                            noticed(store, name, prompt, recorded) if own else []))
+            if feed.problem:   # a fault, not a busy moment: said once, as one line after the card
+                out = f"{out}\n\nSemantext: {feed.problem}" if out else f"Semantext: {feed.problem}"
         except Exception:  # noqa: BLE001  the feed is a record of the work, never a reason for a prompt to fail
             pass
+    if turn_fault:   # this turn's record was not kept: said each time, since each such turn's act reads unverified
+        out = f"{out}\n\nSemantext: {turn_fault}" if out else f"Semantext: {turn_fault}"
     return out
 
 

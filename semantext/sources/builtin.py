@@ -1,6 +1,6 @@
-"""The built-in sources and checker, registered as plug-ins exactly as an outside one is (ECOSYSTEM.md: the built-ins
-are plug-ins too, so the way in is proven by use). The built-in places are added beside them in view.py, where they
-are written.
+"""The built-in sources and checker, registered as plug-ins exactly as an outside one is (docs/plugin-api.md,
+"Kinds": the built-ins are plug-ins too, so the way in is proven by use). The built-in places are added beside them
+in view.py, where they are written.
 
 Each source names the keys of the sources file it reads, and the ones it cannot be on without; the keys the config
 keeps are the frame's own and every built-in source's, so a new reader adds its keys here and nowhere else. A reader's

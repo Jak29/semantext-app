@@ -313,6 +313,24 @@ def test_a11_partner_a_plain_store_is_written(tmp_path):
     assert new(w, "alpha") == f"W-{P}-1" and w.state()["intact"]
 
 
+@pytest.mark.parametrize("name", [".lock", ".lock.gate"])
+def test_a11_a_hard_link_or_a_folder_at_the_logs_lock_or_its_gate_refuses_every_write(tmp_path, name):   # refuse
+    w = make(tmp_path / "home")
+    first = new(w, "alpha")
+    at = w.path.with_name(w.path.name + name)
+    elsewhere = tmp_path / "someone-elses.txt"
+    elsewhere.write_bytes(b"not a lock")
+    at.unlink(missing_ok=True)   # the plain one the first write left
+    os.link(elsewhere, at)   # a second name for a file outside the store: the lock would be taken on it
+    refused("CONFLICT", new, w, "alpha")
+    at.unlink()
+    at.mkdir()               # a folder squatting at the name: refused, never a PermissionError
+    refused("CONFLICT", new, w, "alpha")
+    assert [i["id"] for i in w.state()["items"].values()] == [first] and elsewhere.read_bytes() == b"not a lock"
+    at.rmdir()               # must pass: the name free again, the next write goes through
+    assert new(w, "alpha") == f"W-{P}-2"
+
+
 # ---- void belongs to the owner, and every way into review counts as reaching doing (review round 3, G6 4 and 5) ----
 def test_void_is_the_owners_after_the_person_reassigns_the_item(w):
     ident = new(w, "alpha")

@@ -375,3 +375,23 @@ tr.not-applied td { color: var(--text-3); }
 [data-space~="pad-0"] { padding: 0 !important; }
 [data-space~="contents"] { display: contents !important; }
 [data-space~="inherit-color"] { color: inherit !important; }
+
+/* ---------------- Plug-ins: each one, its settings, and the change log ---------------- */
+.plugins { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 16px 0 24px; }
+.plugin { display: grid; gap: 6px; justify-items: start; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+.plugin > * { max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.plugin-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; }
+.plugin-head h3 { font-size: 15px; font-weight: 600; }
+.trust { font-size: 12px; color: var(--text-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 0 8px; }
+.trust.is-on { color: var(--accent-ink); border-color: var(--accent); }
+.preads { margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-2); }
+.pfield { display: grid; gap: 4px; width: min(100%, 640px); }
+.pfield label { font-size: 14px; }
+.pfield textarea.input { height: auto; padding: 8px 12px; font: 12px/1.5 var(--mono); resize: vertical; }
+.pcmd { display: grid; gap: 2px; width: min(100%, 640px); }
+.pcmd code { display: block; padding: 6px 10px; border-radius: 6px; background: var(--surface); overflow-wrap: anywhere; user-select: all; }
+.psaid { display: grid; gap: 6px; margin: 12px 0; padding: 10px 14px; border: 1px solid var(--line-2); border-radius: 8px; }
+.psaid.bad { border-color: var(--danger); }
+.psaid.acts { border-color: var(--accent); }
+.plog { display: grid; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.pchange { display: grid; gap: 2px; justify-items: start; padding-top: 8px; border-top: 1px solid var(--line); }

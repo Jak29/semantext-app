@@ -52,6 +52,15 @@ It does nothing else unless you switch on `hear-prompts` (below). It keeps three
 
 It makes no network calls.
 
+Two more lines it may print after the card, each a fault it says rather than hides:
+
+- `Semantext: this turn's record was not kept (...)`. For Work, the hook keeps where each of your turns lies in the
+  session's transcript, so an act you type is checked against your own words. When that record cannot be written,
+  an act typed in that session reads "unverified". On Windows this happens when your Semantext home's path is long
+  enough that the record's file passes the 260-character limit; a shorter home path cures it.
+- `Semantext: the feed was not kept: ...`, when the feed's lock is refused for what stands at its name, or the system
+  refuses it. It is said once for each fault, not on every prompt; a feed that is only busy is not said at all.
+
 ## Hearing prompts (off unless you switch it on)
 
 ```bash

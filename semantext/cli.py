@@ -879,7 +879,7 @@ def cmd_plugins(store: Store, args) -> int:
     # Imported here, not at the top: `semantext hook` runs through this module, and the hook loads no plug-in, nor the
     # registry (the ecosystem review, section 1; tests/test_registry.py pins the hook's imports).
     from . import plugincmd
-    return plugincmd.run(store.root, args.action, args.name, _out)
+    return plugincmd.run(store.root, args.action, args.name, _out, reviewed_full=args.reviewed_full, full=args.full)
 
 
 def cmd_doctor(store: Store, args) -> int:
@@ -1113,10 +1113,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("label", nargs="*", help="name: the display name (none removes it)")
     sp.add_argument("--folder", help="bind, unbind: the folder (default: this one)")
     sp = add("plugins", cmd_plugins, "list plug-ins, where each came from and whether it is on; turn one on (you, at "
-                                     "your own console, typing its name) or off")
-    sp.add_argument("action", nargs="?", choices=("list", "enable", "disable", "check"), default="list",
-                    help="check: the conformance kits (not built yet)")
-    sp.add_argument("name", nargs="?", help="enable, disable: the plug-in, as <kind>.<name>")
+                                     "your own console, typing its name) or off; confirm, to apply a settings "
+                                     "change the page proposed")
+    sp.add_argument("action", nargs="?", choices=("list", "enable", "disable", "confirm", "show", "check"),
+                    default="list", help="show: a proposal, or what enabling a plug-in would show, in full; check: the "
+                                         "conformance kits (not built yet)")
+    sp.add_argument("name", nargs="?", help="enable, disable: the plug-in, as <kind>.<name>; confirm: the proposal's "
+                                            "number, as the page shows it; show: either")
+    sp.add_argument("--full", action="store_true", help="show: everything, exactly, ending with its review code")
+    sp.add_argument("--reviewed-full", metavar="CODE",
+                    help="enable, confirm: the review code `show --full` printed, after you read it all there")
     sp = add("doctor", cmd_doctor, "check the setup (exits 1 if something is broken)")
     sp.add_argument("--settings", help="the Claude Code settings file to check (default: ~/.claude/settings.json)")
     from .work.cli import register as add_work   # here: the work package is only loaded by the command line
@@ -1145,9 +1151,20 @@ def main(argv: list[str] | None = None) -> int:
     except (Refused, OSError, ValueError) as e:
         # A refusal, or a file that could not be read or written (a home that is a file, a damaged state.json):
         # one line, never a traceback.
-        print(f"semantext: {e}", file=sys.stderr)
+        print("semantext: " + _said(args, e, str(e)), file=sys.stderr)
         return 1
     except Exception as e:  # noqa: BLE001  the last resort: still one line, with what failed, never a traceback
-        print(f"semantext: an unexpected {type(e).__name__}: {e}. `semantext doctor` checks the files; "
-              f"please report it if it persists", file=sys.stderr)
+        print("semantext: " + _said(args, e, f"an unexpected {type(e).__name__}: {e}. `semantext doctor` checks the "
+                                             f"files; please report it if it persists"), file=sys.stderr)
         return 1
+
+
+def _said(args, e: BaseException, text: str) -> str:
+    """An error's words as printed. For `semantext plugins`, through the one renderer of its console (plugincmd.shown),
+    whatever raised it and wherever; a refusal plugincmd.run has rendered already (its text a Rendered) is printed as
+    it is once checked, never rendered twice."""
+    if getattr(args, "command", None) != "plugins":
+        return text
+    from . import plugincmd
+    given = e.args[0] if len(e.args) == 1 else None
+    return plugincmd.shown(given if given is not None and str(given) == text else text)

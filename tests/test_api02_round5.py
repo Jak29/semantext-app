@@ -99,9 +99,9 @@ def test_enable_names_the_package_a_built_in_named_plug_in_comes_from(home, offe
     offered("source.foo", _source("foo", _Seen()), dist="built-in", on=False)
     said = []
     plugincmd._enable("source.foo", home, said.append, ask=lambda _: "source.foo")
-    first = said[0]
-    assert "installed package" in first and "built-in 1.0" in first
-    assert "from built-in 1.0" not in first
+    first, second = said[0], said[1]   # round 8: the package and its version each under its own label
+    assert "installed package" in first and second == "  package: built-in  version: 1.0"
+    assert "from built-in 1.0" not in first + second
 
 
 def test_list_never_shows_a_package_named_built_in_as_on_for_a_built_ins_name(home, offered):   # must refuse

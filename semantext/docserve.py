@@ -1,7 +1,7 @@
 """The serve hook by row: one document of an enabled outside place, at /api/v2/doc/<place>/<row_id> (api 0.2).
 
-The first outside plug-in needed to show its SVGs and had no route (its REQUESTS.md, item 1; ECOSYSTEM.md, "semantext.api
-0.2"). A place may declare
+The first outside plug-in needed to show its SVGs and had no route (its REQUESTS.md, item 1; docs/plugin-api.md,
+"Documents by row: the serve hook"). A place may declare
 
     resolve(row_id) -> path | (path, start, end) | None
                                        the file behind one row of its last read, or a span of it (the bytes from start
@@ -172,7 +172,7 @@ def serve(place: str, row_id: str, home=None) -> tuple[bytes, str]:
         raise Refused(503, registry.not_without_ctx("resolve", why))
     try:
         args = (row_id, ctx) if shape else (row_id,)
-        path = outside.run(obj.resolve, *args, owner=owner, post=_plain_found)   # exact built-in types, in the worker
+        path = outside.run(obj.resolve, *args, owner=owner, post=_plain_found, call="resolve")   # exact built-in types, in the worker
     except Exception as e:  # noqa: BLE001  a place that fails or is late here costs this document only
         raise Refused(404, f"the place could not find the row ({type(e).__name__})") from None
     path, start, end = _span(path)
@@ -186,7 +186,7 @@ def serve(place: str, row_id: str, home=None) -> tuple[bytes, str]:
         raise Refused(403, "the document is not inside a named root, or it is in a closed place")
     data = _read_once(closed._real(path) or path, start, end)
     try:
-        trouble = outside.run(obj.check_bytes, data, owner=owner, post=_plain_trouble)   # PASSED or an exact str
+        trouble = outside.run(obj.check_bytes, data, owner=owner, post=_plain_trouble, call="check_bytes")   # PASSED or an exact str
     except Exception as e:  # noqa: BLE001  a check that fails or is late is a check that did not pass
         trouble = f"its check stopped ({type(e).__name__})"
     if trouble is not PASSED:   # fail closed: only the explicit pass passes, never None or anything else

@@ -45,9 +45,9 @@ from pathlib import Path, PurePath
 from typing import NamedTuple
 
 from .. import jsonread
-from . import MAX_LINE, problem, under
+from ..pathrule import SeatsUnread, read_seats
+from . import MAX_LINE, base_of, home_base, problem, under
 
-MAX_SEATS = 4 * 1024 * 1024   # a seats file over this is a mistake, not a list of seats
 MAX_IDENTITY = 1024 * 1024    # likewise for an .identity file
 MAX_MAP = 64 * 1024 * 1024    # the map is large; this only stops a file that is not one
 DOC_CAP = 2 * 1024 * 1024     # a document over this is not read
@@ -169,10 +169,8 @@ def _unfit(text: str) -> bool:
 
 def _under(base: str | None, rel, source, what: str, problems: list) -> str | None:
     """A folder as the seats file writes it, in full: the base joined with a path that stays under it (sources.under,
-    the one join the gates reader makes too). None, with the reason, when it cannot be."""
-    if isinstance(rel, str) and rel.strip() and _unfit(rel):
-        problems.append(problem(source, None, "bad-path", f"{what}: a path may not hold a control character"))
-        return None
+    the one join the gates and inbox readers make too, a control character's refusal included). None, with the
+    reason, when it cannot be."""
     full, why = under(base, rel)
     if full is None:
         problems.append(problem(source, None, "bad-path", f"{what} {why}" if why == "has no path" else f"{what}: {why}"))
@@ -306,7 +304,7 @@ def _agents(seats, base: str | None, source, seats_key: str, group: str | None, 
         if seat.get("home") is None:
             problems.append(problem(source, None, "no-home", f"{who} has no home folder, so it has no environment and "
                                     f"no project of its own"))
-        else:
+        elif base:   # the home base (_home_base): with none, no home is read, said once by the caller
             home = _under(base, seat["home"], source, f"{who}'s home", problems)
         if home and not os.path.isdir(home):
             problems.append(problem(home, None, "missing-folder", f"{who}'s home folder does not exist"))
@@ -440,13 +438,40 @@ def _project(name: str, root: str, path: str, agents: list[dict], by_email: dict
             "identity": info}
 
 
-def _projects(roots, agents: list[dict], by_email: dict, base: str | None, source, problems: list) -> list[dict]:
+_NOT_CHECKED = object()   # the closures were not read for this call: no root is refused by them
+
+
+def _shut(cfg: dict):
+    """The person's closures as the built-in readers read them, beside the sources file this config came from."""
+    from .closed import closures   # here: closed reads the sources file, and only a walk of the roots needs it
+    f = cfg.get("_file") if isinstance(cfg, dict) else None
+    return closures(Path(f).parent if isinstance(f, str) and f else None)
+
+
+def _refused(name: str, path: str, shut, source, problems: list) -> bool:
+    """Whether a root is refused: it is, or holds, a closed path, or is closed itself (closed.contains_closed). A walk
+    from it would enter the closed place, and every file under it is read without the closures being asked."""
+    if shut is _NOT_CHECKED:
+        return False
+    from .closed import contains_closed
+    if not contains_closed(path, shut):
+        return False
+    problems.append(problem(source, None, "contains-closed", f"the root {name} ({path}) is, or holds, a closed place, "
+                                                             f"so it is not read"))
+    return True
+
+
+def _projects(roots, agents: list[dict], by_email: dict, base: str | None, source, problems: list,
+              shut=_NOT_CHECKED) -> list[dict]:
     """One project per root of kind "repo"; a "{home}" root gives one per agent that has a home. A folder listed twice
-    is one project, the first listing standing and the problem naming both listings."""
+    is one project, the first listing standing and the problem naming both listings. A root that is, or holds, a
+    closed place is refused (_refused)."""
     out: list[dict] = []
     seen: dict[str, tuple[str, bool]] = {}   # the folder -> how it was first listed, and whether as a home
 
     def add(name: str, root: str, path: str, listing: str, as_home: bool) -> None:
+        if _refused(name, path, shut, source, problems):
+            return
         key = _key(path) or path
         if key in seen:
             first, first_as_home = seen[key]
@@ -724,20 +749,41 @@ def _map(path, problems: list) -> dict:
 
 
 # ---- the source -----------------------------------------------------------------------------------------------
+def _seats_file(path, problems: list):
+    """The seats file's value, read as every reader and the card hook read it (pathrule.read_seats), or None with the
+    reason in problems, of the kind it was (too-big, unreadable, encoding, not-json)."""
+    try:
+        return read_seats(path)   # the path resolved as every reader resolves it (pathrule.seats_path)
+    except SeatsUnread as e:
+        problems.append(problem(_expand(path), None, e.kind, f"the seats file: {e}"))
+        return None
+
+
 def _base(value, source, problems: list) -> str | None:
-    """The seats file's base folder as a full path, or None (said) when what it holds is not one."""
+    """The seats file's base folder as a full path, or None (said) when what it holds is not one: judged by
+    sources.base_of, the one judgement of a base the gates and inbox readers make too."""
     if value is None:
         return None
-    full = _expand(value.strip()) if isinstance(value, str) and value.strip() else None
-    if full is None or _unfit(str(full)) or not full.is_absolute():
-        problems.append(problem(source, None, "shape", "'base' should be a full folder path"))
-        return None
-    return str(full)
+    full, why = base_of(value)
+    if full is None:
+        problems.append(problem(source, None, "shape", f"'base' should be a full folder path ({why})"))
+    return full
 
 
-def _seats(path, key: str, group: str | None, out: dict, problems: list) -> None:
+def _home_base(value, base, seats, source, problems: list) -> str | None:
+    """The base the seats' homes are joined to (pathrule.home_base, as every reader and the card hook judge it): None
+    when the seats file gives none, or one that is not an existing folder, and then no home is read, said once (a base
+    refused by _base is said there already)."""
+    full, why = home_base(value)
+    homes = isinstance(seats, dict) and any(isinstance(s, dict) and s.get("home") is not None for s in seats.values())
+    if full is None and homes and (value is None or base is not None):
+        problems.append(problem(source, None, "no-base", why))
+    return full
+
+
+def _seats(path, key: str, group: str | None, out: dict, problems: list, shut=_NOT_CHECKED) -> None:
     """Fill agents, projects and documents from the seats file, whose path as compared is `key`."""
-    data = _json(path, MAX_SEATS, problems, "the seats file", unique=True)
+    data = _seats_file(path, problems)
     if data is None:
         return
     source = _expand(path)
@@ -746,7 +792,8 @@ def _seats(path, key: str, group: str | None, out: dict, problems: list) -> None
         return
     base = _base(data.get("base"), source, problems)
     out["base"] = base
-    agents = _agents(data["seats"], base, source, key, group, problems)
+    agents = _agents(data["seats"], _home_base(data.get("base"), base, data["seats"], source, problems), source, key,
+                     group, problems)
     by_email = _emails(agents, source, problems)
     _shared_homes(agents, source, problems)
     roots = data.get("roots")
@@ -754,7 +801,7 @@ def _seats(path, key: str, group: str | None, out: dict, problems: list) -> None
         problems.append(problem(source, None, "shape", "'roots' should be a list of folders"))
         roots = []
     out["agents"] = agents
-    out["projects"] = _projects(roots or [], agents, by_email, base, source, problems)
+    out["projects"] = _projects(roots or [], agents, by_email, base, source, problems, shut)
     docs = [d for a in agents if a["home"] for d in _shelf(a, problems)]
     out["documents"] = sorted(docs, key=lambda d: (d["agent"], d["slug"]))
     out["documents"].sort(key=lambda d: d["updated"], reverse=True)
@@ -769,7 +816,7 @@ def named_roots(cfg: dict) -> tuple[list[dict], list[dict]]:
     seats = _setting(cfg if isinstance(cfg, dict) else {}, "seats", problems)
     if not seats:
         return [], problems
-    data = _json(seats, MAX_SEATS, problems, "the seats file", unique=True)
+    data = _seats_file(seats, problems)
     if not isinstance(data, dict):
         return [], problems
     source = _expand(seats)
@@ -781,6 +828,9 @@ def named_roots(cfg: dict) -> tuple[list[dict], list[dict]]:
         return [], problems
     agents = None
     out: list[dict] = []
+    # Every root is given, one that holds a closed place too: what is read through these rows (the serve hook,
+    # api.inside_roots, a plug-in) asks the closures of every path, so the closed place is pruned from that walk. The
+    # Places reader's own walk does not ask, and refuses such a root (_projects).
     for n, root in enumerate(roots, 1):
         if not (isinstance(root, dict) and isinstance(root.get("name"), str) and isinstance(root.get("path"), str)):
             problems.append(problem(source, None, "bad-root", f"root {n} needs a name and a path"))
@@ -789,8 +839,8 @@ def named_roots(cfg: dict) -> tuple[list[dict], list[dict]]:
         if root["path"].strip() == "{home}":
             if agents is None:
                 table = data.get("seats") if isinstance(data.get("seats"), dict) else {}
-                agents = _agents(table, base, source, _key(source) or str(source), _setting(cfg, "group", problems),
-                                 problems)
+                agents = _agents(table, _home_base(data.get("base"), base, table, source, problems), source,
+                                 _key(source) or str(source), _setting(cfg, "group", problems), problems)
             out += [{"name": root["name"], "path": a["home"], "kind": kind} for a in agents if a["home"]]
             continue
         path = _under(base, root["path"], source, f"the root {root['name']}", problems)
@@ -835,7 +885,7 @@ def load(cfg: dict) -> dict:
     if mapfile:
         out["map"] = _map(mapfile, problems)
     if seats:
-        _seats(seats, key, group or None, out, problems)
+        _seats(seats, key, group or None, out, problems, _shut(cfg))
     out["levels"] = _levels(out["name"], key, out["agents"], out["projects"], out["documents"],
                             out["map"].get("measured"), seats, problems)
     return out

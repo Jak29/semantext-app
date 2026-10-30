@@ -348,14 +348,16 @@ def test_a_place_answer_is_made_into_json_in_the_worker(home, offered, monkeypat
 @pytest.mark.parametrize("ch", ["‮", "⁦", "‎", "​", " ", " ", "\U000e0041", "﻿",
                                 "\ud800"])
 def test_a_display_changing_character_is_not_printed(ch):   # must refuse
-    from semantext.plugincmd import shown
-    assert shown(f"name{ch}gpj.exe") == "namegpj.exe"
+    from semantext.plugincmd import shown   # round 7: printed as its escape, never taken out (nor shown as itself)
+    from semantext.pluginpage import _escape
+    assert shown(f"name{ch}gpj.exe") == f"name{_escape(ch)}gpj.exe"
 
 
-def test_plain_text_in_any_script_is_printed_as_it_is():   # must pass
+def test_plain_ascii_is_printed_as_it_is_and_other_scripts_as_their_escapes():   # must pass
     from semantext.plugincmd import shown
-    for text in ("semantext-board 0.1", "Ó Fíorainn", "日本語のパッケージ", "пакет", "a b\tc"):
-        assert shown(text) == text.replace("\t", "")
+    assert shown("semantext-board 0.1") == "semantext-board 0.1"
+    assert shown("Ó Fíorainn") == "\\u00d3 F\\u00edorainn" and shown("пакет") == "\\u043f\\u0430\\u043a\\u0435\\u0442"
+    assert shown("a b\tc") == "a b\\u0009c"
 
 # ---- protection 9. a key given twice is refused in every file the kernel keeps settings in -----------------------
 def test_unique_refuses_a_key_twice_at_any_depth_and_plain_loads_does_not():
@@ -400,7 +402,9 @@ def test_a_sources_file_with_each_key_once_is_read(tmp_path, monkeypatch):   # m
     from semantext.sources import load_config
     cfg = _sources(tmp_path, monkeypatch, json.dumps({"closed": [], "seats": "a.json", "tickets": "t"}))
     assert api.closures_known() and not api.is_closed_place(tmp_path / "x.txt")
-    assert load_config(cfg)["seats"] == "a.json"
+    # read, and a relative seats path is the sources file's own neighbour, as every reader and the hook resolve it
+    from pathlib import Path
+    assert load_config(cfg)["seats"] == str(Path(cfg).parent / "a.json")
 
 
 def test_a_plugin_list_that_names_one_twice_turns_nothing_on(home):   # must refuse

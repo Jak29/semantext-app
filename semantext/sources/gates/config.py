@@ -14,7 +14,8 @@ from typing import Mapping, NamedTuple
 from .. import problem
 from .values import WINDOWS, git_absolute, include_condition, parse_bool, parse_config, sha1_only_problem, value_problem
 
-MAX_FILE = 1_000_000     # a settings file, a seats file or an .identity over this is a problem, never read
+MAX_FILE = 1_000_000     # a settings file or an .identity over this is a problem, never read (the seats file has its
+#                          own cap, 4 MB, the one every reader reads it by: pathrule.MAX_SEATS)
 MAX_INCLUDES = 10        # how deep git lets includes nest (measured: ten files deep work, eleven are refused)
 MAX_VISITS = 500         # files opened while following the includes of one settings file
 # Variables that change where git finds its settings. They are named, not evaluated.

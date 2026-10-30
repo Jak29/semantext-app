@@ -245,7 +245,7 @@ def test_an_escape_in_a_package_name_is_not_printed(home, offered, capsys):   # 
     turn_on(home, "source.tickets", dist=Dist("other", "9"))   # a mismatch, so a problem line is printed too
     assert cli.main(["--home", str(home), "plugins"]) == 0
     out = capsys.readouterr().out
-    assert "evilpkg 1" in out
+    assert "evil\\u001b[2J\\u001b]0;owned\\u0007pkg\\u000d\\u000a 1\\u001b[31m" in out   # seen, as its escapes
     assert not any(c in out for c in "\x1b\x07\r\x9b")
 
 

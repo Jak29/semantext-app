@@ -80,26 +80,63 @@ def valid(r) -> bool:
 
 
 class Feed:
+    BUSY = "the feed is busy"
+
     def __init__(self, root: Path):
         self.path = Path(root) / "feed.jsonl"
         self.lock_path = Path(root) / "feed.lock"
+        self.fault_path = Path(root) / "feed.fault"   # the last fault said, so the same one is said once, not per prompt
+        self.problem: str | None = None   # a fault to say now: new since the last one said, never only a busy feed
 
     def add(self, record: dict) -> bool:
         """Keep one record, scrubbed. Refused unless it is a feed record (see valid). Best effort otherwise: when the
-        file is busy this record is skipped (False), so a prompt never waits on the feed."""
+        file is busy this record is skipped (False), so a prompt never waits on the feed. When the record cannot be
+        kept for any other reason (the lock refused for what stands at its name, or the system refusing the lock or
+        the file), that is a fault, not a busy moment: the record is skipped too (False), and the fault is put in
+        `problem` for the caller to say, once: the same fault again is not said again (feed.fault keeps the last one
+        said), and once a record is kept the marker is cleared, so the next fault is said."""
         record = scrub(record)
         if not valid(record):
             raise Refused("not a feed record: the feed keeps exactly its declared fields")
         line = json.dumps({k: record[k] for k in FIELDS}, ensure_ascii=False) + "\n"
+        self.problem = None
         try:
-            with file_lock(self.lock_path, "the feed is busy", tries=BUSY_TRIES):
+            with file_lock(self.lock_path, self.BUSY, tries=BUSY_TRIES):
                 with open(self.path, "a", encoding="utf-8", newline="\n") as f:
                     f.write(line)
                 if self.path.stat().st_size > TRIM_AT:
                     self._trim()
-        except Refused:
+        except Refused as e:
+            if str(e) != self.BUSY:
+                self._fault(f"the feed was not kept: {e}")
             return False
+        except OSError as e:   # the system refused the lock or the file: a fault too, never swallowed in silence
+            self._fault(f"the feed was not kept: {type(e).__name__}: {e.strerror or e}")
+            return False
+        self._cleared()
         return True
+
+    def _fault(self, text: str) -> None:
+        """Say a fault once: `problem` is set only when it differs from the last fault said, which is kept."""
+        try:
+            said = self.fault_path.read_text(encoding="utf-8") if self.fault_path.is_file() else None
+        except OSError:
+            said = None
+        if said == text:
+            return
+        self.problem = text
+        try:
+            self.fault_path.write_text(text, encoding="utf-8")
+        except OSError:
+            pass   # unable to keep the marker: the fault is said again next time, rather than never
+
+    def _cleared(self) -> None:
+        """A record kept: the last fault no longer stands, so the next one is said."""
+        try:
+            if self.fault_path.is_file():
+                os.remove(self.fault_path)
+        except OSError:
+            pass
 
     def _trim(self) -> None:
         """Cut back to the newest whole lines within KEEP bytes, through a temporary file put in place."""

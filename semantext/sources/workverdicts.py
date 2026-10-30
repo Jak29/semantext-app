@@ -19,7 +19,7 @@ from pathlib import Path
 
 from .. import jsonread
 from . import problem, read_lines
-from .closed import ReadContext, closures_known, is_closed_place
+from .closed import ReadContext, closures_known, closures_state, is_closed_place
 
 
 def _when(text):
@@ -45,11 +45,20 @@ class Verdicts:
             return None, f"your sources file names no {key} file ({key})"
         path = Path(said).expanduser()
         if is_closed_place(str(path), self.ctx):
-            # api 0.2: while the person's closures are not known every path is closed; say which of the two it is
+            # Work reads with a plug-in's view (it reaches file contents): while the person's closures are not known
+            # to a plug-in, every path is closed; say which state it is, truly (closed.closures_state)
             known = self.ctx.closures is not None if isinstance(self.ctx, ReadContext) else closures_known(self.ctx)
             if not known:
-                return None, (f"your closed places are not named (or cannot be read), so the {key} file is not read; "
-                              f"name them in your sources file first")
+                home = self.ctx.home if isinstance(self.ctx, ReadContext) else self.ctx
+                state = closures_state(home or None)
+                if state["state"] == "incomplete":
+                    return None, (f"your list of closed paths is incomplete, and Work reads as a plug-in does (it "
+                                  f"reaches what files hold), so the {key} file is not read until the list says it is "
+                                  f"complete: {state['fix']}")
+                if state["state"] == "unknown":
+                    return None, f"your closed places cannot be read ({state['why']}), so the {key} file is not read"
+                return None, (f"your closed places are not named, so the {key} file is not read; name them in your "
+                              f"sources file first")
             return None, f"the {key} file is in a place you closed, so it is not read"
         if not path.is_file():
             return None, f"the {key} file is not there ({path})"
