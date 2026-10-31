@@ -110,6 +110,8 @@ def test_v2_serves_the_page_and_nothing_beside_it(server):
         assert get(server, path)[0] == 404, path
     # the page that was there before stays as it was
     status, body, _ = get(server, "/")
+    assert status == 200 and body == PAGE.read_bytes()
+    status, body, _ = get(server, "/classic")
     assert status == 200 and body == (paths.static_dir() / "index.html").read_bytes()
     assert get(server, "/api/feed")[0] == 403
 
@@ -125,13 +127,13 @@ def test_the_pages_files_are_served_from_a_fixed_list_and_nothing_else(server):
         assert status == 200 and body == (PAGE.parent / name).read_bytes(), path
         assert ctype == ("text/css; charset=utf-8" if name.endswith(".css") else "text/javascript; charset=utf-8"), path
     # the page and every file beside it carry the page's policy; the old page at / is left as it was
-    for path in ("/v2", *V2_FILES):
+    for path in ("/", "/v2", *V2_FILES):
         req = urllib.request.Request(f"http://127.0.0.1:{server.server_address[1]}{path}")
         with urllib.request.urlopen(req, timeout=30) as r:
             assert r.headers["Cache-Control"] == "no-store" and r.headers["X-Content-Type-Options"] == "nosniff"
             assert r.headers.get_all("Content-Security-Policy") == [V2_CSP], path
     assert "script-src 'self';" in V2_CSP and "style-src 'self';" in V2_CSP and "'unsafe-inline'" not in V2_CSP
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.server_address[1]}/", timeout=30) as r:
+    with urllib.request.urlopen(f"http://127.0.0.1:{server.server_address[1]}/classic", timeout=30) as r:
         assert "Content-Security-Policy" not in r.headers
     # must-refuse: anything not on the list, however it is spelled, and no file is reached by a path
     for path in ("/v2/index.html", "/v2/APP.JS", "/v2/app.js/", "/v2//app.js", "/v2/nope.js", "/v2/../v2.html",

@@ -25,7 +25,8 @@ export function mount(el) {
   W.empty = h("div", { hidden: true });
   W.parked = h("div");
   W.done = h("div");
-  el.replaceChildren(W.head, W.list, W.empty, W.parked, W.done);
+  W.machine = h("section", { "aria-label": "This machine's own inbox" });
+  el.replaceChildren(W.head, W.machine, W.list, W.empty, W.parked, W.done);
 }
 
 function cardText(c) {
@@ -35,8 +36,18 @@ function cardText(c) {
     ...(ch.predicted || []).map((p) => p.measure)].filter(Boolean).join("\n").toLowerCase();
 }
 
+// What agents filed in this machine's own inbox while a setup is named: apart, under its own heading, and only when there is any.
+function drawMachine(data, match) {
+  const all = data.machine_inbox || [], cards = all.filter(match), n = all.filter((c) => c.state === "waiting").length;
+  W.machine.replaceChildren();
+  if (all.length) W.machine.append(h("h2", { class: "label group-head" }, "This machine's own inbox · " + n + " waiting" + (all.length > n ? ", " + (all.length - n) + " parked" : "")), h("div", { class: "cards" }, cards.map(cardNode)));
+}
+
 export function render(data, el) {
   if (!data) { W.head.replaceChildren(h("h1", { class: "sr-only" }, "Waiting")); W.say.textContent = "Reading your files…"; return; }
+  const q = S.q.waiting.trim().toLowerCase();
+  const match = (c) => !q || cardText(c).includes(q);
+  drawMachine(data, match);
   if (data.off) {
     W.head.replaceChildren(header("Waiting", "Waiting is off: your sources file names no " + listWords(data.missing.map((k) => '"' + k + '"')) + ".",
       S.frame ? "Your sources file: " + S.frame.config : null));
@@ -45,8 +56,6 @@ export function render(data, el) {
     return;
   }
   W.tools.hidden = false;
-  const q = S.q.waiting.trim().toLowerCase();
-  const match = (c) => !q || cardText(c).includes(q);
   const all = newestFirst(data.cards);
   const waiting = all.filter((c) => c.state === "waiting");
   const parked = data.cards.filter((c) => c.state === "parked").sort((a, b) => stamp(b.parked_at) - stamp(a.parked_at));
@@ -56,7 +65,8 @@ export function render(data, el) {
     : (waiting.length === 1 ? "1 card waits for your word." : waiting.length + " cards wait for your word, newest first.")
       + (q ? " " + w.length + " of them " + (w.length === 1 ? "matches" : "match") + "." : "");
   W.head.replaceChildren(h("h1", { class: "sr-only" }, "Waiting"));
-  W.say.textContent = sub;
+  const elsewhere = (data.machine_inbox || []).filter((c) => c.state === "waiting").length;
+  W.say.textContent = sub + (elsewhere ? " Plus " + elsewhere + " in this machine's own inbox." : "");
   W.say.title = data.seats.length ? "From the requests of " + listWords(data.seats) + "." : "No agent's requests are read.";
 
   if (S.byProject && w.length) {

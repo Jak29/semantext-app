@@ -395,7 +395,10 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         st = self.store
         try:
-            if u.path in ("/", "/index.html"):
+            if u.path in ("/", "/index.html", "/v2"):   # the one page; /v2 is its older address
+                return self._send(200, (paths.static_dir() / "v2" / "index.html").read_bytes(), "text/html; charset=utf-8",
+                                  {"Content-Security-Policy": V2_CSP})
+            if u.path == "/classic":   # the old home page, for one version, in case the new one lets you down
                 return self._send(200, (paths.static_dir() / "index.html").read_bytes(), "text/html; charset=utf-8")
             if u.path == "/api/state":
                 return self._send(200, {**st.overview(), "version": __version__, "connections": connections(st),
@@ -451,9 +454,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, metrics(st))
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
-            if u.path == "/v2":   # the page in four places, read-only on the person's own files (sources/view.py)
-                return self._send(200, (paths.static_dir() / "v2" / "index.html").read_bytes(), "text/html; charset=utf-8",
-                                  {"Content-Security-Policy": V2_CSP})
             if u.path.startswith(pagemodule.PREFIX):   # an enabled outside place's own module (pagemodule.py)
                 code, body = plugin_module(u.path[len(pagemodule.PREFIX):], st.root)
                 return self._send(code, body, _JS if code == 200 else "application/json; charset=utf-8",

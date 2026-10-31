@@ -316,6 +316,8 @@ class _Sources:
             _said_by(name, p, name in mine) for name in self.reg.names("source")
             for p in self.got.get(name, {}).get("problems") or []
         ] + [{"reader": "plug-ins", **p} for p in self.reg.problems]
+        self._machine = None
+        self._machine_problems = []
         self._cards = None
         self._projects = None
 
@@ -330,11 +332,32 @@ class _Sources:
         c = self.got["waiting"]
         return {"name": self.cfg.get("name"), "word": word_of(self.cfg.get("name")), "group": self.cfg.get("group"),
                 "checked": _now(), "config": str(self.path),
-                "waiting": sum(x.get("state") == "waiting" for x in c.get("cards") or []),
+                "waiting": sum(x.get("state") == "waiting" for x in c.get("cards") or []) + sum(v["state"] == "waiting" for v in self.machine_inbox()),
                 "seats": [s.get("seat") for s in c.get("seats") or []], "off": _off(self.got, self.reg),
-                "problems": self.problems + self.bad_settings + _held(), "gaming": self.gaming(), "compute": self.compute(),
+                "problems": self.problems + self.bad_settings + self._machine_problems + _held(), "gaming": self.gaming(), "compute": self.compute(),
                 "inbox_app": self.cfg.get("inbox_app") is True,   # links into an inbox app only where the person says they have one
                 "outside": self.outside()}
+
+    def machine_inbox(self) -> list[dict]:
+        """With a setup named, what agents filed in this machine's own inbox: open or parked, and never among the setup's
+        cards. It has no other page to wait on once the home page is gone. Empty with no setup, where it IS the cards."""
+        if self._machine is None:
+            self._machine = []
+            home = self.cfg.get("_home")
+            if home and not self.got["waiting"].get("own_inbox"):
+                from .own_inbox import load as own   # here: only the page reads it, never the card hook
+                try:
+                    got = own(home)
+                    cards = got.get("cards") or []
+                    self._machine_problems = list(got.get("problems") or [])
+                except Exception as e:  # noqa: BLE001  this part costs only itself, said: unreadable is never shown as empty
+                    cards = []
+                    self._machine_problems = [problem(Path(home) / "inbox.jsonl", None, "file", f"this machine's own inbox could not be read ({type(e).__name__})")]
+                joiner = _Cards(self)
+                # its own key and no file: a setup's agent can share a name and a number with one of these
+                self._machine = [{**joiner.view(c), "key": "machine/" + str(c.get("seat")) + "/" + str(c.get("id")), "file": None}
+                                 for c in cards if c.get("state") in ("waiting", "parked")]
+        return self._machine
 
     def outside(self) -> list[dict]:
         """The places the person turned on, after the built-ins in the bar: each with its title, the package it came
@@ -427,6 +450,7 @@ class _Cards:
                                      "at", "state", "parked_at", "asks", "asks_basis", "acts", "acts_basis", "line")},
             "options": [o for o in c.get("options") or [] if isinstance(o, str)],
             "number": c.get("number"), "choices": c.get("choices") or [], "own_inbox": bool(c.get("own_inbox")),
+            "flags": c.get("flags") or [], "rule": bool(c.get("rule")), "recommend": c.get("recommend"), "answered_before": c.get("answered_before"),
             "closing": {"at": closing.get("at"), "how": closing.get("how"),
                         "earlier": len(closing.get("earlier") or [])} if isinstance(closing, dict) else None,
             "run": {k: run.get(k) for k in ("started", "finished", "exit", "timed_out")} if isinstance(run, dict)
@@ -628,7 +652,7 @@ def waiting_place(src: _Sources) -> dict:
     by_state = Counter(v["state"] for v in views)
     rec = src.got["record"]
     states = list(dict.fromkeys(("waiting", "parked", "closed", "run", *by_state)))
-    return {"off": bool(c.get("off")), "missing": c.get("missing") or [], "cards": views,
+    return {"off": bool(c.get("off")), "missing": c.get("missing") or [], "cards": views, "machine_inbox": src.machine_inbox(),
             "counts": {"cards": len(views), "by_state": {s: by_state.get(s, 0) for s in states}},
             "seats": [s.get("seat") for s in c.get("seats") or []],
             "projects": [{"id": p.get("id"), "name": p.get("name")} for p in src.projects_list()],

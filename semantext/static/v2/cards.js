@@ -64,16 +64,19 @@ export function parkNode(c, parked) {
 }
 
 // A request in your own inbox is answered here, through the same guarded route as the home page. One press, one answer;
-// the server keeps it, and refuses a second. A question with no options is answered in your own words on the home page.
+// the server keeps it, and refuses a second. Your own words go with a press, or are the whole answer to a question with no options.
 export const answers = { post: (body) => fetch("/api/answer", { method: "POST", cache: "no-store",
-  headers: { "X-Semantext": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) }), said: {} };
-export async function answerRequest(c, choice) {
+  headers: { "X-Semantext": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) }), said: {}, words: {} };
+export async function answerRequest(c, choice, again) {
   let r = null, got = {};
+  const words = again !== undefined ? again : (answers.words[c.key] || "").trim();
+  if (!choice && !words) { answers.said[c.key] = "Write your answer first."; fill(); return; }
   try {
-    r = await answers.post({ id: c.number, choice });
+    r = await answers.post(words ? { id: c.number, choice, words } : { id: c.number, choice });
     try { got = await r.json(); } catch (e) { /* the status says enough */ }
   } catch (e) { got = { error: "the page could not reach Semantext" }; }
   answers.said[c.key] = r && r.ok ? null : (got.error || "That answer was not taken.");
+  if (r && r.ok) delete answers.words[c.key];   // kept when refused, so what you wrote is not lost
   if (r && r.ok) await load("waiting");
   fill();
 }
@@ -95,10 +98,16 @@ function ownParkNode(c, parked) {
 }
 export function answerNode(c) {
   const box = h("div", { class: "answers", "data-k": "answer:" + c.key });
+  const before = c.answered_before;
+  if (before) box.append(h("p", { class: "earlier-answer" }, "You answered this before: " + [before.picked || before.choice, before.words].filter(Boolean).join(", ") + ". An answer holds only for what was offered then. ",
+    h("button", { type: "button", class: "link", "data-k": "again:" + c.key, on: { click: () => answerRequest(c, before.choice, before.words) } }, "Same again")));
   if ((c.choices || []).length) {
     box.append(...c.choices.map((x) => h("button", { type: "button", class: "answer", "data-k": "answer:" + c.key + ":" + x.choice,
-      on: { click: () => answerRequest(c, x.choice) } }, x.label)));
-  } else box.append(h("a", { href: "/" }, "Answer in your own words on the home page"));
+      on: { click: () => answerRequest(c, x.choice) } }, x.label, String(c.recommend) === x.choice ? h("small", { class: "meta" }, " recommended") : null)));
+  } else box.append(h("button", { type: "button", class: "answer", "data-k": "send:" + c.key, on: { click: () => answerRequest(c, "") } }, "Send"));
+  box.append(h("input", { class: "input answer-words", type: "text", value: answers.words[c.key] || "", "data-k": "words:" + c.key,
+    placeholder: c.rule ? "Your own wording (optional): it replaces the agent's rule" : (c.choices || []).length ? "Your own words (optional)" : "Your answer, in your own words", "aria-label": "Your words for " + c.id,
+    on: { input: (ev) => { answers.words[c.key] = ev.target.value; } } }));
   box.append(ownParkNode(c, false));
   if (answers.said[c.key]) box.append(h("p", { class: "refused", role: "alert" }, answers.said[c.key]));
   return box;
@@ -129,7 +138,10 @@ export function cardNode(c) {
     if (c.undo) facts.append(h("dt", null, "Undo"), h("dd", null, c.undo));
     if (c.cwd) facts.append(h("dt", null, "Runs in"), h("dd", { class: "mono" }, c.cwd));
     if (facts.childNodes.length) node.append(facts);
+    if ((c.flags || []).length) node.append(h("p", { class: "refused" }, "Look twice: " + c.flags.join("; ")));
     node.append(h("pre", { class: "command" }, c.command || ""));
+    if (c.own_inbox && waiting) node.append(h("button", { type: "button", class: "answer", "data-k": "copy:" + c.key,
+      on: { click: async () => { try { await navigator.clipboard.writeText(c.command || ""); toast("Copied the command"); } catch (e) { toast("Your browser refused the clipboard: select the command and copy it"); } } } }, "Copy the command"));
     if (c.run) node.append(runLine(c.run));
     const out = outputBox(c);
     if (out) node.append(out);

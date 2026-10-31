@@ -189,3 +189,115 @@ def test_no_moved_part_uses_a_name_it_did_not_import():   # must pass
 def test_the_name_check_can_fail():   # must refuse: the two the attack found, as they were
     assert left_behind({"a.js": "export function allAgents() {}\n", "b.js": "const x = () => allAgents();\n"}) == {"b.js": ["allAgents"]}
     assert left_behind({"a.js": "const SOURCE = 1;\n", "b.js": "function f() { return SOURCE; }\n"}) == {"b.js": ["SOURCE"]}
+
+# ---------------------------------------------------------------- what the attack on step 2 found
+def _own(home, **kw):
+    from semantext.inbox import Inbox
+    from semantext.sources import own_inbox
+    Inbox(home).ask(kw.pop("title", "T"), "why", source="Helper", **kw)
+    return own_inbox.load(home)["cards"][-1]
+
+
+def test_a_risky_command_keeps_its_warning_on_the_card(tmp_path):
+    card = _own(tmp_path, command="Remove-Item -Recurse -Force C:\\scratch", does="deletes", undo="cannot")
+    assert card["flags"] and card["kind"] == "command"
+    assert "Look twice" in text("cards.js")
+
+
+def test_a_plain_decision_has_no_warning(tmp_path):   # must refuse
+    assert _own(tmp_path, question="Which?", options=["a"])["flags"] == []
+
+
+def test_a_question_answered_before_offers_the_same_answer_and_never_uses_it(tmp_path):
+    from semantext.inbox import Inbox
+    first = Inbox(tmp_path).ask("Same", "why", source="Helper", question="Which?", options=["a", "b"])
+    Inbox(tmp_path).answer(first["id"], "2", "since it is late", via="page")
+    card = _own(tmp_path, title="Same", question="Which?", options=["a", "b"])
+    assert card["state"] == "waiting" and card["answered_before"]["choice"] == "2" and card["answered_before"]["words"] == "since it is late"
+
+
+def test_an_unreadable_machine_inbox_is_said_and_never_shown_as_empty(tmp_path, monkeypatch):
+    import json
+    from semantext.sources import own_inbox, view
+    sources = tmp_path / "s.json"
+    sources.write_text(json.dumps({"map": str(tmp_path / "m.json")}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    def boom(home):
+        raise OSError("locked")
+    monkeypatch.setattr(own_inbox, "load", boom)
+    got = view.answer("waiting", home=tmp_path)
+    assert got["machine_inbox"] == [] and any("own inbox could not be read" in str(p.get("text")) for p in got["frame"]["problems"])
+
+
+def test_a_machine_card_never_shares_a_key_or_a_file_with_a_setups_card(tmp_path, monkeypatch):
+    import json
+    from semantext.sources import view
+    sources = tmp_path / "s.json"
+    sources.write_text(json.dumps({"map": str(tmp_path / "m.json")}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    _own(tmp_path, question="Which?", options=["a"])
+    c = view.answer("waiting", home=tmp_path)["machine_inbox"][0]
+    assert c["key"].startswith("machine/") and c["file"] is None
+
+
+# ---------------------------------------------------------------- step 2: nothing is left only on the old page
+CARD = """
+const c = { key: "H/#3", id: "#3", number: 3, seat: "H", own_inbox: true, state: "waiting", choices: [], title: "T", kind: "decision", options: [] };
+const sent = [];
+globalThis.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+answers.post = (b) => { sent.push(b); return Promise.resolve({ ok: true, json: () => Promise.resolve({}) }); };
+"""
+
+
+@needs_node
+def test_a_question_with_no_options_is_answered_in_your_words_on_the_card():   # must pass
+    got = run(CARD + """
+const box = answerNode(c);
+const input = box.all((e) => e.tagName === "INPUT")[0];
+answers.words[c.key] = "after lunch";
+return answerRequest(c, "").then(() => report({ sent, kept: answers.words[c.key] || null, send: box.all((e) => e.tagName === "BUTTON")[0].textContent, hasInput: !!input, link: box.all((e) => e.tagName === "A").length }));
+""")
+    assert got == {"sent": [{"id": 3, "choice": "", "words": "after lunch"}], "kept": None, "send": "Send", "hasInput": True, "link": 0}
+
+
+@needs_node
+def test_an_empty_answer_is_not_sent_and_says_so():   # must refuse
+    got = run(CARD + """
+return answerRequest(c, "").then(() => report({ sent, said: answers.said[c.key] }));
+""")
+    assert got == {"sent": [], "said": "Write your answer first."}
+
+
+@needs_node
+def test_a_refused_answer_keeps_what_you_wrote():
+    got = run(CARD + """
+answers.post = () => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "no" }) });
+answers.words[c.key] = "mine";
+return answerRequest(c, "").then(() => report([answers.words[c.key], answers.said[c.key]]));
+""")
+    assert got == ["mine", "no"]
+
+
+@needs_node
+@pytest.mark.parametrize("old,place,sub", [("#live", "today", None), ("#inbox", "waiting", None), ("#decisions", "waiting", None),
+                                           ("#agents", "map", "~agents"), ("#layers", "map", "~gets"), ("#test", "rules", "test"),
+                                           ("#history", "today", "history")])
+def test_the_old_pages_addresses_still_work(old, place, sub):
+    got = run("""
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = %r;
+route();
+return settled().then(() => report([S.place, S.sub]));
+""" % old)
+    assert got == [place, sub]
+
+
+@needs_node
+def test_a_hash_named_like_an_object_property_is_no_address():   # must refuse
+    got = run("""
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#constructor";
+route();
+return settled().then(() => report(S.place));
+""")
+    assert got == "waiting"

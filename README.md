@@ -34,7 +34,7 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
 own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
 
-> **Status: version 1.5.2.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+> **Status: version 1.5.3.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 
@@ -78,7 +78,7 @@ If you already run several agents, you already keep records: each agent's reques
 given, your rule cards, the repositories your agents work in. v2 reads them where they lie, as its first dataset, and
 writes nothing to them. With nothing set up, Rules shows your own environments, Waiting shows your own inbox (and answers
 it from the card), and Work holds what you file there; Record, Projects and the map need the files below for now. Name the files in `~/.semantext/sources.json` (the keys are listed in `semantext/sources/__init__.py`),
-then open `http://127.0.0.1:8765/v2`:
+then open `http://127.0.0.1:8765`:
 
 - **Waiting** (the home): your agents' requests, card for card, with your earlier words on the same subject, who asks
   and who acts, and the project each one belongs to. This page never runs or answers anything.

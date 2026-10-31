@@ -83,9 +83,12 @@ async function refresh() {
 }
 
 // ---------------------------------------------------------------- moving between places
+// The addresses the home page had still work.
+const OLD = { live: "today", inbox: "waiting", decisions: "waiting", agents: "map/~agents", layers: "map/~gets", test: "rules/test", history: "today/history" };
 function parseHash() {
   let raw = location.hash.replace(/^#/, "");
   try { raw = decodeURIComponent(raw); } catch (e) { /* a hash that is not encoding is read as it is */ }
+  if (Object.hasOwn(OLD, raw)) raw = OLD[raw];
   const cut = raw.indexOf("/");
   const head = cut < 0 ? raw : raw.slice(0, cut);
   const sub = cut < 0 ? null : raw.slice(cut + 1) || null;
@@ -153,11 +156,15 @@ export function keep(fn) {
   const y = window.scrollY;
   const a = document.activeElement;
   const k = a && a.dataset ? a.dataset.k : null;
+  const caret = a && typeof a.selectionStart === "number" ? a.selectionStart : null;
   S.moved = false;
   fn();
   if (k && !document.contains(a)) {
     const again = document.querySelector('[data-k="' + CSS.escape(k) + '"]');
-    if (again) again.focus({ preventScroll: true });
+    if (again) {
+      again.focus({ preventScroll: true });
+      if (caret !== null && again.setSelectionRange) again.setSelectionRange(caret, caret);
+    }
   }
   if (!S.moved && Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
   S.moved = false;

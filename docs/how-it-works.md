@@ -200,7 +200,7 @@ record of what happened, never a source of rules.
 ## The page
 
 `semantext serve` opens one page at `http://127.0.0.1:8765`, in four places, each answering one question, and
-Settings. Every place has its own address (`#today`, `#rules`, `#agents`, `#decisions`), and the older `#live` and
+Settings. Every place has its own address (`#today`, `#rules`, `#map/~agents`, `#waiting`), and the older `#agents`, `#decisions`, `#live` and
 `#inbox` still open Today and Decisions.
 
 It is quiet by design. Neutral greys carry everything, and one accent, gold, marks what is yours or needs you. Red is

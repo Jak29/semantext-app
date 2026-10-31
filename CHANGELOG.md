@@ -6,6 +6,19 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-10-31
+
+There is now one page. `http://127.0.0.1:8765` opens it, and every older address still works.
+
+### Added
+- **Answer in your own words on the card,** with or without picking an option. A question with no options has a Send button; an empty answer is not sent, and a refused one keeps what you wrote.
+- **On your own inbox's cards:** "Look twice" on a risky command, "recommended" on an option, Copy the command, and "Same again" on a question you answered before. A rule card says your words replace the agent's rule.
+- **This machine's own inbox** has its own section in Waiting when you have named a setup, and counts as waiting. It appears only when something is in it, and is never mixed with your setup's cards.
+
+### Changed
+- **`/` is the new page,** under the strict policy `/v2` already had. `/v2` is the same page.
+- **The old home page is at `/classic`,** for this version only. Nothing you can do when answering is left only there.
+
 ## [1.5.2] - 2026-10-31
 
 The first step of joining the two pages into one. The v2 page now has everything the home page has but answering a question in your own words; the home page stays for now.

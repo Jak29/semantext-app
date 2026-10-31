@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..inbox import Inbox
+from ..inbox import flags as _flags, Inbox
 from . import problem
 
 CHANGE_WORDS = "It proposes a rule for the environment "
@@ -24,7 +24,7 @@ def _text(value) -> str | None:
 
 def _choices(r: dict) -> list[dict]:
     """What the page may offer as buttons, each the choice inbox.answer takes. A question with no options is answered in
-    your own words, on the home page."""
+    your own words, on the card."""
     if r.get("status") != "open" or r.get("parked") is True:   # a parked request is brought back first
         return []
     if r.get("kind") == "command":
@@ -40,7 +40,7 @@ def _choices(r: dict) -> list[dict]:
 def _card(r: dict) -> dict:
     kind = r.get("kind")
     words = ""
-    if kind == "rule":   # a proposed rule is decided as a decision is; adding it is the home page's
+    if kind == "rule":   # a proposed rule is decided as a decision is; adding it is what the answer does (server: st.adopt)
         words = CHANGE_WORDS + f"{r.get('env')}: {r.get('statement')}"
     answer, closed = r.get("answer"), r.get("closed")
     done = answer if answer is not None else closed   # a line with no fields is still an answer: never waiting again
@@ -63,7 +63,9 @@ def _card(r: dict) -> dict:
             "state": "closed" if done is not None else "parked" if r.get("parked") is True else "waiting", "closing": {"at": _text(done.get("at")), "how": how} if done is not None else None,
             "run": None, "output": None, "parked_at": _text(r.get("parked_at")), "asks": who, "acts": who,
             "asks_basis": "it says it filed this request; the name is its own claim" if claimed else "it filed this request", "acts_basis": "it acts on your answer", "line": None,
-            "choices": _choices(r), "own_inbox": True}
+            "choices": _choices(r), "own_inbox": True, "rule": kind == "rule",
+            # worked out from the command itself, so a line edited by hand cannot drop the warning
+            "flags": _flags(r["command"]) if kind == "command" and isinstance(r.get("command"), str) else []}
 
 
 def _decision(r: dict, path) -> dict:
@@ -97,11 +99,17 @@ def decisions(home) -> tuple[list[dict], str, list[dict]]:
 
 def load(home) -> dict:
     """{"off": False, "own_inbox": True, "cards": [...], ...}, in the shape of cards.load."""
-    requests = Inbox(Path(home)).requests()
+    inbox = Inbox(Path(home))
+    requests = inbox.requests()
     cards, problems = [], []
     for r in requests.values():
         try:
-            cards.append(_card(r))
+            card = _card(r)
+            if card["state"] == "waiting":   # the same question, answered before: shown beside it, never used for it
+                e = inbox.earlier(r, requests)
+                a = e["answer"] if e else None
+                card["answered_before"] = {"choice": _text(a.get("choice")) or "", "words": _text(a.get("words")) or "", "picked": _text(a.get("picked")) or ""} if a else None
+            cards.append(card)
         except Exception as e:  # noqa: BLE001  a line edited by hand costs that request, said, and never the others
             problems.append(problem(Inbox(Path(home)).path, None, "bad field",
                                     f"request #{r.get('id')} cannot be shown ({type(e).__name__})"))

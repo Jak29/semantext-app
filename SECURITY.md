@@ -67,7 +67,7 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   stalls for 10 seconds.
 - **The page's own code:** it builds all rule text with safe DOM calls, with no `innerHTML` and no `eval`, so a rule
   cannot inject a script into the page. A test fails if such a call appears.
-- **The v2 page's policy:** `/v2` and every file beside it carry a Content-Security-Policy: scripts and styles only
+- **The page's policy:** `/`, `/v2` and every file beside it carry a Content-Security-Policy: scripts and styles only
   from this server's own files (`script-src 'self'; style-src 'self'`, no `'unsafe-inline'` for either since api
   0.2), reads only back to this server, images only the `blob:` URLs a diagram is shown through, and no framing. A
   test fails if a module or the page sets an inline style or holds an inline script. A document (an SVG) is served

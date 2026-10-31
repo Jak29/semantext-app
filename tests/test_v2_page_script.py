@@ -197,7 +197,7 @@ report({ lists, labels: buttons.map((b) => b.textContent), posted, said: again.t
 });
 """)
     assert got["labels"] == ["red", "<b>blue</b>"] and got["posted"] == [{"id": 3, "choice": "2"}] and got["lists"] == 0
-    assert got["said"] is True and "/" in got["home"]
+    assert got["said"] is True and "/" not in got["home"]   # no card sends you to the old page to answer
     # must refuse: an estate's card is answered where it was, and the page offers it no buttons
     assert got["estateButtons"] == 0 and got["estateText"] is True
 

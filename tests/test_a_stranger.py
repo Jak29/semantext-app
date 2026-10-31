@@ -447,7 +447,8 @@ def test_any_one_source_named_keeps_your_own_files_out_of_every_page(stranger, t
     sources.write_text(json.dumps({setting: str(tmp_path / "named.json")}), encoding="utf-8")
     monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
     assert view.answer("waiting", home=stranger)["cards"] == [], setting
-    assert view.answer("waiting", home=stranger)["frame"]["waiting"] == 0
+    machine = view.answer("waiting", home=stranger)                    # apart from the setup's cards, and still counted
+    assert [c["title"] for c in machine["machine_inbox"]] == ["Another"] and machine["frame"]["waiting"] == 1
     record = view.answer("record", home=stranger)
     assert not record["own"] and [e for e in record["entries"] if str(e.get("id")).startswith("#")] == []
     assert not view.answer("projects", home=stranger)["own"] and not view.answer("map", home=stranger)["own"]

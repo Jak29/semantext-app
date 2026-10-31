@@ -399,3 +399,6 @@ tr.not-applied td { color: var(--text-3); }
 .answer { padding: 5px 12px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); font-size: 13px; text-align: left; }
 .answer:hover { border-color: var(--accent); }
 .answers .refused { flex-basis: 100%; }
+
+.answer-words { flex: 1 1 100%; margin-top: 6px; }
+.earlier-answer { flex: 1 1 100%; color: var(--text-2); font-size: 12px; }
