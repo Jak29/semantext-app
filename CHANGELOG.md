@@ -6,6 +6,13 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.5] - 2026-10-31
+
+Your agents can keep helpers for themselves, and you do not have to manage them.
+
+### Added
+- **`semantext helper`** (and MCP tools): an agent starts, keeps, renames and retires its own long-lived helpers. Starting one says what kept context earns it its place. Every hand-off is logged, a prediction before and its tokens after, and hand-offs to fresh agents the same way, so the two can be compared. A job's work is taken in once someone other than the helper and its owner has attacked it, or with the reason it was not, which stays on the record. A helper idle for a week, or dearer per job than fresh agents, is flagged, and retiring one says where its notes are. Only the owner can change a helper; you read them under Map, Agents, and nothing asks you for anything. Semantext starts no agent itself: it keeps the roster and the session to resume.
+
 ## [1.5.4] - 2026-10-31
 
 Your agents can now find their feet and talk to each other, with nothing set up.

@@ -43,7 +43,8 @@ def test_no_tool_answers_or_changes_a_rule():
     names = {t["name"] for t in TOOLS}
     assert names == {"card", "ask", "answers", "close", "propose_rule", "decisions", "start",   # decisions and start only read
                      "board_post", "board_read", "board_claim", "board_release",   # their own files: never the inbox or a rule
-                     "attack_ask", "attack_brief", "attack_verdict"}
+                     "attack_ask", "attack_brief", "attack_verdict",
+                     "helper_start", "helper_job", "helper_done", "helper_take", "helper_rename", "helper_retire", "helper_list"}
     assert not names & {"answer", "teach", "toggle", "pin", "undo", "feature", "config", "hear", "forget"}
 
 
@@ -142,8 +143,8 @@ def test_it_speaks_over_standard_input_and_output(home, tmp_path):
 
 def test_the_board_and_attack_modules_cannot_reach_an_answer_or_a_rule():   # must refuse: by what they are able to call
     from pathlib import Path
-    from semantext import attacks, board, start
-    for mod in (board, attacks):
+    from semantext import attacks, board, helpers, start
+    for mod in (board, attacks, helpers):
         text = Path(mod.__file__).read_text(encoding="utf-8")
         for verb in (".answer(", ".learn(", ".toggle(", ".adopt(", ".set_active(", ".park("):
             assert verb not in text, (mod.__name__, verb)

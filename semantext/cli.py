@@ -802,7 +802,7 @@ def cmd_attack(store: Store, args) -> int:
     attacks, who = Attacks(store.root), _as(store, args.source)
     words = args.words or []
     if args.action == "ask":
-        c = attacks.ask(who, " ".join(words), args.ref or "")
+        c = attacks.ask(who, " ".join(words), args.ref or "", args.job)
         _out(f"Claim #{c['id']} is up. Hand it to an agent that did not build it: semantext attack brief {c['id']}")
     elif args.action == "list":
         found = attacks.all()
@@ -823,6 +823,52 @@ def cmd_attack(store: Store, args) -> int:
                 raise Refused("say the claim's number and the verdict: killed, survived or inconclusive")
             attacks.verdict(who, cid, words[1], args.how or "", args.not_tried or "")
             _out(f"Verdict kept: #{cid} {words[1]}.")
+    return 0
+
+
+def cmd_helper(store: Store, args) -> int:
+    from .helpers import FRESH, Helpers, helper_row
+    keeper, who = Helpers(store.root), _as(store, args.source)
+    a, w = args.action, args.words or []
+
+    def word(i: int, what: str) -> str:
+        if len(w) <= i:
+            raise Refused(f"say {what}")
+        return w[i]
+
+    def number(i: int) -> int:
+        if not word(i, "the job's number").isdecimal():
+            raise Refused("name the job by its number")
+        return int(w[i])
+
+    if a == "start":
+        keeper.start(who, word(0, "the helper's name"), args.keeps or "", args.session or "")
+        _out(f"Started keeping {w[0]}. Your tool starts the agent itself; log each hand-off with `semantext helper job {w[0]} --predict ...`.")
+    elif a == "rename":
+        keeper.rename(who, word(0, "the helper's name"), word(1, "the new name"))
+        _out(f"{w[0]} is now {w[1]}.")
+    elif a == "retire":
+        keeper.retire(who, word(0, "the helper's name"), args.notes or "")
+        _out(f"Retired {w[0]}. Its record and your note of where its notes are stay on file.")
+    elif a == "job":
+        j = keeper.job(who, w[0] if w else None, args.predict or "")
+        _out(f"Job #{j['id']} to {w[0] if w else FRESH}. Close it with: semantext helper done {j['id']} --tokens N")
+    elif a == "done":
+        if args.tokens is None:
+            raise Refused("say the job's tokens as a whole number (--tokens)")
+        keeper.done(who, number(0), args.tokens, args.outcome or "")
+        _out(f"Job #{w[0]} closed. Have it checked before you take it in: semantext attack ask CLAIM --job {w[0]}, then semantext helper take {w[0]} --attack N")
+    elif a == "take":
+        keeper.take(who, number(0), args.attack, args.unreviewed or "")
+        _out(f"Job #{w[0]} taken in" + ("." if args.attack is not None else ", unchecked; that stays on the record."))
+    else:
+        rows = keeper.report(owner=None if args.all else who.key)
+        for r in rows:
+            _out(helper_row(r, session=not args.all or r["key"] == who.key))   # another agent's session is its own
+        if not rows:
+            _out("No helpers are kept." if args.all else "You keep no helpers. Most jobs are for a fresh agent.")
+        if keeper.damaged:
+            _out(f"{keeper.damaged} damaged line(s) in the helpers file were not read.")
     return 0
 
 
@@ -1255,8 +1301,23 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("action", choices=("ask", "list", "brief", "verdict"))
     sp.add_argument("words", nargs="*", help="ask: the claim; brief: its number; verdict: its number, then killed, survived or inconclusive")
     sp.add_argument("--ref", help="ask: where it can be tested, such as a commit")
+    sp.add_argument("--job", type=int, help="ask: the helper job this claim checks")
     sp.add_argument("--how", help="verdict: what you did and what you saw")
     sp.add_argument("--not-tried", dest="not_tried", help="verdict: what you did not try (survived must say)")
+    sp.add_argument("--from", dest="source", help="who you are, as stated: a claim (default: worked out from this shell)")
+    sp = add("helper", cmd_helper, "long-lived helpers an agent keeps for itself: start, job, done, take, rename, retire, list; "
+                                   "only where kept context is reused, otherwise use a fresh agent")
+    sp.add_argument("action", choices=("start", "job", "done", "take", "rename", "retire", "list"))
+    sp.add_argument("words", nargs="*", help="the helper's name (rename: and the new name); done, take: the job's number; job with no name: a fresh agent")
+    sp.add_argument("--keeps", help="start: what kept context earns it its place")
+    sp.add_argument("--session", help="start: the session your tool resumes it from")
+    sp.add_argument("--predict", help="job: your prediction, written before the job")
+    sp.add_argument("--tokens", type=int, help="done: the tokens the job took")
+    sp.add_argument("--outcome", help="done: how it went")
+    sp.add_argument("--attack", type=int, help="take: the claim that survived a fresh reviewer's attack")
+    sp.add_argument("--unreviewed", help="take: why it was not checked; this stays on the record")
+    sp.add_argument("--notes", help="retire: where its notes are kept")
+    sp.add_argument("--all", action="store_true", help="list: every agent's helpers")
     sp.add_argument("--from", dest="source", help="who you are, as stated: a claim (default: worked out from this shell)")
     add("agents", cmd_agents, "list the AI agents Semantext has seen or you have named, with their sessions")
     sp = add("agent", cmd_agent, "who this shell's agent is; bind a folder to an agent; give an agent a display name")

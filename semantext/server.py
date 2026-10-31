@@ -459,7 +459,7 @@ class Handler(BaseHTTPRequestHandler):
                 def read(fn, name):   # one file that cannot be read costs itself, said
                     try:
                         return fn()
-                    except OSError:
+                    except Exception:  # noqa: BLE001  any file, in any state: the rest of the section still shows
                         unread.append(name)
                         return []
                 # what the page shows, by name: never an event's key, which can hold a folder's whole path
@@ -467,9 +467,12 @@ class Handler(BaseHTTPRequestHandler):
                 posts = sorted(read(board.posts, "the board"), key=lambda e: e["id"], reverse=True)[:100]
                 held = read(board.claims, "the claims")
                 damaged = board.damaged
+                from .helpers import Helpers
+                keeper = Helpers(st.root)
+                kept = read(keeper.report, "the helpers file")
                 up = [{**seen(c), "verdicts": [seen(v) for v in c["verdicts"]]} for c in read(attacks.all, "the attacks file")]
-                return self._send(200, {"posts": [seen(e) for e in posts], "claims": [seen(e) for e in held], "attacks": up[-100:],
-                                        "damaged": damaged + attacks.damaged, "unread": sorted(set(unread))})
+                return self._send(200, {"posts": [seen(e) for e in posts], "claims": [seen(e) for e in held], "attacks": up[-100:], "helpers": [{k: v for k, v in r.items() if k not in ("session", "key")} for r in kept],
+                                        "damaged": damaged + attacks.damaged + keeper.damaged, "unread": sorted(set(unread))})
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
             if u.path.startswith(pagemodule.PREFIX):   # an enabled outside place's own module (pagemodule.py)

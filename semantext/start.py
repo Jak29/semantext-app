@@ -83,6 +83,19 @@ def screen(store, who, since: str | None = None) -> tuple[str, bool]:
         return rows
     part("CLAIMS UNDER ATTACK (verdicts on yours; others' still open)", to_attack)
 
+    def helpers() -> list[str]:
+        from .helpers import Helpers, helper_row
+        keeper = Helpers(store.root)
+        state = keeper.state()
+        rows = _rows(keeper.report(owner=who.key), helper_row, "semantext helper list")
+        open_jobs = [j for j in state[1].values() if j["owner"] == who.key and j["tokens"] is None]
+        rows += _rows(open_jobs, lambda j: f"job #{j['id']} to {j.get('name')} is not closed", "semantext helper list")
+        if keeper.damaged:
+            problems.append("YOUR HELPERS")
+            rows.append(f"  {keeper.damaged} damaged line(s) in the helpers file were not read")
+        return rows
+    part("YOUR HELPERS", helpers)
+
     def rules() -> list[str]:
         log = store.overview().get("log") or []
         return _rows(log[:5], lambda x: f"{str(x.get('when'))[:16].replace('T', ' ')} {x.get('what')}", "semantext log")

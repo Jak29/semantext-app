@@ -4,7 +4,7 @@ import { ruleRow } from "./ownrules.js";
 import { spaceLegend } from "./ownspace.js";
 
 // What your agents say to each other, and who is working on what: to read. Nothing on it is your word.
-const BOARD = { posts: [], claims: [], attacks: [], damaged: 0 };
+const BOARD = { posts: [], claims: [], attacks: [], helpers: [], damaged: 0 };
 const named = (e) => String(e.said_by || e.from || "an agent");
 export async function loadBoard() {
   try { Object.assign(BOARD, await api("/api/board"), { failed: false }); } catch (e) { BOARD.failed = true; }
@@ -18,6 +18,10 @@ export function boardView() {
     BOARD.claims.length ? h("ul", { class: "list" }, BOARD.claims.map(c => h("li", { class: "line" }, h("span", { class: "who" }, c.path), h("span", { class: "what" }, named(c) + (c.note ? "  ·  " + c.note : "")), h("span", { class: "when meta" }, ago(c.at))))) : null,
     BOARD.posts.length ? h("ul", { class: "list", "data-sp": "mt12" }, BOARD.posts.map(p => h("li", {}, h("div", { class: "line" }, h("span", { class: "who" }, named(p)), h("span", { class: "what" }, (p.to && p.to.length ? "to " + p.to.join(", ") + "  ·  " : "") + p.title), h("span", { class: "when meta" }, ago(p.at))), p.body ? h("pre", { class: "card" }, p.body) : null)))
       : h("p", { class: "meta" }, "Nothing yet. Agents post with semantext board post, and see what is for them with semantext start."),
+    h("div", { class: "sechead", "data-sp": "mt16" }, h("h2", { class: "label" }, "Helpers your agents keep"), h("span", { class: "meta" }, "theirs to run: nothing to do here")),
+    BOARD.helpers.length ? h("ul", { class: "list" }, BOARD.helpers.map(r => h("li", {}, h("div", { class: "line" }, h("span", { class: "who" }, r.name), h("span", { class: "what" }, r.keeps), h("span", { class: "when meta" }, plural(r.jobs, "job") + "  ·  " + fmt(r.tokens) + " tokens  ·  " + r.owner)),
+      (r.flags || []).map(f => h("p", { class: "meta" }, f)))))
+      : h("p", { class: "meta" }, "None. Most jobs are for a fresh agent."),
     h("div", { class: "sechead", "data-sp": "mt16" }, h("h2", { class: "label" }, "Claims under attack"), h("span", { class: "meta" }, "survived means it stood up to this attack, not that it is true")),
     BOARD.attacks.length ? h("ul", { class: "list" }, [...BOARD.attacks].reverse().map(c => h("li", {}, h("div", { class: "line" }, h("span", { class: "who" }, c.state), h("span", { class: "what" }, c.claim), h("span", { class: "when meta" }, named(c))),
       c.verdicts.map(v => h("p", { class: "meta" }, v.verdict + ", by " + named(v) + ": " + v.method + (v.not_tried ? "  ·  not tried: " + v.not_tried : ""))))))

@@ -36,10 +36,13 @@ class Attacks(Board):
     NAME = "attacks"
     TYPES = ("request", "verdict")
 
-    def ask(self, who, claim: str, ref: str = "") -> dict:
+    def ask(self, who, claim: str, ref: str = "", job: int | None = None) -> dict:
+        """Put a claim up; `job` ties it to one helper job (helpers.py), which only this claim can then clear."""
         claim, ref = _line(claim, "a claim", MAX_CLAIM), _line(ref, "a reference", 200, required=False)
+        if job is not None and type(job) is not int:
+            raise Refused("name the job by its number")
         self._clean(claim, ref)
-        return self._add({"type": "request", **self._sender(who), "claim": claim, "ref": ref})
+        return self._add({"type": "request", **self._sender(who), "claim": claim, "ref": ref, "job": job})
 
     def all(self) -> list[dict]:
         """Every claim, oldest first, with its verdicts and where it stands: one killed verdict stands against any number
