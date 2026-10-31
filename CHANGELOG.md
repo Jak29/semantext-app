@@ -6,6 +6,18 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-31
+
+The first step of joining the two pages into one. The v2 page now has everything the home page has but answering a question in your own words; the home page stays for now.
+
+### Added
+- **Today, Rules and Settings on the v2 page,** and **Agents** one step in from the Map: the feed and counts, the constellation, adding and switching rules, trying a message, what an agent gets, naming an agent by its folder, environments and the file editor.
+
+### Changed
+- **`/v2` opens on Waiting when something waits, and on Today otherwise.**
+- **Today counts what Waiting shows,** whichever inbox it comes from. The home page still counts only its own inbox.
+- **The v2 page can now change your rules and settings,** through one module and a fixed list of routes. Other places cannot, and those routes refuse answers, parks and plug-in changes.
+
 ## [1.5.1] - 2026-10-31
 
 The rest of the v2 page's places now work with nothing set up, and you can set a request aside.

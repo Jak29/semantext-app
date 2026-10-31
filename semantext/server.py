@@ -229,7 +229,8 @@ _JS, _CSS = "text/javascript; charset=utf-8", "text/css; charset=utf-8"
 V2_FILES = {f"/v2/{name}": (name, _CSS if name.endswith(".css") else _JS) for name in (
     "style.css", "app.js", "dom.js", "words.js", "parts.js", "frame.js", "cards.js", "drawers.js", "markdown.js",
     "waiting.js", "projects.js", "documents.js", "map.js", "record.js", "outside.js", "work.js", "workboard.js",
-    "workitem.js", "plugins.js")}
+    "workitem.js", "plugins.js", "own.css", "ownbase.js", "ownevents.js", "ownplace.js", "owntoday.js", "ownrules.js",
+    "ownsky.js", "ownagents.js", "ownspace.js", "ownsettings.js")}
 # The v2 page and each of its files carry this policy. Scripts only from this server's own files (no inline script
 # and no handler attributes; tests/test_v2_page.py checks index.html), styles only from its stylesheet (no style
 # attribute and no <style>: the audit of c607024 found 'unsafe-inline' there only for literal spacing, now classes in

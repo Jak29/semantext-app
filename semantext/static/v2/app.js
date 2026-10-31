@@ -1,5 +1,5 @@
 // The page: its shared state, its reads, moving between places, and the start. Each place is its own module.
-import { $ } from "./dom.js";
+import { $, h } from "./dom.js";
 import { clock } from "./words.js";
 import { applyFrame, renderProblems } from "./frame.js";
 import { closeDrawer, openDrawer, renderDrawer } from "./drawers.js";
@@ -11,6 +11,7 @@ import * as record from "./record.js";
 import * as work from "./work.js";
 import * as plugins from "./plugins.js";
 import { drawOutside, outsidePlace, renderOutsideTabs } from "./outside.js";
+import { agentsPlace, leave, rulesPlace, settingsPlace, todayPlace } from "./ownplace.js";
 
 // ---------------------------------------------------------------- the state of the page
 export const S = {
@@ -30,7 +31,8 @@ export function applyTarget(place, attr) {
   el.classList.add("target");
   if (!t.focused) { t.focused = true; S.moved = true; el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }
 }
-export const ROUTE = { waiting: "waiting", projects: "projects", documents: "documents", map: "map", record: "record", work: "work", plugins: "plugins" };
+// Today, Rules and Settings read their own data (ownplace.js); their route is only the frame.
+export const ROUTE = { today: "sources", rules: "sources", settings: "sources", waiting: "waiting", projects: "projects", documents: "documents", map: "map", record: "record", work: "work", plugins: "plugins" };
 export const DRAWER_ROUTE = { agent: "map", rules: "rules", gates: "projects", docs: "projects" };
 // A built-in place's route, or a place a plug-in adds (the frame lists those): its route is its own name.
 export const routeOf = (place) => ROUTE[place] || (outsidePlace(S.frame, place) ? place : null);
@@ -87,8 +89,8 @@ function parseHash() {
   const cut = raw.indexOf("/");
   const head = cut < 0 ? raw : raw.slice(0, cut);
   const sub = cut < 0 ? null : raw.slice(cut + 1) || null;
-  if (!head) return { place: "waiting", sub: null };
-  if (head === "waiting" || head === "projects" || head === "documents" || head === "record" || head === "work" || head === "plugins") return { place: head, sub };
+  if (!head) return { place: null, bare: true, sub: null };
+  if (head === "today" || head === "rules" || head === "settings" || head === "waiting" || head === "projects" || head === "documents" || head === "record" || head === "work" || head === "plugins") return { place: head, sub };
   if (head === "map" || (S.frame && S.frame.word && head === S.frame.word)) return { place: "map", sub };
   if (outsidePlace(S.frame, head)) return { place: head, sub };
   return { place: null, head, sub };
@@ -100,7 +102,8 @@ export async function route() {
     try { accept("sources", await get("sources")); } catch (e) { S.err = String(e.message || e); }
     r = parseHash();
   }
-  if (!r.place) r = { place: "waiting", sub: null };
+  // A bare address opens on Waiting when something waits, otherwise on Today; a name it does not know, on Waiting.
+  if (!r.place) r = { place: r.bare && S.frame && !S.frame.waiting ? "today" : "waiting", sub: null };
   const key = r.place + "/" + (r.sub || "");
   const moved = key !== S.mounted;
   S.place = r.place;
@@ -110,7 +113,7 @@ export async function route() {
     if (a.dataset.place === r.place) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
   if (S.frame) renderOutsideTabs(S.frame, r.place);
-  $("main").className = r.place === "projects" || r.place === "map" || r.place === "work" ? "wide" : "";
+  $("main").className = r.place === "projects" || r.place === "map" || r.place === "work" || r.place === "rules" || (r.place === "today" && r.sub) ? "wide" : "";
   if (moved) {
     S.mounted = key;
     mount();
@@ -130,10 +133,17 @@ export async function route() {
 
 // Each place is a module: render(data, el) draws it from its route's answer, and mount(el), where a place has one,
 // makes the parts it keeps between drawings. A place a plug-in adds is drawn by its own page module (outside.js).
-const PLACES = { waiting, projects, documents, map, record, work, plugins };
-export function mount() { $("place").replaceChildren(); $("bar-place").replaceChildren(); if (PLACES[S.place] && PLACES[S.place].mount) PLACES[S.place].mount($("place")); }
+const PLACES = { today: todayPlace, waiting, projects, documents, map, record, work, rules: rulesPlace, plugins, settings: settingsPlace };
+const placeNow = () => (S.place === "map" && S.sub && S.sub[0] === "~" ? agentsPlace : PLACES[S.place]);
+export function mount() {
+  leave();
+  $("place").replaceChildren();
+  $("bar-place").replaceChildren();
+  if (S.place === "map") $("bar-place").append(S.sub && S.sub[0] === "~" ? h("a", { href: "#map" }, "The map") : h("a", { href: "#map/~agents" }, "Agents"));
+  if (placeNow() && placeNow().mount) placeNow().mount($("place"));
+}
 export function fill() {
-  const own = PLACES[S.place];
+  const own = placeNow();
   if (own) keep(() => own.render(S.data[ROUTE[S.place]], $("place")));
   else if (outsidePlace(S.frame, S.place) && S.data[S.place]) keep(() => drawOutside(outsidePlace(S.frame, S.place), S.data[S.place], $("place")));
 }

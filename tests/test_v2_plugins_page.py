@@ -168,7 +168,7 @@ def test_the_module_writes_only_to_its_own_routes():   # must refuse any other w
     text = (paths.static_dir() / "v2" / "plugins.js").read_text(encoding="utf-8")
     assert re.findall(r'fetch\("([^"]+)"', text) == ["/api/v2/plugins/"]
     assert '"X-Semantext": "1"' in text and "innerHTML" not in text
-    others = [p.name for p in (paths.static_dir() / "v2").glob("*.js") if p.name != "plugins.js"]
+    others = [p.name for p in (paths.static_dir() / "v2").glob("*.js") if p.name != "plugins.js" and not p.name.startswith("own")]   # those: test_one_page.py
     posting = {n: (paths.static_dir() / "v2" / n).read_text("utf-8") for n in others}
     posting = {n: t for n, t in posting.items() if re.search(r'method:\s*"POST"', t)}
     # One exception, for two routes: a request in your own inbox is answered or parked from its card.

@@ -5,20 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Semantext</title>
 <link rel="stylesheet" href="/v2/style.css">
+<link rel="stylesheet" href="/v2/own.css">
 </head>
 <body>
 <a class="skip" href="#main" id="skip">Skip to the content</a>
 <header class="bar">
   <span class="brand">Semantext</span>
   <nav class="places" aria-label="Places">
+    <a data-place="today" href="#today" id="tab-today">Today</a>
     <a data-place="waiting" href="#waiting" id="tab-waiting">Waiting <span class="n" id="count-waiting"></span></a>
+    <a data-place="work" href="#work" id="tab-work">Work</a>
     <a data-place="projects" href="#projects" id="tab-projects">Projects</a>
     <a data-place="documents" href="#documents" id="tab-documents">Documents</a>
     <a data-place="map" href="#map" id="tab-map">Map</a>
     <a data-place="record" href="#record" id="tab-record">Record</a>
-    <a data-place="work" href="#work" id="tab-work">Work</a>
-    <a data-place="plugins" href="#plugins" id="tab-plugins">Plug-ins</a>
     <span class="outside-tabs" id="tabs-outside"></span>
+    <span class="places-gap" aria-hidden="true"></span>
+    <a data-place="rules" href="#rules" id="tab-rules">Rules</a>
+    <a data-place="plugins" href="#plugins" id="tab-plugins">Plug-ins</a>
+    <a data-place="settings" href="#settings" id="tab-settings">Settings</a>
   </nav>
   <div class="bar-place" id="bar-place"></div>
   <div class="bar-end">
@@ -40,6 +45,44 @@
   </div>
   <div class="drawer-body" id="drawer-body"></div>
 </aside>
+<div class="own">
+<div class="menu" id="envMenu" role="menu" hidden></div>
+
+<div class="modal" id="newEnv" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+    <h2 id="newTitle">New environment</h2>
+    <p class="sub">A set of rules for one context, such as Office, Studying or Late night. Every agent reads the active one.</p>
+    <input class="input" id="newName" data-sp="full" placeholder="Office, Studying, Late night..." autocomplete="off" aria-label="Environment name">
+    <p class="label" id="newFor" data-sp="mt16"></p>
+    <ul class="picks" id="picks"></ul>
+    <div class="actions"><button class="btn" id="newCancel" type="button">Cancel</button><button class="btn primary" id="newCreate" type="button">Create</button></div>
+  </div>
+</div>
+<div class="modal" id="editorDlg" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <h2 id="edTitle">Edit the file</h2>
+    <p class="sub" id="edLead"></p>
+    <div class="two">
+      <div><textarea class="editor" id="editor" spellcheck="false" aria-label="The environment file"></textarea>
+        <div class="row" data-sp="mt12"><button class="btn primary" id="save" type="button">Save</button><button class="btn" id="revert" type="button">Revert</button><span class="grow"></span><button class="btn" id="edClose" type="button">Close</button></div>
+        <div class="status-line meta" id="editStatus" role="status"></div></div>
+      <div><p class="label">The language</p>
+        <dl class="lang">
+          <dt>statement</dt><dd>The rule in plain words. This is what your AI reads.</dd>
+          <dt>applies_when</dt><dd>When it matters, in plain words.</dd>
+          <dt>enabled</dt><dd>On or off, without deleting it.</dd>
+          <dt>always</dt><dd>On every card, even the short one.</dd>
+          <dt>relay</dt><dd>Also on the short card, for words that are not yours.</dd>
+          <dt>provenance</dt><dd>Where it came from, with your own words kept beside it.</dd>
+          <dt>agents</dt><dd>Each agent's own rules, under its name.</dd>
+        </dl>
+        <p class="meta" data-sp="mt14">Saving checks the file first, and the old version is always kept.</p></div>
+    </div>
+  </div>
+</div>
+<div class="tipbox" id="skytip" role="tooltip"></div>
+<div class="pop" id="rulecard" role="dialog" aria-label="Details" hidden></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script type="module" src="/v2/app.js"></script>
 </body>

@@ -808,8 +808,20 @@
   ]
  },
  "map/": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "details",
@@ -892,8 +904,20 @@
   "problemsHidden": true
  },
  "map/348e73dced": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "a",
@@ -967,8 +991,20 @@
   "problemsHidden": true
  },
  "map/5bdd860bb5": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "a",
@@ -1030,8 +1066,20 @@
   "problemsHidden": true
  },
  "map/7ba4bdaeb7": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "a",
@@ -1105,8 +1153,20 @@
   "problemsHidden": true
  },
  "map/849880b792": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "details",
@@ -1189,8 +1249,20 @@
   "problemsHidden": true
  },
  "map/85ab23f1e0": {
-  "bar": [],
-  "barControls": [],
+  "bar": [
+   "a: Agents"
+  ],
+  "barControls": [
+   [
+    "a",
+    "#map/~agents",
+    null,
+    null,
+    null,
+    null,
+    ""
+   ]
+  ],
   "controls": [
    [
     "a",

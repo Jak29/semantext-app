@@ -168,12 +168,16 @@ function load(name) {
   await entry.evaluate();
   const names = {};
   const shared = new Set();
+  // The parts moved from the home page (own*.js) reuse the page's short names, so theirs are given apart, as moved.<name>.
+  const moved = {};
   for (const [file, mod] of [[entries[0], entry], ...[...modules].filter(([f]) => f !== entries[0])]) {
     for (const [k, v] of Object.entries(mod.namespace)) {
+      if (file.startsWith("own")) { if (!(k in moved)) moved[k] = v; continue; }
       if (!(k in names)) names[k] = v;
       else if (file !== entries[0]) shared.add(k);
     }
   }
+  names.moved = moved;
   for (const k of shared) if (!(k in entry.namespace)) delete names[k];
   const keys = Object.keys(names);
   const test = fs.readFileSync(0, "utf8");
