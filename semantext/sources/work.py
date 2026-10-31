@@ -125,8 +125,9 @@ def load(cfg: dict, readers=None, now=None, projects=None) -> dict:
     out = {"off": False, "store": {"path": str(w.path), "exists": w.path.is_file(), "intact": True, "events": 0},
            "items": [], "asks": [], "ranking": [], "counts": {}, "projects": [], "known_projects": [], "problems": [],
            "words": dict(WORD), "read_at": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
-    said = w.seats_said()   # the seats' mode, said aloud: unchecked, or refused because they cannot be known
-    if said:
+    said = w.seats_said()   # the seats' mode: unchecked (no seats, which is no fault), or refused because they cannot be known
+    out["seats_said"] = said
+    if said and w.seats_unknown():
         out["problems"].append(problem(cfg.get("_file") or "the sources file", None, "seats", said))
     if not out["store"]["exists"]:
         return out

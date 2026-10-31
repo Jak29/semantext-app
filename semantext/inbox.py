@@ -219,9 +219,9 @@ class Inbox:
         for line in self.path.read_text(encoding="utf-8").splitlines():
             try:
                 e = jsonread.loads(line)
-            except json.JSONDecodeError:
+            except (ValueError, RecursionError):   # json's error is a ValueError, and so is a number too long to read
                 continue  # a damaged line is skipped, never fatal
-            if isinstance(e, dict) and isinstance(e.get("id"), int) and e.get("type") in (
+            if isinstance(e, dict) and type(e.get("id")) is int and e.get("type") in (
                     "request", "answer", "close", "read"):
                 out.append(e)
         return out

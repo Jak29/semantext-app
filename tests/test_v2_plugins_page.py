@@ -169,4 +169,9 @@ def test_the_module_writes_only_to_its_own_routes():   # must refuse any other w
     assert re.findall(r'fetch\("([^"]+)"', text) == ["/api/v2/plugins/"]
     assert '"X-Semantext": "1"' in text and "innerHTML" not in text
     others = [p.name for p in (paths.static_dir() / "v2").glob("*.js") if p.name != "plugins.js"]
-    assert [n for n in others if re.search(r'method:\s*"POST"', (paths.static_dir() / "v2" / n).read_text("utf-8"))] == []
+    posting = {n: (paths.static_dir() / "v2" / n).read_text("utf-8") for n in others}
+    posting = {n: t for n, t in posting.items() if re.search(r'method:\s*"POST"', t)}
+    # One exception, for one route: a request in your own inbox is answered from its card, through the home page's route.
+    assert list(posting) == ["cards.js"] and posting["cards.js"].count('method: "POST"') == 1
+    assert re.search(r'fetch\("/api/answer", \{ method: "POST"', posting["cards.js"])
+    assert re.findall(r'fetch\("([^"]+)"', posting["cards.js"]) == ["/api/answer"]

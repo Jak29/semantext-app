@@ -6,6 +6,6 @@ environment:
   title: Default
   scope: Where everyone starts. It holds the shared rules and grows from what you teach it.
   inherits:
-  - base@0.1.0
+  - base@0.2.0
 entries: []
 tests: []

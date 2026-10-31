@@ -108,6 +108,19 @@ AGENT_VARIABLES = ("CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_SANDBOX", "COD
 
 
 @pytest.fixture(autouse=True)
+def not_this_machines_load(monkeypatch):
+    """No test depends on what this machine is doing: the compute monitor's own tests stand in a machine of their own,
+    and every other test meets a system that lets nothing be read, which the page says nothing about."""
+    from semantext.sources import compute
+
+    def cannot(*a):
+        raise NotImplementedError
+    for sign in ("programs", "screen", "cpu_times", "memory_free"):
+        monkeypatch.setattr(compute.Signs, sign, staticmethod(cannot))
+    compute._reset()
+
+
+@pytest.fixture(autouse=True)
 def plain_shell(monkeypatch):
     for name in AGENT_VARIABLES:
         monkeypatch.delenv(name, raising=False)

@@ -52,6 +52,11 @@ def cmd_work(store, args, out=print) -> int:
     # an empty key goes to the writer, which refuses it: dropped, a retry with an unset variable would record twice
     key = {"request_key": args.request_key} if getattr(args, "request_key", None) is not None else {}
     a = args.work_action
+    if a == "project":
+        from ..cli import _users_act
+        _users_act("add a project")
+        out(f"Project: {w.add_project(args.name)}")
+        return 0
     if a == "new":
         req = {"project": args.project, "title": args.title, "kind": args.kind, **key}
         if args.text:
@@ -153,8 +158,10 @@ def register(add) -> None:
     sp = add("work", cmd_work, "work items: new, move, link, unlink, comment, list, show (a write from here is claimed and "
                                "holds no rights; see `semantext work show`)")
     sub = sp.add_subparsers(dest="work_action", metavar="<action>", required=True)
+    pj = sub.add_parser("project", help="add a project of your own, for items to belong to")
+    pj.add_argument("name")
     n = sub.add_parser("new", help="file an item (from here it has no owner until a seat takes it)")
-    n.add_argument("--project", required=True, help="the project, as the seats or projects file names it")
+    n.add_argument("--project", required=True, help="one of your projects (`semantext work project NAME` adds one)")
     n.add_argument("--title", required=True)
     n.add_argument("--kind", choices=KINDS, default="task")
     n.add_argument("--text")

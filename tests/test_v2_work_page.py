@@ -21,6 +21,7 @@ PIN = Path(__file__).with_name("v2_work_pin.json")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
 
 TEXTS = r"""
+S.frame = Object.assign(S.frame || {}, { inbox_app: true });
 for (const name of ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]) {
   const was = Date.prototype[name];
   Date.prototype[name] = function (locales, opts) { return was.call(this, "en-US", Object.assign({}, opts, { timeZone: "UTC" })); };
@@ -99,6 +100,14 @@ def test_the_views_say_their_words(tmp_path):
     empty = run(TEXTS + """S.place = "work"; S.sub = null; mount(); S.data.work = { store: { exists: false }, items: [], projects: [] }; fill();
 report({ head: texts(WK.head), strip: WK.strip.hidden, body: texts(WK.body) });""")
     assert empty["strip"] is True and empty["body"] == ["p.empty: No work items yet."]
+
+
+def test_with_no_inbox_app_in_the_settings_there_is_no_link(tmp_path):
+    w, data = world(tmp_path)
+    got = run("S.frame = null;\n" + TEXTS.replace("{ inbox_app: true }", "{ inbox_app: false }") + "const DATA = " + json.dumps(data)
+              + ";\nS.place = \"work\"; S.sub = null; mount(); S.data.work = DATA; fill();\n"
+              + "report({ links: WK.strip.all((e) => e.tagName === \"A\" && (e.getAttribute(\"href\") || \"\").startsWith(\"jak-inbox:\")).length });")
+    assert got["links"] == 0
 
 
 def test_a_forged_inbox_link_is_never_drawn(tmp_path):

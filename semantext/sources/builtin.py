@@ -12,7 +12,7 @@ from importlib import import_module
 
 from ..registry import Registry
 
-FRAME_KEYS = ("name", "group", "gaming")   # read by the frame itself: the person's word, the group, the gaming flag
+FRAME_KEYS = ("name", "group", "gaming", "game_folders", "inbox_app")   # read by the frame itself: the person's word, the group, the gaming flag
 
 
 class Reader:

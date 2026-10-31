@@ -2,7 +2,7 @@
 import { $, h } from "./dom.js";
 import { day, plural, when } from "./words.js";
 import { disclosure } from "./parts.js";
-import { S } from "./app.js";
+import { S, fill, load } from "./app.js";
 import { goCard } from "./waiting.js";
 import { openDrawer } from "./drawers.js";
 
@@ -46,6 +46,46 @@ export function runLine(run) {
   return h("p", { class: "status bad" }, "Ran " + when(run.finished) + ", and failed (exit " + (run.exit ?? "unknown") + ").");
 }
 
+// Park and Bring back: a link that opens the card in your inbox, where your own press is the only thing that writes.
+// It carries a seat and a card's id and nothing else, held here to the inbox's own form (its link.rs), or it is not drawn.
+const LINK_SEAT = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/, LINK_ID = /^[A-Za-z]-[0-9]{8}-[0-9]{6}(-[0-9]{1,3})?$/;
+export function cardLink(seat, id) {
+  return typeof seat === "string" && typeof id === "string" && LINK_SEAT.test(seat) && LINK_ID.test(id)
+    ? "jak-inbox://card/" + seat + "/" + id : null;
+}
+export function parkNode(c, parked) {
+  if (!(S.frame && S.frame.inbox_app === true)) return null;   // no inbox app named in your settings: no dead link
+  const url = cardLink(c.seat, c.id);
+  const word = parked ? "Bring back" : "Park";
+  if (!url) return h("span", { class: "meta" }, word + " from your inbox.");
+  return h("a", { class: "inbox-link", href: url, "data-k": "park:" + c.key,
+    title: "Opens this card in your inbox, and does nothing else: your press there is what " + (parked ? "brings it back" : "parks it") }, word + " in your inbox");
+}
+
+// A request in your own inbox is answered here, through the same guarded route as the home page. One press, one answer;
+// the server keeps it, and refuses a second. A question with no options is answered in your own words on the home page.
+export const answers = { post: (body) => fetch("/api/answer", { method: "POST", cache: "no-store",
+  headers: { "X-Semantext": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) }), said: {} };
+export async function answerRequest(c, choice) {
+  let r = null, got = {};
+  try {
+    r = await answers.post({ id: c.number, choice });
+    try { got = await r.json(); } catch (e) { /* the status says enough */ }
+  } catch (e) { got = { error: "the page could not reach Semantext" }; }
+  answers.said[c.key] = r && r.ok ? null : (got.error || "That answer was not taken.");
+  if (r && r.ok) await load("waiting");
+  fill();
+}
+export function answerNode(c) {
+  const box = h("div", { class: "answers", "data-k": "answer:" + c.key });
+  if ((c.choices || []).length) {
+    box.append(...c.choices.map((x) => h("button", { type: "button", class: "answer", "data-k": "answer:" + c.key + ":" + x.choice,
+      on: { click: () => answerRequest(c, x.choice) } }, x.label)));
+  } else box.append(h("a", { href: "/" }, "Answer in your own words on the home page"));
+  if (answers.said[c.key]) box.append(h("p", { class: "refused", role: "alert" }, answers.said[c.key]));
+  return box;
+}
+
 export function cardNode(c) {
   const waiting = c.state === "waiting", parked = c.state === "parked", done = c.state === "closed" || c.state === "run";
   const node = h("article", { class: "card " + (waiting ? "is-waiting" : parked ? "is-parked" : "is-done"), "data-card": c.key,
@@ -75,20 +115,22 @@ export function cardNode(c) {
     if (c.run) node.append(runLine(c.run));
     const out = outputBox(c);
     if (out) node.append(out);
-    if (!c.run && waiting) node.append(h("p", { class: "where", title: "This page never runs anything." }, "Run it or park it from your inbox."));
+    if (!c.run && waiting) node.append(h("p", { class: "where", title: "This page never runs anything." }, c.own_inbox ? "Run it yourself, then say how it went:" : "Run it from your inbox app if you use one, or a terminal. ", parkNode(c, false)));
+    if (c.own_inbox && waiting) node.append(answerNode(c));
   } else {
     if (c.question) node.append(h("p", { class: "question" }, c.question));
-    if (c.options && c.options.length) node.append(h("ol", { class: "options" }, c.options.map((o) => h("li", null, o))));
+    if (c.options && c.options.length && !(c.own_inbox && waiting)) node.append(h("ol", { class: "options" }, c.options.map((o) => h("li", null, o))));
     if (c.change_id) {
       const target = c.seat + "/" + c.change_id;
       node.append(h("p", { class: "where" }, "It asks about the proposed change ", h("button", { class: "link mono", type: "button", "data-k": "about:" + c.key,
         on: { click: () => { S.open.add("shelf:changes"); goCard(target); } } }, c.change_id), "."));
     }
-    if (waiting) node.append(h("p", { class: "where" }, "Answer in " + c.seat + "'s chat: paste the ID, then your decision. Park it from your inbox."));
+    if (waiting && c.own_inbox) node.append(answerNode(c));
+    else if (waiting) node.append(h("p", { class: "where" }, "Answer in " + c.seat + "'s chat: paste the ID, then your decision. ", parkNode(c, false)));
   }
   for (const note of c.notes || []) node.append(h("p", { class: "refused" }, note));
   if (c.closing) node.append(h("p", { class: "closed" }, "Closed " + when(c.closing.at) + (c.closing.how ? ": " + c.closing.how : ".")));
-  if (parked) node.append(h("p", { class: "park" }, "Parked " + when(c.parked_at) + ". " + c.seat + " holds it until you bring it back from your inbox."));
+  if (parked) node.append(h("p", { class: "park" }, "Parked " + when(c.parked_at) + ". " + c.seat + " holds it until you bring it back. ", parkNode(c, true)));
   node.append(cardMore(c));
   return node;
 }

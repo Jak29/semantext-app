@@ -78,6 +78,9 @@ def load_config(path: str | Path | None = None, keys=None) -> dict:
 
 LISTS = ("run_records",)        # a key that may also hold a list of texts (the run-record folders)
 NUMBERS = ("run_record_days",)  # a key that holds a whole number over 0 (the run records' age bound)
+BOOLS = ("inbox_app",)          # a key that holds true or false
+JUDGED = ("game_folders",)      # a key kept whatever it holds: its reader says when it is wrong, since a dropped one
+                                # would read as if it had never been set (the compute monitor could then say free)
 
 
 def _plain(v) -> bool:
@@ -90,6 +93,10 @@ def _plain(v) -> bool:
 
 
 def _kept(key: str, value) -> bool:
+    if key in BOOLS:
+        return isinstance(value, bool)
+    if key in JUDGED:
+        return value is not None
     if key in NUMBERS:
         return isinstance(value, int) and not isinstance(value, bool) and value > 0
     if key in LISTS and isinstance(value, list):

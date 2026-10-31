@@ -6,6 +6,26 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-31
+
+The first step to a standalone app: more of the page works from a clean install, with nothing set up. Your rules, your own inbox and your work show on the v2 page, and a compute monitor says whether this machine is free for heavy work. Everything an estate's files gave still works when they are named.
+
+### Added
+- **The compute monitor**, read and never changed: `semantext compute` for a job about to start (exit 0 free, 2 could not tell, 3 hold or light work only), and a word in the page's bar. It sees a program in the common game stores' folders (Steam, Epic, GOG, Riot, Xbox, Battle.net, Ubisoft, EA, Lutris; the Epic, Battle.net and Riot launchers themselves are not games) or in folders you name under `"game_folders"`, a full-screen program on Windows, a busy processor and short memory (Windows and Linux). Only "free" means go; a sign it cannot read, or a setting it cannot use, is never a clear one, and it says what it did not read. The GPU is not read; on macOS only the switch below is.
+- **An I'm gaming switch**: `semantext compute hold [--hours N]` and `release`, a flag in your home that lapses by itself within six hours. A flag your settings place elsewhere belongs to whatever writes it, and is refused.
+- **`semantext work project NAME`**: name your own projects, so work can be filed with no seats file.
+- A test of the whole product as a stranger, with nothing set up (`tests/test_a_stranger.py`).
+
+### Changed
+- **The v2 page's Rules** reads the environments in your home when no `"cards"` setting names others.
+- **The v2 page's Waiting** reads your own inbox when neither `"seats"` nor `"inbox"` is set: agents' requests as cards, answered from the card through the same guarded route as the home page. That is the page's one write outside the Plug-ins tab. A sources file that `SEMANTEXT_SOURCES` names and that is not there is said as a problem, and is never read as no setup.
+- **Links into an inbox app (`jak-inbox://`) appear only with `"inbox_app": true`** in your sources file, including the Work item's link, which used to show for everyone. Anyone who uses that app needs to add the line.
+
+### Fixed
+- A clean install reported its own default environment as pinning an old base (`base@0.1.0`, with base at 0.2.0). A new environment now pins the base in your home. A home made before this keeps its pin, and the page keeps saying so.
+- `/api/answer` took the JSON value `true` as request number 1.
+- A line of your inbox file holding a number too long to read stopped the whole inbox, and with it the card your AI receives. It is now a damaged line, skipped like any other.
+
 ## [1.4.0] - 2026-10-30
 
 Closes by name as well as by path, a Plug-ins tab on which the page proposes and the console applies, a fair store lock, one rule for reading a seat's folder, and a written security floor. Outside plug-ins read nothing until your closed places are named in full, and none loads until you turn it on at your console.

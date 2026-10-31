@@ -395,3 +395,7 @@ tr.not-applied td { color: var(--text-3); }
 .psaid.acts { border-color: var(--accent); }
 .plog { display: grid; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
 .pchange { display: grid; gap: 2px; justify-items: start; padding-top: 8px; border-top: 1px solid var(--line); }
+.answers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.answer { padding: 5px 12px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); font-size: 13px; text-align: left; }
+.answer:hover { border-color: var(--accent); }
+.answers .refused { flex-basis: 100%; }

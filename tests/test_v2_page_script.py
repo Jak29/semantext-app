@@ -160,6 +160,68 @@ report({ on: words({ state: "on", until_epoch: until }, now), expect: "Gaming ho
     assert got["shownOn"][0] is False and got["shownOn"][1].startswith("Gaming hold until ")
 
 
+def test_the_compute_monitor_shows_only_when_work_should_wait():
+    got = run("""
+const show = (g, c) => { applyFrame({ waiting: 0, problems: [], gaming: g, compute: c }); return [$("gaming").hidden, $("gaming").textContent, $("gaming").title]; };
+const hold = { verdict: "hold", reasons: ["a Steam game is running: deadlock.exe"], not_read: ["the GPU"] };
+report({ hold: show({ state: "off" }, hold), light: show({ state: "off" }, { verdict: "light", reasons: ["the processor is 95% busy"] }),
+  bad: show({ state: "off" }, { verdict: "unknown", reasons: ["x"], could_not_tell: ["x"] }),
+  first: show({ state: "off" }, { verdict: "unknown", reasons: ["y"], could_not_tell: [] }),
+  free: show({ state: "off" }, { verdict: "free", reasons: [] }), none: show({ state: "off" }, undefined),
+  button: show({ state: "on", until_epoch: Date.now() / 1000 + 600 }, hold) });
+""")
+    assert got["hold"][:2] == [False, "Hold heavy work"] and "deadlock.exe" in got["hold"][2] and "the GPU" in got["hold"][2]
+    assert got["light"][:2] == [False, "Light work only"]
+    assert got["bad"][:2] == [False, "Compute state unknown"]
+    # must refuse: free, a first reading with nothing wrong, and a server too old to send it say nothing
+    assert got["free"][:2] == [True, ""] and got["first"][:2] == [True, ""] and got["none"][:2] == [True, ""]
+    assert got["button"][1].startswith("Gaming hold until ")   # the button's end time is the more useful word
+
+
+def test_a_request_in_your_own_inbox_is_answered_with_one_press():
+    got = run(CARD + """
+let posted = [];
+answers.post = async (body) => { posted.push(body); return { ok: false, json: async () => ({ error: "refused here" }) }; };
+const own = card({ key: "Helper/#3", seat: "Helper", id: "#3", number: 3, own_inbox: true, choices: [{ label: "red", choice: "1" }, { label: "<b>blue</b>", choice: "2" }] });
+const n = cardNode(own);
+const buttons = n.all((e) => e.tagName === "BUTTON" && (e.getAttribute("data-k") || "").startsWith("answer:"));
+return answerRequest(own, "2").then(() => {
+const again = cardNode(own);
+const words = cardNode(card({ key: "Helper/#4", seat: "Helper", id: "#4", number: 4, own_inbox: true, options: [], choices: [] }));
+const estate = cardNode(card());
+const lists = n.all((e) => e.tagName === "OL").length;
+report({ lists, labels: buttons.map((b) => b.textContent), posted, said: again.textContent.includes("refused here"),
+  home: words.all((e) => e.tagName === "A").map((a) => a.getAttribute("href")),
+  estateButtons: estate.all((e) => (e.getAttribute("data-k") || "").startsWith("answer:")).length,
+  estateText: estate.textContent.includes("chat") });
+});
+""")
+    assert got["labels"] == ["red", "<b>blue</b>"] and got["posted"] == [{"id": 3, "choice": "2"}] and got["lists"] == 0
+    assert got["said"] is True and "/" in got["home"]
+    # must refuse: an estate's card is answered where it was, and the page offers it no buttons
+    assert got["estateButtons"] == 0 and got["estateText"] is True
+
+
+def test_park_and_bring_back_are_links_that_carry_only_a_seat_and_an_id():
+    got = run("""
+const good = [cardLink("Tribune", "T-20261023-141353"), cardLink("Tribune", "T-20261023-141353-2")];
+const bad = [["Tribune", "T-20261023-141353?act=park"], ["Tribune", "T-20261023-141353#x"], ["Trib/une", "T-20261023-141353"],
+  ["..", "T-20261023-141353"], ["Tribune", "../x"], ["Tribune", "T-2026-1"], ["Tribune", "T-20261023-141353-1234"], ["", ""],
+  [null, null], ["Tribune", "T-20261023-141353%20"], ["Tribune\\n", "T-20261023-141353"]].map(([s, i]) => cardLink(s, i));
+const none = parkNode({ seat: "Tribune", id: "T-20261023-141353", key: "k" }, false);
+S.frame = { inbox_app: true };
+const a = parkNode({ seat: "Tribune", id: "T-20261023-141353", key: "Tribune/T-20261023-141353" }, false);
+const b = parkNode({ seat: "Tribune", id: "T-20261023-141353", key: "Tribune/T-20261023-141353" }, true);
+const c = parkNode({ seat: "Tribune", id: "javascript:alert(1)", key: "k" }, false);
+report({ good, bad, none, a: [a.tagName, a.getAttribute("href"), a.textContent], b: b.textContent, c: [c.tagName, c.getAttribute("href"), c.textContent] });
+""")
+    assert got["none"] is None   # must refuse: with no inbox app in the settings, no link at all
+    assert got["good"] == ["jak-inbox://card/Tribune/T-20261023-141353", "jak-inbox://card/Tribune/T-20261023-141353-2"]
+    assert got["a"][1] == got["good"][0] and got["a"][2] == "Park in your inbox" and got["b"] == "Bring back in your inbox"
+    # must refuse: nothing that could carry an act, a path or a script becomes a link
+    assert got["bad"] == [None] * 11 and got["c"][0].upper() == "SPAN" and got["c"][1] is None
+
+
 def test_a_change_card_shows_its_proposal_and_never_an_act():
     got = run(CARD + """
 const ch = (over) => card(Object.assign({ kind: "change", question: null, options: [], asked_in: ["Alder/A-2"], decided: false, change: Object.assign({

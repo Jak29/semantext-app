@@ -39,10 +39,24 @@ export function gamingWords(g, nowMs) {
   if (g.state === "unknown") return { text: "Gaming state unknown", cls: "gaming unknown", title: g.why || "The gaming flag could not be read." };
   return null;
 }
+// The compute monitor (sources/compute.py): what the machine shows beyond the button. It says something only when work
+// should wait or a sign could not be read; a first reading with nothing wrong yet is not worth a word.
+export function computeWords(c) {
+  if (!c) return null;
+  const why = (c.reasons || []).join("; ");
+  const also = (c.not_read || []).length ? " Not read: " + c.not_read.join(", ") + "." : "";
+  if (c.verdict === "hold") return { text: "Hold heavy work", cls: "gaming", title: why + "." + also + " This page only reads it." };
+  if (c.verdict === "light") return { text: "Light work only", cls: "gaming", title: why + "." + also + " This page only reads it." };
+  if (c.verdict === "unknown" && (c.could_not_tell || []).length) {
+    return { text: "Compute state unknown", cls: "gaming unknown", title: c.could_not_tell.join("; ") + "." + also };
+  }
+  return null;
+}
 export function renderGaming() {
   const node = $("gaming");
   // A server started before the page learned to read the flag sends no gaming state: then nothing is said.
-  const w = S.frame ? gamingWords(S.frame.gaming, Date.now()) : null;
+  const f = S.frame;
+  const w = f ? (gamingWords(f.gaming, Date.now()) || computeWords(f.compute)) : null;
   node.hidden = !w;
   node.className = w ? w.cls : "gaming";
   node.textContent = w ? w.text : "";

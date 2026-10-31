@@ -216,7 +216,7 @@ def test_built_in_places_and_keys_are_what_they_were():
     # Two keys more since: the run-record folders and their age bound, read by the rules reader (runs.py). The Work
     # source adds two, for its verdict clauses (slice 2b): its store lies in the Semantext home.
     assert set(KEYS) == {"name", "seats", "group", "requests", "changes", "inbox", "register", "notes", "cards", "map",
-                         "gaming", "guards", "run_records", "run_record_days", "verdicts", "pieces"} and len(KEYS) == 16
+                         "gaming", "game_folders", "inbox_app", "guards", "run_records", "run_record_days", "verdicts", "pieces"} and len(KEYS) == 18
     assert view.BUILT_IN.names("source") == ("waiting", "record", "rules", "gates", "places", "work")
     assert all(e.origin == registry.BUILT_IN for e in view.BUILT_IN.entries())
 

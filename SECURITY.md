@@ -288,7 +288,7 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   and shown while the list is incomplete; the root rule only decides whether a root is walked, and the places reader
   then shows each project's `.identity` emails and each document's `MASTER.md` title from roots it walks.
   The closures are **not** applied by the places reader's reads of `.identity` files and `MASTER.md` titles (beyond
-  the root rule), the gates, the gaming check, the rules reader, the Record reader (its register and notes files), or
+  the root rule), the gates, the gaming check, the compute monitor, the rules reader, the Record reader (its register and notes files), or
   the git-index evidence policy. A closed place where one of those reads is not kept from it, with one exception: the
   places reader refuses a named root that is, or holds, a closed path (its walk would enter the closed place), and
   says so; the rows the serve hook and plug-ins read keep such a root, since they ask the closures of every path

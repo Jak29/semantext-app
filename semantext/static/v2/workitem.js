@@ -3,6 +3,7 @@
 // are the inbox's link (it only selects and shows the item there) or the one line you would type in the chat.
 import { h } from "./dom.js";
 import { listWords, when } from "./words.js";
+import { S } from "./app.js";
 
 // ---------------------------------------------------------------- the inbox's link, checked again before it is drawn
 const SLUG = "[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?";
@@ -59,7 +60,7 @@ export function workActLine(line) {
 }
 
 export function inboxNode(i, projects) {
-  const url = i.inbox && parseInboxLink(i.inbox, projects) === i.id ? i.inbox : null;
+  const url = S.frame && S.frame.inbox_app === true && i.inbox && parseInboxLink(i.inbox, projects) === i.id ? i.inbox : null;
   return url ? h("a", { class: "inbox-link", href: url, "data-k": "inbox:" + i.id, title: "Opens the item in your inbox; it only selects and shows it" }, "Open in your inbox")
     : h("span", { class: "meta" }, i.no_inbox || "No inbox link for this item.");
 }

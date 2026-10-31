@@ -20,7 +20,7 @@ copy.
 | `owner` | Who the rules belong to. |
 | `title` | The human name. It heads the environment's section on the card. |
 | `scope` | When this environment applies. The card shows it up to its first full stop. |
-| `inherits` | `[base@0.1.0]`: the shared base rules, which come first on the card. |
+| `inherits` | `[base@0.2.0]`: the shared base rules, which come first on the card. |
 
 `semantext env new TITLE...` writes this section for you:
 - **The title** may use letters, numbers, spaces, apostrophes and hyphens, up to 40 characters.

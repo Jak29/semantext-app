@@ -1,17 +1,16 @@
 """Gaming: whether the person's inbox says they are gaming, read from its flag and never written.
 
-The inbox's "I'm gaming" button writes gaming.json in the inbox folder, and every agent reads it (through the inbox's
-gaming.py) before heavy work. This reader reads that flag the way gaming.py's flag() does, and nothing more: it never
-writes the file, never runs gaming.py, and does not look at the running programs or the screen, which gaming.py also
-checks. So it answers only what the button said.
+An "I'm gaming" switch writes gaming.json: `semantext compute hold` in your Semantext home, or an inbox app's own button
+in its folder. This reader reads that flag, and nothing more: it never writes the file, and does not look at the running
+programs or the screen, which the compute monitor (compute.py) does. So it answers only what the switch said.
 
     on        the flag's "on" is true itself, and its "until_epoch" is a number later than now: on until then
     off       there is no file, or it is lowered, or it has no end time, or its end time has come
     unknown   the file cannot be read, is not JSON, is not a JSON object, or ends further off than the button's six
               hours (gaming.py refuses that as unreadable, since such a flag would hold work until someone edited it)
 
-The file is the config's "gaming" key, or gaming.json in its "inbox" folder when that key is missing. With neither,
-the reader is off.
+The file is the config's "gaming" key, or gaming.json in its "inbox" folder when that key is missing, or gaming.json in
+the Semantext home. With none of them, the reader is off.
 """
 from __future__ import annotations
 
@@ -29,13 +28,16 @@ MAX_BYTES = 64 * 1024
 
 
 def path_of(cfg: dict) -> Path | None:
-    """The flag's file: the "gaming" key, else gaming.json in the "inbox" folder, else None."""
+    """The flag's file: the "gaming" key, else gaming.json in the "inbox" folder, else in the home, else None."""
     named = cfg.get("gaming") if isinstance(cfg, dict) else None
     if isinstance(named, str) and named.strip():
         return Path(named.strip()).expanduser()
     inbox = cfg.get("inbox") if isinstance(cfg, dict) else None
     if isinstance(inbox, str) and inbox.strip():
         return Path(inbox.strip()).expanduser() / FILE
+    home = cfg.get("_home") if isinstance(cfg, dict) else None
+    if isinstance(home, str) and home.strip():
+        return Path(home.strip()).expanduser() / FILE
     return None
 
 

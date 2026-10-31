@@ -34,7 +34,7 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
 own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
 
-> **Status: version 1.4.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+> **Status: version 1.5.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 
@@ -76,7 +76,8 @@ Nothing moves on its own: the constellation lights up when a real message reache
 
 If you already run several agents, you already keep records: each agent's requests to you, the decisions you have
 given, your rule cards, the repositories your agents work in. v2 reads them where they lie, as its first dataset, and
-writes nothing. Name the files in `~/.semantext/sources.json` (the keys are listed in `semantext/sources/__init__.py`),
+writes nothing to them. With nothing set up, Rules shows your own environments, Waiting shows your own inbox (and answers
+it from the card), and Work holds what you file there; Record, Projects and the map need the files below for now. Name the files in `~/.semantext/sources.json` (the keys are listed in `semantext/sources/__init__.py`),
 then open `http://127.0.0.1:8765/v2`:
 
 - **Waiting** (the home): your agents' requests, card for card, with your earlier words on the same subject, who asks
@@ -180,7 +181,7 @@ environment:
   owner: you
   title: Writing desk
   scope: Drafting and reviewing documents with a small team.
-  inherits: [base@0.1.0]
+  inherits: [base@0.2.0]
 entries:
   - id: writing-desk.draft-is-for-comment
     kind: rule
@@ -356,6 +357,8 @@ More: [docs/claude-code.md](docs/claude-code.md).
 | Command | What it does |
 |---|---|
 | `semantext init` | Create your home with the starting environments, and print the next steps |
+| `semantext compute [hold [--hours N] \| release]` | Say whether this machine is free for heavy work (exit 0 free, 2 could not tell, 3 hold or light work only); `hold` and `release` are your I'm gaming switch |
+| `semantext work project NAME` | Add a project of your own, for work items to belong to |
 | `semantext card [--agent NAME]` | Print the card your AI receives; with `--agent`, the card that agent receives, its own rules included |
 | `semantext env [list]` | List environments; `*` marks the active one |
 | `semantext env use NAME` | Switch environments, by name or title (`semantext profile` is the same command) |
@@ -448,7 +451,8 @@ rules stay in `~/.semantext` until you delete that folder yourself.
 - **What it reads outside its folder.** `semantext mine` and `semantext backtest` read Claude Code's transcripts for the
   current project, under `~/.claude/projects/`. `semantext teach`, run from Claude Code's shell, reads that session's
   transcript to check that the words are yours. The hook records each session's transcript path, never its prompts.
-  The page lists the names of your local Ollama models.
+  The page lists the names of your local Ollama models. The compute monitor lists the running programs' paths and keeps
+  only a game program's file name, on this machine.
 - **Prompts stay unread** unless you switch on `hear-prompts`. If you do, the hook keeps each prompt in your heard log,
   on this machine.
 - **The page is for this machine only.** It listens on the loopback address and answers only requests addressed to it.

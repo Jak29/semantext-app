@@ -20,7 +20,7 @@ def test_an_empty_home_is_an_empty_board_and_no_problem(tmp_path):
     a = answer(tmp_path)
     # no problem but the one line that says the seats' mode: with no seats file configured, nothing checks a seat
     assert a["off"] is False and a["store"]["exists"] is False and a["items"] == []
-    assert [p["kind"] for p in a["problems"]] == ["seats"] and "not checked" in a["problems"][0]["text"]
+    assert a["problems"] == [] and "not checked" in a["seats_said"]   # having no seats is said, and is no fault
     assert a["asks"] == [] and a["counts"] == {}
     # must refuse: a store with one event is not empty
     writer(tmp_path).write(bound("Alder"), "create", {"project": "lab", "title": "One"})

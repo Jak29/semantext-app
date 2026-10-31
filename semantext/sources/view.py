@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import jsonread, outside, paths, registry
-from . import builtin, cards, closed, config_path, gaming, gates, load_config, places, record, refused_keys, rules
+from . import builtin, cards, closed, compute, config_path, gaming, gates, load_config, places, problem, record, refused_keys, rules
 from . import change as change_card
 from . import evidence_gitindex as evidence_way   # which files a change may cite: one module per way (evidence.py)
 from .workplace import work_place
@@ -106,7 +106,14 @@ def _config(home=None) -> tuple[dict, Path, dict | None]:
     path = config_file(home)
     try:   # "_file": where the run reader reads the person's closures from (runs._home); no reader shows it.
         # "_home": the Semantext home the server was started with, where the work store lies (sources/work.py).
-        return {**load_config(path), "_file": str(path), "_home": str(home or paths.home())}, path, None
+        cfg = {**load_config(path), "_file": str(path), "_home": str(home or paths.home())}
+        # Your own rules need no setting: with no "cards" key, the Rules page reads the environments in your home.
+        own = Path(cfg["_home"]) / "profiles"
+        if "cards" not in cfg and own.is_dir():
+            cfg["cards"] = str(own)
+        if os.environ.get("SEMANTEXT_SOURCES") and not path.is_file():   # named and missing: a broken setup, not no setup
+            cfg["_sources_missing"] = True
+        return cfg, path, None
     except Exception as e:  # noqa: BLE001  whatever is wrong with the file, every place still answers
         return {}, path, {"reader": "sources", "source": str(path), "line": None, "kind": "unreadable",
                           "text": f"your sources file cannot be read ({type(e).__name__}: {e})"[:300]}
@@ -219,7 +226,7 @@ def _prune(node, keep: set):
 
 
 def _in_group(got: dict, allowed: set | None) -> dict:
-    if allowed is None:
+    if allowed is None or got["waiting"].get("own_inbox"):   # your own inbox has no seats to be in a group
         return got
     c = dict(got["waiting"])
     c["seats"] = [s for s in c.get("seats") or [] if s.get("seat") in allowed]
@@ -284,6 +291,13 @@ class _Sources:
         self.home = home   # the home the page was started with: an outside place's build(sources, ctx) is given it
         self.reg = reg if reg is not None else registry.load_enabled(BUILT_IN, home)
         self.cfg, self.path, trouble = _config(home)
+        self.config_trouble = trouble
+        self.bad_settings = [
+            problem(self.path, None, "bad-setting", "'inbox_app' is not kept: it is true or false")
+            for _ in refused_keys(self.path, ("inbox_app",))] if not trouble else []
+        if self.cfg.get("_sources_missing"):
+            self.bad_settings.append(problem(self.path, None, "unreadable", "SEMANTEXT_SOURCES names this file, and it "
+                                             "is not there, so nothing it would name is read"))
         got, failed, self.spent = _read(self.cfg, world, self.reg, self.path, home,   # spent: outside bytes so far
                                         outside_reads)
         self.allowed = _allowed(self.cfg, got)
@@ -312,7 +326,9 @@ class _Sources:
                 "checked": _now(), "config": str(self.path),
                 "waiting": sum(x.get("state") == "waiting" for x in c.get("cards") or []),
                 "seats": [s.get("seat") for s in c.get("seats") or []], "off": _off(self.got, self.reg),
-                "problems": self.problems + _held(), "gaming": self.gaming(), "outside": self.outside()}
+                "problems": self.problems + self.bad_settings + _held(), "gaming": self.gaming(), "compute": self.compute(),
+                "inbox_app": self.cfg.get("inbox_app") is True,   # links into an inbox app only where the person says they have one
+                "outside": self.outside()}
 
     def outside(self) -> list[dict]:
         """The places the person turned on, after the built-ins in the bar: each with its title, the package it came
@@ -328,6 +344,19 @@ class _Sources:
             return gaming.load(self.cfg)
         except Exception as e:  # noqa: BLE001  the indicator says unknown; the page goes on
             return {"off": False, "state": "unknown", "file": None, "why": f"{type(e).__name__}: {e}"[:300]}
+
+    def compute(self) -> dict:
+        """The compute monitor's verdict; "unknown" when the monitor itself stops, never "free"."""
+        try:
+            got = compute.verdict(self.cfg)
+            if self.config_trouble and got["verdict"] == compute.FREE:   # the button's flag is named in that file
+                why = "your sources file could not be read, so the button's flag was not read"
+                return {**got, "verdict": compute.UNKNOWN, "reasons": [why], "could_not_tell": [why]}
+            return got
+        except Exception as e:  # noqa: BLE001  the indicator says unknown; the page goes on
+            why = f"{type(e).__name__}: {e}"[:300]
+            return {"verdict": "unknown", "reasons": [why], "could_not_tell": [why], "not_read": [], "games": [],
+                    "cpu_busy": None, "memory_free": None}
 
     # -- cards, as every place shows them
     def projects_list(self) -> list:
@@ -391,6 +420,7 @@ class _Cards:
             **{k: c.get(k) for k in ("seat", "id", "kind", "title", "why", "question", "command", "does", "undo", "cwd",
                                      "at", "state", "parked_at", "asks", "asks_basis", "acts", "acts_basis", "line")},
             "options": [o for o in c.get("options") or [] if isinstance(o, str)],
+            "number": c.get("number"), "choices": c.get("choices") or [], "own_inbox": bool(c.get("own_inbox")),
             "closing": {"at": closing.get("at"), "how": closing.get("how"),
                         "earlier": len(closing.get("earlier") or [])} if isinstance(closing, dict) else None,
             "run": {k: run.get(k) for k in ("started", "finished", "exit", "timed_out")} if isinstance(run, dict)
@@ -1057,9 +1087,9 @@ def status_line(home=None, width: int = 80) -> str:
         if trouble:
             return UNAVAILABLE
         c = cards.load(cfg)
-        if c.get("off") or not c.get("seats"):
+        if c.get("off") or not (c.get("seats") or c.get("own_inbox")):
             return UNAVAILABLE
-        group = cfg.get("group")
+        group = None if c.get("own_inbox") else cfg.get("group")
         allowed = {s.get("seat") for s in c["seats"] if group in (s.get("groups") or [])} if group else None
         waiting = [x for x in c.get("cards") or [] if x.get("state") == "waiting"
                    and (allowed is None or x.get("seat") in allowed)]
@@ -1067,6 +1097,7 @@ def status_line(home=None, width: int = 80) -> str:
             top = newest_first(waiting)[0]
             title = " ".join(str(top.get("title") or "").split())
             line = f"{len(waiting)} waiting · newest: {top.get('seat')} {top.get('id')} {title}".rstrip()
+            line = "".join(ch for ch in line if ch.isprintable())   # no escape code from a request reaches a terminal
             return line if len(line) <= width else line[:width - 1].rstrip() + "…"   # the title is cut to fit
         r = record.load(cfg)
         if r.get("off"):

@@ -938,6 +938,61 @@ def _title_or_name(store: Store, name: str) -> str:
         return name
 
 
+def _gaming_switch(args, cfg: dict, trouble) -> int:
+    """`semantext compute hold` and `release`: the built-in I'm gaming switch, a flag in your home. A flag the settings
+    place anywhere else belongs to whatever writes it there, so it is refused and never written."""
+    import json
+    import math
+    from datetime import datetime, timedelta
+    from .sources import gaming
+    from .store import paths as _paths, write_atomic
+    home = Path(cfg.get("_home") or _paths.home())
+    flag = gaming.path_of(cfg)
+    if trouble or flag is None or Path(flag) != home / gaming.FILE:
+        where = f"your settings place the flag at {flag}, which another program owns" if flag else "your settings cannot be read"
+        raise Refused(f"{where}, so this switch changes nothing: use that program's own button")
+    if not home.is_dir():   # a mistyped --home makes nothing and is told so: `semantext init` makes a home
+        raise Refused(f"there is no Semantext home at {home}: `semantext init` makes one")
+    if args.action == "release":
+        if flag.exists():
+            write_atomic(flag, json.dumps({"on": False}))
+        _out("released: the gaming hold is off")
+        return 0
+    try:
+        hours = float(args.hours)
+    except ValueError:
+        raise Refused(f"--hours is a number of hours, not {args.hours!r}") from None
+    if not math.isfinite(hours) or not 1 / 60 <= hours <= gaming.LAPSE_S / 3600:
+        raise Refused(f"--hours is at least a minute (0.02) and at most {gaming.LAPSE_S // 3600}, since a hold always "
+                      f"lapses by itself")
+    start = datetime.now().astimezone()
+    end = start + timedelta(hours=hours)
+    write_atomic(flag, json.dumps({"on": True, "since": start.isoformat(timespec="seconds"),
+                                   "until": end.isoformat(timespec="seconds"), "until_epoch": end.timestamp()}))
+    _out(f"holding heavy work until {end:%H:%M}: `semantext compute release` lifts it sooner")
+    return 0
+
+
+def cmd_compute(args) -> int:
+    """The compute monitor for a job about to start. Only exit 0 means go; a sources file that cannot be read is
+    "could not tell", since the button's flag is named there. With hold or release, the built-in gaming switch."""
+    from .sources import compute, view
+    cfg, _path, trouble = view._config(Path(args.home).expanduser() if args.home else None)
+    if args.action != "ask":
+        return _gaming_switch(args, cfg, trouble)
+    got = compute.ask(cfg)
+    code = compute.EXIT[got["verdict"]]
+    if trouble and code == 0:
+        got, code = {**got, "verdict": compute.UNKNOWN, "reasons": [str(trouble)[:300]]}, compute.EXIT[compute.UNKNOWN]
+    _out(got["verdict"] + (": " + "; ".join(got["reasons"]) if got["reasons"] else ""))
+    if got["not_read"]:
+        _out("not read: " + ", ".join(got["not_read"]))
+    told = [x for x in got.get("could_not_tell") or [] if x not in got["reasons"]]
+    if told:
+        _out("could not tell: " + "; ".join(told))
+    return code
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="semantext",
@@ -955,6 +1010,10 @@ def build_parser() -> argparse.ArgumentParser:
         return sp
 
     add("init", cmd_init, "create your home with the starting environments")
+    sp = add("compute", cmd_compute, "say whether this machine is free for heavy work (exit 0 free, 2 could not tell, "
+                                     "3 hold or light work only); hold and release are your I'm gaming switch")
+    sp.add_argument("action", nargs="?", choices=("ask", "hold", "release"), default="ask")
+    sp.add_argument("--hours", default="6", help="how long a hold lasts, at most 6 (default 6)")
     sp = add("card", cmd_card, "print the card your AI receives", env=True)
     sp.add_argument("--agent", help="the card that agent receives, with its own rules (as `semantext agents` names it)")
     sp = add("env", cmd_env, "list, switch or make environments (profiles); add suggested rules (`ideas` lists the "
@@ -1142,6 +1201,12 @@ def main(argv: list[str] | None = None) -> int:
         return hook_main()
     if args.command == "statusline":   # before the home is opened: the status line writes nothing, not even a new home
         return cmd_statusline(args)
+    if args.command == "compute":      # the same: a job asking whether it may start changes nothing
+        try:
+            return cmd_compute(args)
+        except (Refused, OSError) as e:
+            print("semantext: " + str(e), file=sys.stderr)
+            return 1
     if not args.command:
         parser.print_help()
         return 0

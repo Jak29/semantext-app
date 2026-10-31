@@ -95,6 +95,30 @@ class Writer:
         names += [x for x in listed if isinstance(x, str)] if isinstance(listed, list) else []
         return {s for s in map(slug, names) if s}
 
+    def add_project(self, name) -> str:
+        """Add a name to the person's own list of projects, <home>/work/projects.json; what is there stays. A list that
+        cannot be read is refused and left as it is, never replaced."""
+        s = slug(name)
+        if not isinstance(name, str) or not s:
+            raise WorkRefused("MALFORMED", f"{name!r} cannot name a project: use letters, digits and hyphens")
+        self._contained()
+        extra = self.dir / "projects.json"
+        if _linked(extra):
+            raise WorkRefused("CONFLICT", f"{extra} is a link or a junction, so nothing is written through it")
+        self.dir.mkdir(parents=True, exist_ok=True)
+        with store.file_lock(self.dir / "projects.lock"):
+            listed = []
+            if extra.exists():
+                try:
+                    listed = jsonread.loads(extra.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    raise WorkRefused("MALFORMED", f"{extra} cannot be read, so it is left as it is ({type(e).__name__})") from None
+                if not isinstance(listed, list):
+                    raise WorkRefused("MALFORMED", f"{extra} is not a list, so it is left as it is")
+            if s not in listed:
+                store.write_atomic(extra, json.dumps([*listed, s], ensure_ascii=False, indent=1))
+        return s
+
     def seats(self) -> set[str] | None:
         """The seat names a reviewer, a to_seat or an assignment is checked against: those given, else the seats
         file's. None when no seats file is configured at all, a mode in which there is nothing to check a seat against
@@ -107,6 +131,13 @@ class Writer:
         if why:
             raise WorkRefused("UNKNOWN_ID", f"the seats cannot be known, so no seat can be checked: {why}")
         return names
+
+    def seats_unknown(self) -> bool:
+        """A seats file is configured and cannot be known: a problem to show. Having none at all is not one."""
+        if self._seats is not None:
+            return False
+        from ..sources import kernel
+        return bool(kernel.seat_names(self.home)[1])
 
     def seats_said(self) -> str | None:
         """One line for the Work place and `semantext work list` when the seats are not checked as usual: when no
@@ -261,7 +292,8 @@ class Writer:
         if actor.assurance not in ("bound", "claimed", "observed", "fallback") or not SEAT_RE.fullmatch(actor.who):
             raise WorkRefused("MALFORMED", "the actor is not one the kernel knows how to stamp")
         if event == "create" and fields["project"] not in self.projects():
-            raise WorkRefused("UNKNOWN_ID", f"{fields['project']!r} is not a project in the seats or projects file")
+            raise WorkRefused("UNKNOWN_ID", f"{fields['project']!r} is not one of your projects: `semantext work project "
+                                              f"{fields['project']}` adds it, at your own terminal")
         needs = [k for k in ("reviewer", "to_seat") if k in fields] or (
             ["value"] if event == "person_act" and fields["act"] == "assign" else [])
         seats = self.seats() if needs else None   # refuses, never skips, when a seats file is given but unknowable

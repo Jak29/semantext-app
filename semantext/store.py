@@ -563,6 +563,15 @@ class Store:
                 problems.append({"name": n, "problem": str(e)})
         return titles, problems
 
+    def _base_version(self) -> str:
+        """The version of the base rules in this home, so a new environment pins what is really there."""
+        try:
+            got = yaml.safe_load((self.profiles_dir / "base" / "SEMANTICS.yaml").read_text(encoding="utf-8"))
+            version = got["environment"]["version"]
+        except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError):
+            return "0.1.0"
+        return version if isinstance(version, str) and version else "0.1.0"
+
     def resolve(self, text: str) -> str:
         """An environment's name, from its name or its title, ignoring case: "Gardening" finds gardening."""
         text = " ".join(str(text or "").split())
@@ -904,7 +913,7 @@ class Store:
         env = {"environment": {"id": slug, "version": "0.1.0", "status": "candidate", "owner": "you", "title": title,
                                "scope": f"Made for {title}" + (f", from {len(entries)} suggested rules."
                                                                if entries else "."),
-                               "inherits": ["base@0.1.0"]},
+                               "inherits": [f"base@{self._base_version()}"]},
                "entries": entries, "tests": []}
         (self.profiles_dir / slug).mkdir(parents=True)
         write_atomic(self.profiles_dir / slug / "SEMANTICS.yaml", dump(env))

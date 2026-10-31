@@ -710,6 +710,10 @@ def load(cfg: dict) -> dict:
     A card that has run is "run" even when it is also closed: the run is the thing that happened. A run is only a line of
     runs.jsonl the inbox reads as a run record; a line it refuses is a problem here and leaves its card as it was."""
     missing = [k for k in ("seats", "inbox") if not cfg.get(k)]
+    if len(missing) == 2 and isinstance(cfg.get("_home"), str) and not cfg.get("_sources_missing"):
+        # no setup at all: your own inbox (own_inbox.py)
+        from .own_inbox import load as own   # here: the card hook's status line reads no more than it needs
+        return own(cfg["_home"])
     if missing:
         return {"off": True, "missing": missing, "problems": []}
     problems: list[dict] = []

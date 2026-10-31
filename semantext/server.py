@@ -554,7 +554,7 @@ class Handler(BaseHTTPRequestHandler):
                 if self.headers.get("Origin") not in {f"http://{h}" for h in self._own()}:
                     return self._send(403, {"error": "an answer is accepted only from the Semantext page"})
                 rid = b.get("id")
-                if not isinstance(rid, int):
+                if type(rid) is not int:   # true is an int to Python, and would answer request 1
                     raise Refused("name the request by its number")
                 inbox, choice = Inbox(st.root), str(b.get("choice") or "")
                 st.check_adoptable(inbox.get(rid), choice)
