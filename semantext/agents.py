@@ -404,17 +404,21 @@ class Agents:
         c, sessions = self.config(), self._read(self.sessions_path, {})
         agents: dict[str, dict] = {}
         for sid, rec in sessions.items():
-            a = agents.setdefault(rec.get("agent") or FALLBACK, {"sessions": [], "last": ""})
+            if not isinstance(rec, dict):   # a line edited by hand costs itself, never the others
+                continue
+            a = agents.setdefault(rec["agent"] if isinstance(rec.get("agent"), str) and rec["agent"] else FALLBACK,
+                                  {"sessions": [], "last": ""})
             a["sessions"].append({"id": sid, **{k: rec.get(k) for k in ("tool", "project", "first", "last", "prompts",
                                                                         "how")}})
-            a["last"] = max(a["last"], rec.get("last") or "")
+            a["last"] = max(a["last"], rec["last"] if isinstance(rec.get("last"), str) else "")
         for b in c["bindings"]:
-            agents.setdefault(b["agent"], {"sessions": [], "last": ""}).setdefault("folders", []).append(b["folder"])
+            if isinstance(b, dict) and isinstance(b.get("agent"), str) and isinstance(b.get("folder"), str) and b["folder"]:
+                agents.setdefault(b["agent"], {"sessions": [], "last": ""}).setdefault("folders", []).append(b["folder"])
         for name in c["names"]:
             agents.setdefault(name, {"sessions": [], "last": ""})
         out = []
         for name, a in agents.items():
-            a["sessions"].sort(key=lambda s: s.get("last") or "", reverse=True)
+            a["sessions"].sort(key=lambda s: s["last"] if isinstance(s.get("last"), str) else "", reverse=True)
             out.append({"name": name, "label": c["names"].get(name, ""), "folders": a.get("folders", []),
                         "last": a["last"], "sessions": a["sessions"]})
         return sorted(out, key=lambda a: a["last"], reverse=True)

@@ -110,7 +110,8 @@ export function render(data, el) {
   R.tools.hidden = false;
   const counts = data.counts || {};
   const by = counts.by_status || {};
-  R.head.replaceChildren(header("Record", plural(counts.entries || 0, "decision") + " in " + plural(counts.threads || 0, "thread") + ", newest first. Your words are kept as you gave them.",
+  R.head.replaceChildren(header("Record", data.own && !counts.entries ? "Nothing yet. What you answer in Waiting is kept here, in your words."
+    : plural(counts.entries || 0, "decision") + " in " + plural(counts.threads || 0, "thread") + ", newest first. Your words are kept as you gave them.",
     data.files && data.files.register ? "From " + data.files.register + (data.notes_off ? "" : ", with its notes") + "." : null));
   const facets = [["all", "All", counts.entries || 0], ...Object.entries(by).filter(([, n]) => n > 0).map(([s, n]) => [s, cap(s), n])];
   if (!facets.some(([k]) => k === S.facet)) S.facet = "all";

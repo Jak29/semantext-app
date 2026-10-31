@@ -54,6 +54,7 @@ export function cardLink(seat, id) {
     ? "jak-inbox://card/" + seat + "/" + id : null;
 }
 export function parkNode(c, parked) {
+  if (c.own_inbox) return ownParkNode(c, parked);   // your own inbox is here: the press is on this page
   if (!(S.frame && S.frame.inbox_app === true)) return null;   // no inbox app named in your settings: no dead link
   const url = cardLink(c.seat, c.id);
   const word = parked ? "Bring back" : "Park";
@@ -76,12 +77,29 @@ export async function answerRequest(c, choice) {
   if (r && r.ok) await load("waiting");
   fill();
 }
+// Parking a request in your own inbox: the same guard as an answer, and it only sets the request aside.
+export const parking = { post: (body) => fetch("/api/park", { method: "POST", cache: "no-store",
+  headers: { "X-Semantext": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) }) };
+export async function parkRequest(c, parked) {
+  let r = null, got = {};
+  try {
+    r = await parking.post({ id: c.number, parked });
+    try { got = await r.json(); } catch (e) { /* the status says enough */ }
+  } catch (e) { got = { error: "the page could not reach Semantext" }; }
+  answers.said[c.key] = r && r.ok ? null : (got.error || "That was not taken.");
+  if (r && r.ok) await load("waiting");
+  fill();
+}
+function ownParkNode(c, parked) {
+  return h("button", { type: "button", class: "answer", "data-k": "park:" + c.key, on: { click: () => parkRequest(c, !parked) } }, parked ? "Bring back" : "Park");
+}
 export function answerNode(c) {
   const box = h("div", { class: "answers", "data-k": "answer:" + c.key });
   if ((c.choices || []).length) {
     box.append(...c.choices.map((x) => h("button", { type: "button", class: "answer", "data-k": "answer:" + c.key + ":" + x.choice,
       on: { click: () => answerRequest(c, x.choice) } }, x.label)));
   } else box.append(h("a", { href: "/" }, "Answer in your own words on the home page"));
+  box.append(ownParkNode(c, false));
   if (answers.said[c.key]) box.append(h("p", { class: "refused", role: "alert" }, answers.said[c.key]));
   return box;
 }
@@ -115,7 +133,7 @@ export function cardNode(c) {
     if (c.run) node.append(runLine(c.run));
     const out = outputBox(c);
     if (out) node.append(out);
-    if (!c.run && waiting) node.append(h("p", { class: "where", title: "This page never runs anything." }, c.own_inbox ? "Run it yourself, then say how it went:" : "Run it from your inbox app if you use one, or a terminal. ", parkNode(c, false)));
+    if (!c.run && waiting) node.append(h("p", { class: "where", title: "This page never runs anything." }, c.own_inbox ? "Run it yourself, then say how it went:" : "Run it from your inbox app if you use one, or a terminal. ", c.own_inbox ? null : parkNode(c, false)));
     if (c.own_inbox && waiting) node.append(answerNode(c));
   } else {
     if (c.question) node.append(h("p", { class: "question" }, c.question));

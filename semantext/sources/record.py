@@ -35,7 +35,7 @@ import re
 from pathlib import Path
 
 from .. import jsonread
-from . import problem
+from . import no_setup, problem
 
 STATUSES = ("in force", "parked", "reopened")
 SUPERSEDED = "superseded"
@@ -393,6 +393,14 @@ def load(cfg: dict) -> dict:
     """
     out = _blank()
     if not cfg.get("register"):
+        if no_setup(cfg):
+            # no setup at all: what you answered in your own inbox (own_inbox.py)
+            from .own_inbox import decisions
+            entries, path, problems = decisions(cfg["_home"])
+            threads, cards = _threads(entries), _card_index(entries)
+            out.update(own=True, notes_off=True, files={"register": path, "notes": None}, entries=entries, threads=threads,
+                       cards=cards, counts=_counts(entries, threads, 0, cards), problems=problems)
+            return out
         out["off"] = True
         return out
     register = Path(cfg["register"]).expanduser()

@@ -64,6 +64,15 @@ export function render(data, el) {
     place.replaceChildren(header(word, "The map is off: your sources file names no seats file and no map.", S.frame ? "Your sources file: " + S.frame.config : null));
     return;
   }
+  if (data.own) {   // no seats file: what you named and who has been seen, one level
+    const projects = Object.values(data.projects), agents = Object.values(data.agents);
+    const parts = [header(word, projects.length || agents.length ? plural(projects.length, "project") + " and " + plural(agents.length, "agent") + "." : "Nothing here yet. Name a project with: semantext work project my-thing")];
+    if (projects.length) parts.push(h("section", { class: "part" }, h("h2", { class: "label" }, "Projects"), tilesOf(projects, (t) => h("a", { class: "tile", href: "#projects/" + encodeURIComponent(t.id), "data-k": "pt:" + t.id },
+      h("span", { class: "name" }, t.name), h("span", { class: "kind" }, "project")))));
+    if (agents.length) parts.push(h("section", { class: "part" }, h("h2", { class: "label" }, "Agents"), tilesOf(agents, (a) => agentTile(data, { agent_id: a.id, name: a.name }))));
+    place.replaceChildren(...parts);
+    return;
+  }
   const node = data.nodes[S.sub] || data.nodes[data.root];
   const chain = [];
   for (let n = node; n; n = n.parent ? data.nodes[n.parent] : null) chain.unshift(n);

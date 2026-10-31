@@ -560,6 +560,14 @@ class Handler(BaseHTTPRequestHandler):
                 st.check_adoptable(inbox.get(rid), choice)
                 r["request"] = inbox.answer(rid, choice, str(b.get("words") or ""), via="page")
                 r["added"] = st.adopt(r["request"])   # a proposed rule the user added
+            elif u.path == "/api/park":
+                # Parking is the user's act too, held to the same page as an answer.
+                if self.headers.get("Origin") not in {f"http://{h}" for h in self._own()}:
+                    return self._send(403, {"error": "parking is accepted only from the Semantext page"})
+                rid, parked = b.get("id"), b.get("parked")
+                if type(rid) is not int or type(parked) is not bool:   # true is an int to Python; "no" is true to it
+                    raise Refused("name the request by its number, and say whether to park it")
+                r["request"] = Inbox(st.root).park(rid, parked, via="page")
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(200, r)

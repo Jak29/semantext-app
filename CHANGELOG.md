@@ -6,6 +6,22 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-31
+
+The rest of the v2 page's places now work with nothing set up, and you can set a request aside.
+
+### Added
+- **Park and Bring back** on the requests in your own inbox: a request set aside no longer counts as waiting until you bring it back. It stays open: the agent still holds it, an answer still counts, and the home page and the agent's own list still show it as open. Parking goes through a guarded route like an answer's, and a line in the file that does not say it came from you hides nothing.
+
+### Changed
+- **The Record** shows what you answered in your own inbox when no `"register"` is set: your words, what you were offered, and how the answer reached Semantext. Withdrawn requests are not in it, since no words of yours are.
+- **Projects and the Map** show what Semantext already knows when no seats file is set: projects you named, folders you bound to an agent, projects an agent was seen working in, and the agents that were seen, bound or filed a request. A project with only a name has no gates or documents to show.
+- **"No setup" has one definition.** Any of `seats`, `inbox`, `register` or `map` named, even in a shape that cannot be used, is a setup: your own inbox and agents are then not mixed into any page, and the unusable setting is said. In 1.5.0, naming only `map` or only `register` still showed your own inbox in Waiting.
+
+### Fixed
+- An answer line with no fields left its request waiting, and an answer line that does not say it came from you read as yours. It is now closed and says so.
+- One bad session or binding in the agents' files could stop `/api/agents`; it now costs only itself.
+
 ## [1.5.0] - 2026-10-31
 
 The first step to a standalone app: more of the page works from a clean install, with nothing set up. Your rules, your own inbox and your work show on the v2 page, and a compute monitor says whether this machine is free for heavy work. Everything an estate's files gave still works when they are named.

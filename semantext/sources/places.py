@@ -46,7 +46,7 @@ from typing import NamedTuple
 
 from .. import jsonread
 from ..pathrule import SeatsUnread, read_seats
-from . import MAX_LINE, base_of, home_base, problem, under
+from . import MAX_LINE, base_of, home_base, no_setup, problem, under
 
 MAX_IDENTITY = 1024 * 1024    # likewise for an .identity file
 MAX_MAP = 64 * 1024 * 1024    # the map is large; this only stops a file that is not one
@@ -876,6 +876,9 @@ def load(cfg: dict) -> dict:
     seats, mapfile = _setting(cfg, "seats", problems), _setting(cfg, "map", problems)
     name, group = _setting(cfg, "name", problems), _setting(cfg, "group", problems)
     missing = [k for k, v in (("seats", seats), ("map", mapfile)) if not v]
+    if no_setup(cfg):
+        from .own_places import load as own   # no setup at all: what Semantext already knows (own_places.py)
+        return own(cfg["_home"], name or None, group or None, problems)
     out: dict = {"off": len(missing) == 2, "missing": missing, "name": name or None, "group": group or None,
                  "seats_file": seats or None, "base": None, "agents": [], "projects": [], "levels": None,
                  "documents": [], "map": {"off": True}, "problems": problems}

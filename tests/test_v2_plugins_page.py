@@ -171,7 +171,8 @@ def test_the_module_writes_only_to_its_own_routes():   # must refuse any other w
     others = [p.name for p in (paths.static_dir() / "v2").glob("*.js") if p.name != "plugins.js"]
     posting = {n: (paths.static_dir() / "v2" / n).read_text("utf-8") for n in others}
     posting = {n: t for n, t in posting.items() if re.search(r'method:\s*"POST"', t)}
-    # One exception, for one route: a request in your own inbox is answered from its card, through the home page's route.
-    assert list(posting) == ["cards.js"] and posting["cards.js"].count('method: "POST"') == 1
+    # One exception, for two routes: a request in your own inbox is answered or parked from its card.
+    assert list(posting) == ["cards.js"] and posting["cards.js"].count('method: "POST"') == 2
+    assert re.search(r'fetch\("/api/park", \{ method: "POST"', posting["cards.js"])
     assert re.search(r'fetch\("/api/answer", \{ method: "POST"', posting["cards.js"])
-    assert re.findall(r'fetch\("([^"]+)"', posting["cards.js"]) == ["/api/answer"]
+    assert re.findall(r'fetch\("([^"]+)"', posting["cards.js"]) == ["/api/answer", "/api/park"]

@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import jsonread, outside, paths, registry
-from . import builtin, cards, closed, compute, config_path, gaming, gates, load_config, places, problem, record, refused_keys, rules
+from . import builtin, cards, closed, compute, config_path, gaming, gates, load_config, places, problem, record, refused_keys, rules, unusable_sources
 from . import change as change_card
 from . import evidence_gitindex as evidence_way   # which files a change may cite: one module per way (evidence.py)
 from .workplace import work_place
@@ -113,6 +113,9 @@ def _config(home=None) -> tuple[dict, Path, dict | None]:
             cfg["cards"] = str(own)
         if os.environ.get("SEMANTEXT_SOURCES") and not path.is_file():   # named and missing: a broken setup, not no setup
             cfg["_sources_missing"] = True
+        unusable = unusable_sources(path)
+        if unusable:   # named, and no use: not the same as naming nothing, so your own files are not shown in its place
+            cfg["_sources_unusable"] = unusable
         return cfg, path, None
     except Exception as e:  # noqa: BLE001  whatever is wrong with the file, every place still answers
         return {}, path, {"reader": "sources", "source": str(path), "line": None, "kind": "unreadable",
@@ -298,6 +301,9 @@ class _Sources:
         if self.cfg.get("_sources_missing"):
             self.bad_settings.append(problem(self.path, None, "unreadable", "SEMANTEXT_SOURCES names this file, and it "
                                              "is not there, so nothing it would name is read"))
+        for k in self.cfg.get("_sources_unusable") or []:
+            self.bad_settings.append(problem(self.path, None, "bad-setting", f"'{k}' should name a file or a folder, so "
+                                             f"nothing it would name is read"))
         got, failed, self.spent = _read(self.cfg, world, self.reg, self.path, home,   # spent: outside bytes so far
                                         outside_reads)
         self.allowed = _allowed(self.cfg, got)
@@ -670,7 +676,7 @@ def projects_place(src: _Sources) -> dict:
     views = src.card_views()
     placed = {k for r in rows for k in r["cards"]}
     g = src.got["gates"]
-    return {"off": bool(src.got["places"].get("off")), "gates_off": bool(g.get("off")),
+    return {"off": bool(src.got["places"].get("off")), "own": bool(src.got["places"].get("own")), "gates_off": bool(g.get("off")),
             "read": g.get("read"), "read_note": g.get("read_note"), "read_at": g.get("read_at"),
             "not_tested": gates.NOT_TESTED, "armed_words": gates.ARMED_WORDS, "projects": rows,
             "cards": {v["key"]: v for v in views if v["key"] in placed},
@@ -877,7 +883,7 @@ def map_place(src: _Sources) -> dict:
                                "broken_words": dict(Counter(t["worst"] for t in r["gates"]["worktrees"]
                                                             if t["broken"]))} for r in rows}
     summary = p.get("map") or {"off": True}
-    return {"off": bool(p.get("off")), "missing": p.get("missing") or [], "name": src.cfg.get("name"),
+    return {"off": bool(p.get("off")), "own": bool(p.get("own")), "missing": p.get("missing") or [], "name": src.cfg.get("name"),
             "root": root, "nodes": nodes, "agents": agent_rows, "projects": project_tiles,
             "documents": [_doc(d, homes.get(d.get("id"))) for d in p.get("documents") or []],
             "cards": {v["key"]: {k: v[k] for k in ("key", "seat", "id", "kind", "title", "at", "state")}
@@ -900,7 +906,7 @@ def thread_key(thread: dict) -> str:
 def record_place(src: _Sources) -> dict:
     r = src.got["record"]
     threads = [{**t, "key": thread_key(t)} for t in r.get("threads") or []]
-    return {"off": bool(r.get("off")), "notes_off": bool(r.get("notes_off")), "files": r.get("files") or {},
+    return {"off": bool(r.get("off")), "own": bool(r.get("own")), "notes_off": bool(r.get("notes_off")), "files": r.get("files") or {},
             "entries": r.get("entries") or [], "threads": threads, "counts": r.get("counts") or {},
             "whole_bytes": WHOLE_BYTES}
 
@@ -1102,7 +1108,9 @@ def status_line(home=None, width: int = 80) -> str:
         r = record.load(cfg)
         if r.get("off"):
             return "nothing waiting"
-        n = ((r.get("counts") or {}).get("by_status") or {}).get("in force", 0)
-        return f"nothing waiting · {_n(n, 'decision')} in force"
+        by = (r.get("counts") or {}).get("by_status") or {}
+        if r.get("own"):
+            return f"nothing waiting · {_n(by.get('answered', 0), 'answer')} kept"
+        return f"nothing waiting · {_n(by.get('in force', 0), 'decision')} in force"
     except Exception:  # noqa: BLE001  a status bar line never fails
         return UNAVAILABLE

@@ -222,7 +222,7 @@ class Inbox:
             except (ValueError, RecursionError):   # json's error is a ValueError, and so is a number too long to read
                 continue  # a damaged line is skipped, never fatal
             if isinstance(e, dict) and type(e.get("id")) is int and e.get("type") in (
-                    "request", "answer", "close", "read"):
+                    "request", "answer", "close", "read", "park"):
                 out.append(e)
         return out
 
@@ -238,13 +238,16 @@ class Inbox:
             if e["type"] == "request":
                 if rid not in out:
                     out[rid] = {**{k: v for k, v in e.items() if k != "type"}, "status": "open", "answer": None,
-                                "closed": None, "read": False, "read_at": None}
+                                "closed": None, "read": False, "read_at": None, "parked": False, "parked_at": None}
             elif rid in out:
                 r = out[rid]
                 if e["type"] == "answer" and r["status"] == "open":
                     r["status"], r["answer"] = "answered", {k: v for k, v in e.items() if k not in ("type", "id")}
                 elif e["type"] == "close" and r["status"] == "open":
                     r["status"], r["closed"] = "closed", {k: v for k, v in e.items() if k not in ("type", "id")}
+                elif (e["type"] == "park" and r["status"] == "open" and type(e.get("parked")) is bool
+                      and e.get("via") in FROM_THE_USER):   # a line that does not say it is the user's hides nothing
+                    r["parked"], r["parked_at"] = e["parked"], e.get("at") if e["parked"] else None
                 elif e["type"] == "read" and r["status"] == "answered" and not r["read"]:
                     r["read"], r["read_at"] = True, e.get("at")
         return out
@@ -372,6 +375,19 @@ class Inbox:
                 raise Refused("give a choice, or your answer in your own words")
             self._append({"type": "answer", "id": rid, "at": now(), "choice": choice, "picked": picked,
                           "words": words, "via": via})
+        return self.get(rid)
+
+    def park(self, rid: int, parked: bool = True, *, via: str) -> dict:
+        """Set a request aside until the user brings it back, or bring it back. It stays open: the asker still holds it,
+        and an answer still counts. Only the user parks, by the same rule as answering."""
+        if via not in FROM_THE_USER:
+            raise Refused("parking comes from the user's terminal, the page or their own message in chat")
+        with self._locked():
+            r = self.get(rid)
+            if r["status"] != "open":
+                raise Refused(f"request #{rid} is already {r['status']}")
+            if r["parked"] != parked:
+                self._append({"type": "park", "id": rid, "at": now(), "parked": parked, "via": via})
         return self.get(rid)
 
     # ---- reading ----------------------------------------------------------------------------------------------

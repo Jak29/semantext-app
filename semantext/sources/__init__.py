@@ -55,6 +55,15 @@ def config_path() -> Path:
     return Path(env).expanduser() if env else paths.home() / "sources.json"
 
 
+def no_setup(cfg) -> bool:
+    """Nothing of anyone's estate is named, so the pages read the home's own files. Any one source named is a setup, and
+    then the home's own inbox and agents are never mixed in; so is a sources file that is named and missing. The one
+    definition: Waiting, the Record, Projects and the map all ask here."""
+    return (isinstance(cfg, dict) and isinstance(cfg.get("_home"), str) and not cfg.get("_sources_missing")
+            and not cfg.get("_sources_unusable")
+            and not any(cfg.get(k) for k in ("seats", "inbox", "register", "map")))
+
+
 def load_config(path: str | Path | None = None, keys=None) -> dict:
     """The configured sources, keeping only known keys with a non-empty string value. `keys` names others to keep
     instead (an outside source's own, as it declares them). A key no built-in reads may also hold a non-empty list of
@@ -115,6 +124,21 @@ def _flat(v) -> bool:
     plug-in's readmes: [{project, path}])."""
     return (isinstance(v, dict) and 0 < len(v) <= MAX_FIELDS
             and all(isinstance(k, str) and k.strip() and _plain(x) for k, x in v.items()))
+
+
+SOURCES = ("seats", "inbox", "register", "map")
+
+
+def unusable_sources(path) -> list[str]:
+    """The sources the file names in a shape that cannot be used (a number, a list, null, a blank): named all the same,
+    so they are a setup, and load_config has dropped them."""
+    try:
+        data = jsonread.loads(Path(path).read_text(encoding="utf-8-sig"), unique=True)
+    except (OSError, ValueError, RecursionError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    return [k for k in SOURCES if k in data and not (isinstance(data[k], str) and data[k].strip())]
 
 
 def refused_keys(path: str | Path | None, keys) -> list[dict]:

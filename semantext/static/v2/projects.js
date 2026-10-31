@@ -19,6 +19,7 @@ export function basisWords(m) {
 
 export function gateCell(p, k) {
   const g = p.gates;
+  if (!p.path) return h("span", { class: "none", title: "A name with no folder has no gates" }, "–");
   if (!g.found) return h("span", { class: "none" }, "no gate read");
   if (!g.worktrees.length) return h("span", { class: "none" }, "no worktree found");
   const broken = BROKEN.has(g.worst);
@@ -37,11 +38,11 @@ export function render(data, el) {
     return;
   }
   const rows = data.projects;
-  const sub = plural(rows.length, "project") + " from your seats file, with " + plural(data.worktrees, "worktree")
+  const sub = data.own ? plural(rows.length, "project") + " you named, bound to an agent, or an agent was seen working in." : plural(rows.length, "project") + " from your seats file, with " + plural(data.worktrees, "worktree")
     + ". " + data.assigned + " of " + plural(data.total, "card") + " belong to one.";
-  const head = header("Projects", sub, data.read_note ? "Gate states come from " + data.read_note.replace(/^a /, "a ") + ". Each is marked (read)." : null);
+  const head = header("Projects", sub, data.read_note && !data.own ? "Gate states come from " + data.read_note.replace(/^a /, "a ") + ". Each is marked (read)." : null);
   if (!rows.length) {
-    place.replaceChildren(head, h("p", { class: "empty" }, "No projects yet. Name a root of kind “repo” in your seats file, and it shows here."));
+    place.replaceChildren(head, h("p", { class: "empty" }, data.own ? "No projects yet. Name one with: semantext work project my-thing" : "No projects yet. Name a root of kind “repo” in your seats file, and it shows here."));
     return;
   }
   const table = h("div", { class: "rows", role: "table", "aria-label": "Projects" },
@@ -167,7 +168,7 @@ function fillProject(data, id, el) {
   docsPart.append(docs.length ? h("div", null, docs.map(docNode))
     : h("p", { class: "empty" }, "No documents. A folder cv/<project>/ holding a MASTER.md in an agent's home shows here."));
 
-  const sub = p.home_of && p.home_of.length ? "The home of " + listWords(p.home_of) + "." : plural(p.agents.length, "agent") + " work here.";
+  const sub = p.home_of && p.home_of.length ? "The home of " + listWords(p.home_of) + "." : plural(p.agents.length, "agent") + (p.agents.length === 1 ? " works here." : " work here.");
   place.replaceChildren(header(p.name, sub, p.path, trail), agents, gates, cardsPart, docsPart);
 }
 

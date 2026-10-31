@@ -327,3 +327,217 @@ def test_the_compute_command_answers_from_a_clean_install(stranger, capsys):
     capsys.readouterr()
     assert cli.main(["--home", str(stranger), "compute"]) == 2   # the tests' system lets nothing be read
     assert "the GPU" in capsys.readouterr().out
+
+
+def tree(home):
+    return {str(f): f.read_bytes() for f in home.rglob("*") if f.is_file()}
+
+
+def test_what_you_answer_is_the_record_and_what_is_withdrawn_is_not(stranger):
+    inbox = Inbox(stranger)
+    asked = inbox.ask("Pick a colour", "for the header", question="Which?", options=["red", "blue"], source="Helper")
+    gone = inbox.ask("Pick a size", "why", question="Which?", options=["s"], source="Helper")
+    open_one = inbox.ask("Pick a font", "why", question="Which?", options=["f"], source="Helper")
+    assert view.answer("record", home=stranger)["counts"]["entries"] == 0
+    inbox.answer(asked["id"], "2", "the darker one", via="page")
+    inbox.close(gone["id"], "not needed")
+    before = tree(stranger)
+    got = view.answer("record", home=stranger)
+    assert tree(stranger) == before   # reading writes nothing
+    assert got["off"] is False and got["own"] is True and "record" not in got["frame"]["off"]
+    assert [e["id"] for e in got["entries"]] == [f"#{asked['id']}"] and open_one["id"] not in [e["id"] for e in got["entries"]]
+    e = got["entries"][0]
+    assert e["words"] == "the darker one" and e["reading"] == "You picked: blue" and "2. blue" in e["offer"]
+    assert e["to"] == "Helper" and e["added_by"] == "you, on the page" and e["computed_status"] == "answered"
+    assert got["threads"][0]["subject"] == "Pick a colour"
+    inbox.close(open_one["id"])
+    assert view.status_line(stranger) == "nothing waiting · 1 answer kept"
+
+
+def test_someone_elses_inbox_or_register_is_never_mixed_with_your_own(stranger, tmp_path, monkeypatch):
+    inbox = Inbox(stranger)
+    asked = inbox.ask("Pick", "why", question="Which?", options=["a"], source="Helper")
+    inbox.answer(asked["id"], "1", via="page")
+    for setting in ({"inbox": str(tmp_path)}, {"seats": str(tmp_path / "s")}):
+        sources = tmp_path / "sources.json"
+        sources.write_text(json.dumps(setting), encoding="utf-8")
+        monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+        assert view.answer("record", home=stranger)["off"] is True, setting
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(tmp_path / "gone.json"))
+    assert view.answer("record", home=stranger)["off"] is True
+    assert view.answer("projects", home=stranger)["off"] is True
+
+
+def test_a_named_project_and_a_seen_agent_show_on_projects_and_the_map(stranger, tmp_path):
+    from semantext.agents import Agents, Identity
+    empty = view.answer("projects", home=stranger)
+    assert empty["off"] is False and empty["own"] is True and empty["projects"] == []
+    assert cli.main(["--home", str(stranger), "work", "project", "my-thing"]) == 0
+    folder = tmp_path / "repo"
+    folder.mkdir()
+    Agents(stranger).bind("Helper", folder)
+    before = tree(stranger)
+    got = view.answer("projects", home=stranger)
+    assert tree(stranger) == before
+    assert sorted(p["name"] for p in got["projects"]) == ["my-thing", "repo"]
+    assert next(p for p in got["projects"] if p["name"] == "repo")["agents"][0]["name"] == "helper"
+    assert got["frame"]["problems"] == []
+    m = view.answer("map", home=stranger)
+    assert m["off"] is False and m["own"] is True and m["root"] and len(m["projects"]) == 2
+    assert [a["name"] for a in m["agents"].values()] == ["helper"]
+    # the same answer twice names the same things: a link holds
+    assert sorted(view.answer("map", home=stranger)["projects"]) == sorted(m["projects"])
+
+
+def test_a_projects_list_that_cannot_be_read_is_said_and_stops_nothing(stranger):
+    (stranger / "work").mkdir(exist_ok=True)
+    (stranger / "work" / "projects.json").write_text("not json", encoding="utf-8")
+    got = view.answer("projects", home=stranger)
+    assert got["off"] is False and any("list of projects" in str(p.get("text")) for p in got["frame"]["problems"])
+
+
+def test_parking_your_own_request_sets_it_aside_and_brings_it_back(stranger):
+    asked = Inbox(stranger).ask("Pick", "why", question="Which?", options=["a", "b"], source="Helper")
+    rid = asked["id"]
+    server = serve(stranger)
+    try:
+        # must refuse: not from the page, no number, a truth value for a number, a word for the flag, no such request
+        assert call(server, "/api/park", {"id": rid, "parked": True}, origin=False)[0] == 403
+        for bad in ({"parked": True}, {"id": True, "parked": True}, {"id": rid, "parked": "no"}, {"id": rid}, {"id": 99, "parked": True}):
+            assert call(server, "/api/park", bad)[0] == 400, bad
+        assert Inbox(stranger).get(rid)["parked"] is False
+        assert call(server, "/api/park", {"id": rid, "parked": True})[0] == 200
+        got = json.loads(call(server, "/api/v2/waiting")[1])
+        card = got["cards"][0]
+        assert got["frame"]["waiting"] == 0 and card["state"] == "parked" and card["parked_at"] and card["choices"] == []
+        assert "waiting" not in view.status_line(stranger).replace("nothing waiting", "")
+        assert call(server, "/api/park", {"id": rid, "parked": True})[0] == 200      # again: one line, no change
+        assert sum('"park"' in x for x in (stranger / "inbox.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+        assert call(server, "/api/park", {"id": rid, "parked": False})[0] == 200
+        got = json.loads(call(server, "/api/v2/waiting")[1])
+        assert got["frame"]["waiting"] == 1 and got["cards"][0]["parked_at"] is None and len(got["cards"][0]["choices"]) == 2
+        # an answer still counts while parked, and a closed request cannot be parked
+        assert call(server, "/api/park", {"id": rid, "parked": True})[0] == 200
+        assert call(server, "/api/answer", {"id": rid, "choice": "1"})[0] == 200
+        assert json.loads(call(server, "/api/v2/waiting")[1])["cards"][0]["state"] == "closed"
+        assert call(server, "/api/park", {"id": rid, "parked": True})[0] == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_parking_is_the_users(stranger):
+    asked = Inbox(stranger).ask("Pick", "why", question="Which?", options=["a"], source="Helper")
+    from semantext.inbox import Refused
+    with pytest.raises(Refused):
+        Inbox(stranger).park(asked["id"], True, via="agent")
+    # a line edited by hand that is not a yes or no changes nothing
+    with (stranger / "inbox.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "park", "id": asked["id"], "parked": "yes"}) + "\n")
+    assert Inbox(stranger).get(asked["id"])["parked"] is False
+
+
+@pytest.mark.parametrize("setting", ["seats", "inbox", "register", "map"])
+def test_any_one_source_named_keeps_your_own_files_out_of_every_page(stranger, tmp_path, monkeypatch, setting):
+    inbox = Inbox(stranger)
+    asked = inbox.ask("Pick", "why", question="Which?", options=["a"], source="Helper")
+    inbox.answer(asked["id"], "1", via="page")
+    inbox.ask("Another", "why", question="Which?", options=["a"], source="Helper")
+    sources = tmp_path / "s.json"
+    sources.write_text(json.dumps({setting: str(tmp_path / "named.json")}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    assert view.answer("waiting", home=stranger)["cards"] == [], setting
+    assert view.answer("waiting", home=stranger)["frame"]["waiting"] == 0
+    record = view.answer("record", home=stranger)
+    assert not record["own"] and [e for e in record["entries"] if str(e.get("id")).startswith("#")] == []
+    assert not view.answer("projects", home=stranger)["own"] and not view.answer("map", home=stranger)["own"]
+    # must pass: with no source named, the same home shows them all
+    monkeypatch.delenv("SEMANTEXT_SOURCES")
+    assert view.answer("waiting", home=stranger)["frame"]["waiting"] == 1 and view.answer("record", home=stranger)["own"]
+
+
+def test_an_answer_with_no_fields_or_from_nowhere_is_closed_and_says_so(stranger):
+    inbox = Inbox(stranger)
+    one, two = (inbox.ask(t, "why", question="Which?", options=["a"], source="Helper")["id"] for t in ("One", "Two"))
+    with (stranger / "inbox.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "answer", "id": one}) + "\n")
+        f.write(json.dumps({"type": "answer", "id": two, "picked": "a", "via": "agent"}) + "\n")
+    got = view.answer("waiting", home=stranger)
+    assert got["frame"]["waiting"] == 0 and {c["state"] for c in got["cards"]} == {"closed"}
+    assert all("does not say it came from you" in c["closing"]["how"] for c in got["cards"])
+    assert {e["added_by"] for e in view.answer("record", home=stranger)["entries"]} == {"the line does not say it came from you"}
+
+
+def test_a_bad_agents_file_costs_only_the_agents_and_reading_makes_nothing(stranger):
+    before = tree(stranger)
+    assert view.answer("map", home=stranger)["off"] is False
+    assert tree(stranger) == before     # a fresh home: reading makes no file
+    from semantext.agents import Agents
+    Agents(stranger).sessions_path.write_text(json.dumps({"s": 5}), encoding="utf-8")
+    assert cli.main(["--home", str(stranger), "card"]) == 0
+    got = view.answer("projects", home=stranger)
+    assert got["off"] is False and got["projects"] == []   # that one line costs itself
+
+
+def test_one_agent_however_its_name_is_written_and_a_name_given_to_a_folder_is_one_project(stranger, tmp_path):
+    from semantext.agents import Agents
+    from semantext.work.writer import Writer
+    folder = tmp_path / "repo"
+    folder.mkdir()
+    Agents(stranger).bind("helper", folder)
+    Inbox(stranger).ask("Pick", "why", question="Which?", source="Helper")
+    Inbox(stranger).ask("Pick", "why", question="Which?", source="Other")
+    Writer(stranger).add_project("repo")
+    m = view.answer("map", home=stranger)
+    assert {a["name"]: len(a["waiting"]) for a in m["agents"].values()} == {"Helper": 1, "Other": 1}
+    assert [p["name"] for p in m["projects"].values()] == ["repo"] and next(iter(m["projects"].values()))["path"] == str(folder)
+
+
+def test_a_group_setting_leaves_your_own_projects_and_agents(stranger, tmp_path, monkeypatch):
+    Inbox(stranger).ask("Pick", "why", question="Which?", source="Helper")
+    sources = tmp_path / "s.json"
+    sources.write_text(json.dumps({"group": "team"}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    assert [a["name"] for a in view.answer("map", home=stranger)["agents"].values()] == ["Helper"]
+
+
+@pytest.mark.parametrize("value", [5, ["x"], None, "", "   "])
+def test_a_source_named_in_a_shape_that_cannot_be_used_is_still_a_setup(stranger, tmp_path, monkeypatch, value):
+    Inbox(stranger).ask("Pick", "why", question="Which?", options=["a"], source="Helper")
+    sources = tmp_path / "s.json"
+    sources.write_text(json.dumps({"seats": value}), encoding="utf-8")
+    monkeypatch.setenv("SEMANTEXT_SOURCES", str(sources))
+    got = view.answer("waiting", home=stranger)
+    assert got["cards"] == [] and any("'seats' should name" in str(x.get("text")) for x in got["frame"]["problems"])
+    assert not view.answer("record", home=stranger)["own"] and not view.answer("map", home=stranger)["own"]
+    assert view.status_line(stranger) == view.UNAVAILABLE
+
+
+def test_a_park_line_that_is_not_the_users_hides_nothing(stranger):
+    one, two = (Inbox(stranger).ask(t, "why", question="Which?", options=["a"], source="Helper")["id"] for t in ("One", "Two"))
+    with (stranger / "inbox.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "park", "id": one, "parked": True, "via": "agent"}) + "\n")
+        f.write(json.dumps({"type": "park", "id": two, "parked": True}) + "\n")
+    assert view.answer("waiting", home=stranger)["frame"]["waiting"] == 2
+
+
+@pytest.mark.parametrize("names", [{"x": 5}, {"x": ["a"]}])
+def test_a_label_that_is_not_text_stops_no_page(stranger, names):
+    (stranger / "agents.json").write_text(json.dumps({"names": names, "bindings": [], "projects": {}}), encoding="utf-8")
+    for route in ROUTES:
+        assert view.answer(route, home=stranger) is not None, route
+    assert "x" in [a["name"] for a in view.answer("map", home=stranger)["agents"].values()]
+
+
+def test_one_bad_session_or_binding_costs_itself_and_a_blank_name_is_no_project(stranger, tmp_path):
+    from semantext.agents import Agents
+    ag = Agents(stranger)
+    good = {"agent": "good", "project": "real", "last": "2026-01-01T00:00:00+00:00"}
+    ag.sessions_path.write_text(json.dumps({"a": good, "b": "notadict", "c": {"agent": {"x": 1}, "last": 5}}), encoding="utf-8")
+    (stranger / "agents.json").write_text(json.dumps({"names": {}, "projects": {}, "bindings": [{"agent": "bad"}, 5]}), encoding="utf-8")
+    (stranger / "work").mkdir(exist_ok=True)
+    (stranger / "work" / "projects.json").write_text(json.dumps(["", "  ", "kept"]), encoding="utf-8")
+    assert "good" in [a["name"] for a in ag.overview()]
+    got = view.answer("projects", home=stranger)
+    assert sorted(p["name"] for p in got["projects"]) == ["kept", "real"]
+    assert not [p for p in got["frame"]["problems"] if "cannot be read" in str(p.get("text"))]
