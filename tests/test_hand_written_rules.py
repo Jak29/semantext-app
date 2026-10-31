@@ -52,7 +52,7 @@ def test_forty_hand_written_rules_add_at_most_one_line_to_the_card(store):
 
 
 def test_the_page_says_hand_written_where_it_used_to_say_it_came_with_semantext():
-    page = (Path(__file__).parents[1] / "semantext" / "static" / "index.html").read_text(encoding="utf-8")
+    page = (Path(__file__).parents[1] / "semantext" / "static" / "v2" / "ownrules.js").read_text(encoding="utf-8")
     assert '"DEFAULT" ? "Came with Semantext"' in page
     assert ': "Came with Semantext";' not in page                     # no longer the answer for every unknown rule
     assert "Hand-written: its file records no provenance" in page and "(hand-written)" in page

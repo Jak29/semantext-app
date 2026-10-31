@@ -20,7 +20,7 @@ flowchart LR
     store -->|"the card, in a block"| agentfiles["agentfiles.py<br/>other agents' files"]
     you -.->|"hear (optional)"| heard["heard.py"]
     heard -.->|"propose, then accept"| store
-    page["static/index.html"] <-->|"JSON, this machine only"| server["server.py"]
+    page["static/v2/"] <-->|"JSON, this machine only"| server["server.py"]
     server --> store
     server --> inbox
     cli["cli.py"] --> store
@@ -64,7 +64,7 @@ flowchart LR
 | `agentfiles.py` | The installer for other agents' instruction files (Codex, freebuff, any file you name): one block between two markers, a backup first, byte-for-byte uninstall, and `sync`. |
 | `server.py` | The page's server: a small JSON API over the store, the inbox and the feed, behind the address, `Host`, header and origin checks described in [SECURITY.md](../SECURITY.md); the counts of what Semantext did (`metrics`, from its own records only); the register's search; and the dry `explain` behind Try a message. |
 | `cli.py` | The `semantext` command and its subcommands, over the same store. |
-| `static/index.html` | The page, in one file: Today, Rules (with Try a message), Agents (with What an agent gets), Decisions and Settings, each at its own address. |
+| `static/v2/` | The page, one module per place: Today, Rules (with Try a message), Agents (with What an agent gets), Decisions and Settings, each at its own address. |
 | `data/` | The starting environments (`profiles/base`, `profiles/default`) and the suggestion packs (`suggestions/*.yaml`). |
 
 ## Files on disk

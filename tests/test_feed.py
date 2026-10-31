@@ -381,7 +381,7 @@ def test_the_page_switches_the_feed_and_nothing_else(store, page):
 
 
 def test_the_page_reads_the_feed_with_its_own_header():
-    text = (paths.static_dir() / "index.html").read_text(encoding="utf-8")
+    text = (paths.static_dir() / "v2" / "ownbase.js").read_text(encoding="utf-8")
     assert '"/api/feed' in text and '"X-Semantext": "1"' in text
 
 

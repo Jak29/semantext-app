@@ -5,14 +5,14 @@ import { Sky, closePop } from "./ownsky.js";
 import { Space } from "./ownspace.js";
 import { countsView, heroNodes, historyRows, needsYou, recentRows } from "./owntoday.js";
 import { loadIdeas } from "./ownrules.js";
-import { refreshLayers } from "./ownagents.js";
+import { loadBoard, refreshLayers } from "./ownagents.js";
 import { closeMenu, loadModels } from "./ownsettings.js";
 import "./ownevents.js";
 
 AFTER.today = () => loadMetrics();
 AFTER.layers = () => refreshLayers();
 AFTER.rules = () => { Sky.mount("ruleSky"); if (S.ideasOpen) loadIdeas(); };
-AFTER.agents = () => { if ($("skyHost")) Space.mount("skyHost"); };
+AFTER.agents = () => { if ($("skyHost")) Space.mount("skyHost"); loadBoard(); };
 AFTER.settings = () => loadModels();
 
 const onToday = (fn) => { if (host.el && S.view === "today") fn(); };

@@ -41,7 +41,9 @@ def test_the_handshake_hands_over_the_card(store, tmp_path):
 
 def test_no_tool_answers_or_changes_a_rule():
     names = {t["name"] for t in TOOLS}
-    assert names == {"card", "ask", "answers", "close", "propose_rule", "decisions"}   # decisions only reads
+    assert names == {"card", "ask", "answers", "close", "propose_rule", "decisions", "start",   # decisions and start only read
+                     "board_post", "board_read", "board_claim", "board_release",   # their own files: never the inbox or a rule
+                     "attack_ask", "attack_brief", "attack_verdict"}
     assert not names & {"answer", "teach", "toggle", "pin", "undo", "feature", "config", "hear", "forget"}
 
 
@@ -136,3 +138,15 @@ def test_it_speaks_over_standard_input_and_output(home, tmp_path):
     assert r.returncode == 0 and [x["id"] for x in replies] == [1, 2, 3]
     assert "standing rules for reading this user" in replies[2]["result"]["content"][0]["text"]
     assert b"\r\n" not in r.stdout                                       # one message per line, plain newlines
+
+
+def test_the_board_and_attack_modules_cannot_reach_an_answer_or_a_rule():   # must refuse: by what they are able to call
+    from pathlib import Path
+    from semantext import attacks, board, start
+    for mod in (board, attacks):
+        text = Path(mod.__file__).read_text(encoding="utf-8")
+        for verb in (".answer(", ".learn(", ".toggle(", ".adopt(", ".set_active(", ".park("):
+            assert verb not in text, (mod.__name__, verb)
+    text = Path(start.__file__).read_text(encoding="utf-8")
+    for verb in (".answer(", ".learn(", ".toggle(", ".adopt(", ".set_active(", ".park(", ".post(", ".claim(", "attacks.verdict(", ".mark_read(", "._add("):
+        assert verb not in text, verb

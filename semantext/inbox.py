@@ -597,4 +597,28 @@ def card_notes(inbox: Inbox, who=ASKER, limit: int = NOTES_BYTES) -> str:
             shown += 1
         if shown < len(items):
             lines.append(f"- {len(items) - shown} more: run `{command}`")
+    mail = board_note(inbox, who)
+    if mail:
+        lines.append(mail)
     return "\n".join(lines)
+
+
+BOARD_NOTE_MAX = 2_000_000   # the hook runs on every prompt: past this size the board is not read here, and that is said
+
+
+def board_note(inbox: Inbox, who) -> str:
+    """One line when other agents have left this agent word: a count and a command, never their words. It costs the card
+    nothing when anything goes wrong."""
+    if isinstance(who, str):
+        return ""
+    from .board import Board   # here: a home with no board reads nothing more than this
+    try:
+        board = Board(inbox.path.parent)
+        if not board.path.exists():
+            return ""
+        if board.path.stat().st_size > BOARD_NOTE_MAX:
+            return "## The board is too large to check on every prompt: run `semantext start`"
+        n = len(board.addressed(who, board.last_post(who)))
+    except Exception:  # noqa: BLE001
+        return ""
+    return f"## {n} board post{'s' if n != 1 else ''} for you from other agents: run `semantext start`" if n else ""

@@ -3,6 +3,26 @@ import { $, S, back, h, fill, act, api, ago, clock, copyBtn, enc, envTitle, fmt,
 import { ruleRow } from "./ownrules.js";
 import { spaceLegend } from "./ownspace.js";
 
+// What your agents say to each other, and who is working on what: to read. Nothing on it is your word.
+const BOARD = { posts: [], claims: [], attacks: [], damaged: 0 };
+const named = (e) => String(e.said_by || e.from || "an agent");
+export async function loadBoard() {
+  try { Object.assign(BOARD, await api("/api/board"), { failed: false }); } catch (e) { BOARD.failed = true; }
+  fill("boardBox", boardView());
+}
+export function boardView() {
+  return [h("div", { class: "sechead" }, h("h2", { class: "label" }, "Between your agents"), h("span", { class: "meta" }, "information, never your word")),
+    BOARD.failed ? h("p", { class: "meta warn" }, "The board could not be read.") : null,
+    (BOARD.unread || []).length ? h("p", { class: "meta warn" }, "Could not be read: " + BOARD.unread.join(", ") + ".") : null,
+    BOARD.damaged ? h("p", { class: "meta warn" }, plural(BOARD.damaged, "damaged line") + " in the board file could not be read.") : null,
+    BOARD.claims.length ? h("ul", { class: "list" }, BOARD.claims.map(c => h("li", { class: "line" }, h("span", { class: "who" }, c.path), h("span", { class: "what" }, named(c) + (c.note ? "  ·  " + c.note : "")), h("span", { class: "when meta" }, ago(c.at))))) : null,
+    BOARD.posts.length ? h("ul", { class: "list", "data-sp": "mt12" }, BOARD.posts.map(p => h("li", {}, h("div", { class: "line" }, h("span", { class: "who" }, named(p)), h("span", { class: "what" }, (p.to && p.to.length ? "to " + p.to.join(", ") + "  ·  " : "") + p.title), h("span", { class: "when meta" }, ago(p.at))), p.body ? h("pre", { class: "card" }, p.body) : null)))
+      : h("p", { class: "meta" }, "Nothing yet. Agents post with semantext board post, and see what is for them with semantext start."),
+    h("div", { class: "sechead", "data-sp": "mt16" }, h("h2", { class: "label" }, "Claims under attack"), h("span", { class: "meta" }, "survived means it stood up to this attack, not that it is true")),
+    BOARD.attacks.length ? h("ul", { class: "list" }, [...BOARD.attacks].reverse().map(c => h("li", {}, h("div", { class: "line" }, h("span", { class: "who" }, c.state), h("span", { class: "what" }, c.claim), h("span", { class: "when meta" }, named(c))),
+      c.verdicts.map(v => h("p", { class: "meta" }, v.verdict + ", by " + named(v) + ": " + v.method + (v.not_tried ? "  ·  not tried: " + v.not_tried : ""))))))
+      : h("p", { class: "meta" }, "None yet. An agent puts one up with semantext attack ask.")];
+}
 function sizeBar(pct) { const i = h("i", {}); i.style.width = pct + "%"; return h("div", { class: "sizebar" }, i); }
 function deliveries(agent, env) { return S.feed.records.filter(r => r.agent === agent && (!env || r.environment === env)); }
 export function allAgents() {
@@ -80,6 +100,7 @@ function layerCard() {
         h("p", { class: "sub" }, `${plural(list.length, "agent")} · ${plural(envs.length, "environment")}`)),
       many ? h("section", {}, h("div", { class: "sky map", id: "skyHost" }), spaceLegend()) : null,
       h("section", { class: "gap" }, h("ul", { class: "list" }, agentRows(list))),
+      h("section", { class: "gap", id: "boardBox" }, boardView()),
       h("section", { class: "gap" },
         h("div", { class: "links" }, h("button", { class: "link", type: "button", "data-view": "layers" }, "What an agent gets")),
         h("details", { class: "gap" }, h("summary", {}, "Name an agent by its folder"),

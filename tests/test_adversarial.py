@@ -313,7 +313,7 @@ def test_a_negative_length_is_refused_at_once(server):
 
 
 def test_the_page_never_parses_rule_text_as_html():
-    page = (paths.static_dir() / "index.html").read_text(encoding="utf-8")
+    page = "\n".join(p.read_text(encoding="utf-8") for p in (paths.static_dir() / "v2").glob("*.js"))
     sinks = re.findall(r"\.innerHTML\b|\.outerHTML\b|insertAdjacentHTML|document\.write|\beval\s*\(|new Function\b",
                        page)
     assert not sinks, sinks

@@ -398,8 +398,6 @@ class Handler(BaseHTTPRequestHandler):
             if u.path in ("/", "/index.html", "/v2"):   # the one page; /v2 is its older address
                 return self._send(200, (paths.static_dir() / "v2" / "index.html").read_bytes(), "text/html; charset=utf-8",
                                   {"Content-Security-Policy": V2_CSP})
-            if u.path == "/classic":   # the old home page, for one version, in case the new one lets you down
-                return self._send(200, (paths.static_dir() / "index.html").read_bytes(), "text/html; charset=utf-8")
             if u.path == "/api/state":
                 return self._send(200, {**st.overview(), "version": __version__, "connections": connections(st),
                                         "you": person_names()})
@@ -452,6 +450,26 @@ class Handler(BaseHTTPRequestHandler):
                 if not self._page_reads():
                     return self._send(403, {"error": "the counts are read only by the Semantext page itself"})
                 return self._send(200, metrics(st))
+            if u.path == "/api/board":   # what your agents said to each other: read only by the page itself, like the feed
+                if not self._page_reads():
+                    return self._send(403, {"error": "the board is read only by the Semantext page itself"})
+                from .board import Board, said_by
+                from .attacks import Attacks
+                board, attacks, unread = Board(st.root), Attacks(st.root), []
+                def read(fn, name):   # one file that cannot be read costs itself, said
+                    try:
+                        return fn()
+                    except OSError:
+                        unread.append(name)
+                        return []
+                # what the page shows, by name: never an event's key, which can hold a folder's whole path
+                seen = lambda e: {**{k: v for k, v in e.items() if k != "key"}, "said_by": said_by(e)}   # noqa: E731
+                posts = sorted(read(board.posts, "the board"), key=lambda e: e["id"], reverse=True)[:100]
+                held = read(board.claims, "the claims")
+                damaged = board.damaged
+                up = [{**seen(c), "verdicts": [seen(v) for v in c["verdicts"]]} for c in read(attacks.all, "the attacks file")]
+                return self._send(200, {"posts": [seen(e) for e in posts], "claims": [seen(e) for e in held], "attacks": up[-100:],
+                                        "damaged": damaged + attacks.damaged, "unread": sorted(set(unread))})
             if u.path == "/api/agents":
                 return self._send(200, agents_view(st))
             if u.path.startswith(pagemodule.PREFIX):   # an enabled outside place's own module (pagemodule.py)

@@ -340,7 +340,7 @@ class _Sources:
 
     def machine_inbox(self) -> list[dict]:
         """With a setup named, what agents filed in this machine's own inbox: open or parked, and never among the setup's
-        cards. It has no other page to wait on once the home page is gone. Empty with no setup, where it IS the cards."""
+        cards. It has no other page to wait on. Empty with no setup, where it IS the cards."""
         if self._machine is None:
             self._machine = []
             home = self.cfg.get("_home")

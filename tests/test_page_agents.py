@@ -82,5 +82,6 @@ def test_a_change_that_names_no_page_is_refused(store, page):
 
 
 def test_the_page_has_the_agents_panel():
-    text = (paths.static_dir() / "index.html").read_text(encoding="utf-8")
-    assert '"data-part": "agents"' in text and "agents: () =>" in text and '"/api/agent-bind"' in text
+    v2 = paths.static_dir() / "v2"
+    text = (v2 / "ownagents.js").read_text(encoding="utf-8") + (v2 / "ownevents.js").read_text(encoding="utf-8")
+    assert '"data-part": "agents"' in text and "VIEWS.agents = () =>" in text and '"/api/agent-bind"' in text

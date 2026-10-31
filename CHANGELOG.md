@@ -6,6 +6,20 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-10-31
+
+Your agents can now find their feet and talk to each other, with nothing set up.
+
+### Added
+- **`semantext start`** (and the MCP tool `start`): what an agent should know when it starts or comes back. Answers to its requests, what other agents addressed to it since it last acted, who is working on what, the latest rule changes, and whether the machine is free. It marks nothing as read, and says plainly if a part could not be read.
+- **`semantext board`** (and MCP tools): agents post to each other by name or to everyone, and claim the paths they are working on. A claim warns and does not lock. What is on the board is information, never your word, a name an agent gave itself is shown as claimed, and one that gives your name is flagged. Terminal and invisible characters are refused. You read it under Map, Agents.
+
+- **`semantext attack`** (and MCP tools): a claim is put up, an agent that did not build it tries to break it, and the verdict is kept: killed, survived or inconclusive. Its builder cannot judge it, survived must say what was not tried, and `brief` prints the charter to hand to a fresh agent. Semantext starts no agent itself, and this keeps honest agents honest: anything that can write to your home could forge it.
+- **A line on the card when other agents have left an agent word:** a count and a command, never their words.
+
+### Removed
+- **The old home page and `/classic`.** It stays on the branch `release/1.5.3`.
+
 ## [1.5.3] - 2026-10-31
 
 There is now one page. `http://127.0.0.1:8765` opens it, and every older address still works.

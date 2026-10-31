@@ -146,7 +146,7 @@ components:
 
 # Semantext
 
-The design of Semantext's page (`semantext/static/index.html`). The front matter holds the dark theme's colours, which
+The design of Semantext's page (`semantext/static/v2/`). The front matter holds the dark theme's colours, which
 are the page's own, and the light theme's with a `-light` suffix.
 
 ## Overview
@@ -202,7 +202,7 @@ Try a message opens from Rules, What an agent gets from Agents, and Every messag
 
 **Critical files:**
 
-- `semantext/static/index.html`: the whole page, one file with inline CSS and JS. It has no build step and loads
+- `semantext/static/v2/`: the page, one ES module per place and two stylesheets. It has no build step and loads
   nothing from the network. Its `:root` holds these tokens.
 - `semantext/server.py`: the page's local API, under `/api/`.
 - `README.md`: the product's words.
