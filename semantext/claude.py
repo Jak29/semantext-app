@@ -1,12 +1,13 @@
-"""Connecting Semantext to Claude Code: one UserPromptSubmit hook entry in its settings file.
+"""Connecting Semantext to Claude Code: a UserPromptSubmit hook entry (the card) and a SessionStart one (the start screen).
 
 `semantext install claude-code` only prints what it would add. With --apply it merges the entry into the settings
 file, after saving a backup beside it; an entry that is already there is never added twice, and a settings file that
-is not valid JSON is never overwritten.
+is not valid JSON is never overwritten. Running it again on an older install adds only the entry that is missing.
 """
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import sys
@@ -17,9 +18,10 @@ from . import jsonread
 from .store import Refused, stamp
 
 EVENT = "UserPromptSubmit"
+START_EVENT = "SessionStart"
 # Our hook however it is spelled: `semantext hook`, `semantext.exe hook`, a quoted path to either, `python -m semantext
 # hook`, each with or without `--home DIR`.
-OURS = re.compile(r'semantext(?:\.exe)?["\']?(?:\s+--home\s+(?:"[^"]*"|\'[^\']*\'|\S+))?\s+hook\b', re.I)
+OURS = re.compile(r'(?<![\w.-])semantext(?:\.exe)?["\']?(?:\s+--home\s+(?:"[^"]*"|\'[^\']*\'|\S+))?\s+(?:hook|start\s+--hook)(?=\s|$)', re.I)
 
 
 def default_settings() -> Path:
@@ -37,35 +39,41 @@ def hook_command(home: Path | str | None = None) -> str:
     return f'"{sys.executable}" -m semantext{where} hook'
 
 
+def start_command(command: str) -> str | None:
+    """The start screen's command, from the card's: None for a command given by hand that does not end in `hook`."""
+    return command[:-len("hook")] + "start --hook" if command.endswith(" hook") and _ours(command) else None
+
+
 def entry(command: str) -> dict:
     return {"hooks": [{"type": "command", "command": command}]}
 
 
 def snippet(command: str) -> dict:
-    return {"hooks": {EVENT: [entry(command)]}}
+    start = start_command(command)
+    return {"hooks": {EVENT: [entry(command)], **({START_EVENT: [entry(start)]} if start else {})}}
 
 
 def _ours(cmd: str) -> bool:
     return isinstance(cmd, str) and bool(OURS.search(cmd))
 
 
-def _groups(settings: dict, path: Path | str = "the settings file") -> list:
-    """The UserPromptSubmit groups, after checking every level has the shape Claude Code uses. An odd shape is
+def _groups(settings: dict, path: Path | str = "the settings file", event: str = EVENT) -> list:
+    """An event's groups, after checking every level has the shape Claude Code uses. An odd shape is
     refused, so a file Semantext does not understand is never rewritten."""
-    hooks = settings.get("hooks")
-    if hooks is None:
+    if "hooks" not in settings:
         return []
+    hooks = settings["hooks"]
     if not isinstance(hooks, dict):
         raise Refused(f"{path}: 'hooks' is not an object; it was left untouched")
-    groups = hooks.get(EVENT)
-    if groups is None:
+    if event not in hooks:
         return []
+    groups = hooks[event]
     if not isinstance(groups, list) or not all(isinstance(g, dict) for g in groups):
-        raise Refused(f"{path}: '{EVENT}' is not a list of hook groups; it was left untouched")
+        raise Refused(f"{path}: '{event}' is not a list of hook groups; it was left untouched")
     for g in groups:
         inner = g.get("hooks", [])
         if not isinstance(inner, list) or not all(isinstance(h, dict) for h in inner):
-            raise Refused(f"{path}: a '{EVENT}' group's 'hooks' is not a list of hooks; it was left untouched")
+            raise Refused(f"{path}: a '{event}' group's 'hooks' is not a list of hooks; it was left untouched")
     return groups
 
 
@@ -75,6 +83,10 @@ def is_installed(settings: dict) -> bool:
     except Refused:
         return False
     return any(_ours(h.get("command", "")) for g in groups for h in g.get("hooks", []))
+
+
+def _has(settings: dict, event: str) -> bool:
+    return any(_ours(h.get("command", "")) for g in _groups(settings, event=event) for h in g.get("hooks", []))
 
 
 def _load(path: Path) -> dict:
@@ -101,13 +113,20 @@ def _backup(path: Path) -> Path | None:
 
 
 def install(path: Path, command: str) -> tuple[bool, Path | None]:
-    """Add the hook entry. Returns (changed, backup)."""
+    """Add whichever hook entry is missing. Returns (changed, backup)."""
     data = _load(path)
     _groups(data, path)            # refuses an odd shape before anything is written
-    if is_installed(data):
+    _groups(data, path, START_EVENT)
+    # a card hook already there says which home this person's hooks read: the start screen must read the same one
+    there = next((h["command"] for g in _groups(data, path) for h in g.get("hooks", []) if _ours(h.get("command", ""))), command)
+    add = [(e, c) for e, c in ((EVENT, command), (START_EVENT, start_command(there))) if c and not _has(data, e)]
+    if not add:
         return False, None
+    if path.exists() and not os.access(path, os.W_OK):   # said before the backup, so a refusal leaves nothing behind
+        raise Refused(f"{path} cannot be written to; it was left untouched")
     backup = _backup(path)
-    data.setdefault("hooks", {}).setdefault(EVENT, []).append(entry(command))
+    for event, line in add:
+        data.setdefault("hooks", {}).setdefault(event, []).append(entry(line))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True, backup
@@ -116,21 +135,23 @@ def install(path: Path, command: str) -> tuple[bool, Path | None]:
 def uninstall(path: Path) -> tuple[bool, Path | None]:
     """Remove every Semantext hook entry, and nothing else. Returns (changed, backup)."""
     data = _load(path)
-    current = _groups(data, path)  # refuses an odd shape before anything is written
-    if not is_installed(data):
+    current = {e: _groups(data, path, e) for e in (EVENT, START_EVENT)}  # refuses an odd shape before anything is written
+    present = [e for e in current if _has(data, e)]
+    if not present:
         return False, None
     backup = _backup(path)
-    groups = []
-    for group in current:
-        hooks = group.get("hooks", [])
-        kept = [h for h in hooks if not _ours(h.get("command", ""))]
-        if kept or not hooks:
-            groups.append(dict(group, hooks=kept) if hooks else group)
-    if groups:
-        data["hooks"][EVENT] = groups
-    else:
-        data["hooks"].pop(EVENT)
-        if not data["hooks"]:
-            data.pop("hooks")  # nothing else was there: leave no empty object behind
+    for event in present:
+        groups = []
+        for group in current[event]:
+            hooks = group.get("hooks", [])
+            kept = [h for h in hooks if not _ours(h.get("command", ""))]
+            if kept or not hooks:
+                groups.append(dict(group, hooks=kept) if hooks else group)
+        if groups:
+            data["hooks"][event] = groups
+        else:
+            data["hooks"].pop(event)
+    if not data["hooks"]:
+        data.pop("hooks")  # nothing else was there: leave no empty object behind
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True, backup

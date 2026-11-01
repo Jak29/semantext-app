@@ -6,6 +6,11 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.9] - 2026-11-01
+
+### Added
+- **The start screen appears by itself when a session starts** in Claude Code. `semantext install claude-code --apply` adds a second hook for it; on an older install, running it again adds only that one, and uninstalling removes both. It never blocks a start, makes no home, is cut to 8 KB with the command for the rest, and carries only titles of what other agents wrote, labelled as information.
+
 ## [1.5.8] - 2026-11-01
 
 ### Fixed

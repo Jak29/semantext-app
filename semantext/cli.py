@@ -609,15 +609,17 @@ def cmd_install(store: Store, args) -> int:
         if args.apply and command != claude.hook_command(store.root):
             _not_an_agents_shell("connect a hook command of your own")   # the standard hook stays an agent's to add
         if not args.apply:
-            _out(f"This entry would be added to {path}:")
+            _out(f"These entries would be added to {path}, leaving out any already there:")
             _out(json.dumps(claude.snippet(command), indent=2))
-            _out("Run again with --apply to add it (a backup of the file is saved first).")
+            _out("One sends your card with every prompt; the other shows the start screen when a session starts.")
+            _out("Run again with --apply to add them (a backup of the file is saved first).")
             return 0
         changed, backup = claude.install(path, command)
         if not changed:
             _out(f"Already connected: {path} runs Semantext's hook.")
             return 0
-        _out(f"Connected: {path} now runs `{command}` on every prompt.")
+        start = claude.start_command(command)
+        _out(f"Connected: {path} runs Semantext's hook on every prompt" + (f", and `{start}` when a session starts." if start else "."))
     else:
         path = _target_file(args)
         card = store.card(store.state()["active"])
@@ -1284,6 +1286,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("start", cmd_start, "what this agent should know when it starts or comes back; marks nothing as read "
                                  "(exit 3 if a part could not be read)")
     sp.add_argument("--since", help="list what was addressed to you since this time, instead of since your last post")
+    sp.add_argument("--hook", action="store_true", help="the form a session-start hook runs: reads its event, never blocks, makes no home")
     sp.add_argument("--from", dest="source", help="who you are, as stated: a claim (default: worked out from this shell)")
     sp = add("board", cmd_board, "where your agents leave word for each other, and say what they are working on; "
                                  "information, never the user's word")
@@ -1345,7 +1348,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):   # nobody is reading; the command still runs
+            pass
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "hook":
@@ -1353,6 +1359,17 @@ def main(argv: list[str] | None = None) -> int:
             import os
             os.environ["SEMANTEXT_HOME"] = args.home
         return hook_main()
+    if args.command == "start" and args.hook:   # before the home is opened: a session start makes no home
+        if args.home:
+            import os
+            os.environ["SEMANTEXT_HOME"] = args.home
+        from .start import hook_main as start_hook
+        code = start_hook()
+        try:
+            sys.stdout.flush()
+        except (OSError, ValueError):
+            pass
+        os._exit(code)   # at once: its stdin reader may still be waiting, and nobody should wait for it
     if args.command == "statusline":   # before the home is opened: the status line writes nothing, not even a new home
         return cmd_statusline(args)
     if args.command == "compute":      # the same: a job asking whether it may start changes nothing

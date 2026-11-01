@@ -205,8 +205,8 @@ def helper_row(r: dict, session: bool = True) -> str:
     if r["unreviewed"]:
         bits.append(f"{r['unreviewed']} taken in unchecked")
     if session and r["session"]:
-        bits.append(f"resume: {shown(r['session'])}")
-    flags = "".join(f"\n    {f}" for f in r["flags"])
+        bits.append(f"resume: {' '.join(shown(r['session']).split())}")
+    flags = "".join(f"\n    {' '.join(shown(f).split())}" for f in r["flags"])
     return f"{' '.join(shown(r['name']).split())}: {' · '.join(bits)}{flags}"
 
 

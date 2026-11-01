@@ -72,7 +72,10 @@ def test_our_hook_is_known_however_it_is_spelled(tmp_path, command):
     path = tmp_path / "settings.json"
     path.write_text(json.dumps({"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": command}]}]}}),
                     encoding="utf-8")
-    assert claude.install(path, "semantext hook") == (False, None)      # never a second entry
+    claude.install(path, "semantext hook")                              # it may add the start screen's hook
+    prompt_hooks = json.loads(path.read_text(encoding="utf-8"))["hooks"]["UserPromptSubmit"]
+    assert [h["command"] for g in prompt_hooks for h in g["hooks"]] == [command]   # never a second entry
+    assert claude.install(path, "semantext hook") == (False, None)
     assert claude.uninstall(path)[0] and not claude.is_installed(json.loads(path.read_text(encoding="utf-8")))
 
 

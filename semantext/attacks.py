@@ -95,7 +95,7 @@ class Attacks(Board):
 
 def claim_row(c: dict) -> str:
     v = c["verdicts"][-1] if c["verdicts"] else None
-    tail = f": {v.get('verdict')}, by {said_by(v)}, {' '.join(shown(v.get('method')).split())[:200]}" if v else ""
+    tail = f": {shown(v.get('verdict'))}, by {said_by(v)}, {' '.join(shown(v.get('method')).split())[:200]}" if v else ""
     return f"#{c['id']} {c['state']} ({said_by(c)}) {' '.join(shown(c['claim']).split())[:200]}{tail}"
 
 
