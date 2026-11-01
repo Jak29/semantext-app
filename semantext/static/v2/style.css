@@ -64,6 +64,13 @@ a:hover { text-decoration-color: currentColor; }
 .places a[aria-current="page"] { color: var(--text); background: var(--surface); font-weight: 600; }
 .places .n { color: var(--accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .outside-tabs { display: contents; }
+.place-menu { position: relative; }
+.place-menu > summary { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 8px; color: var(--text-2); cursor: pointer; list-style: none; }
+.place-menu > summary::-webkit-details-marker { display: none; }
+.place-menu > summary::after { content: "\25BE"; font-size: 11px; }
+.place-menu > summary:hover, .place-menu[open] > summary { color: var(--text); background: var(--surface); }
+.place-menu > summary.here { color: var(--text); background: var(--surface); font-weight: 600; }
+.place-menu-list { position: absolute; z-index: 8; top: calc(100% + 4px); left: 0; display: grid; min-width: 180px; padding: 6px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .places .origin { font-size: 11px; color: var(--text-3); font-weight: 400; }
 .plugin-frame { margin-top: 12px; }
 .plugin-problem { padding: 8px 12px; border: 1px solid var(--danger); border-radius: 8px; }
@@ -348,7 +355,13 @@ tr.not-applied td { color: var(--text-3); }
   .prow.head-row { display: none; }
 }
 @media (max-width: 720px) {
-  .bar { gap: 6px 12px; padding: 10px 16px; }
+  /* A phone keeps its screen for the page: the bar scrolls away, and its places are one row that scrolls across. */
+  .bar { position: static; gap: 6px 12px; padding: 10px 16px; }
+  .places { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; }
+  .places a, .place-menu > summary { white-space: nowrap; }
+  .places-gap { display: none; }
+  .place-menu { position: static; }
+  .place-menu-list { left: 16px; right: 16px; top: auto; }
   .bar-place { flex-basis: 100%; }
   .bar-end { margin-left: 0; width: 100%; }
   main, main.wide { padding: 20px 16px 72px; }

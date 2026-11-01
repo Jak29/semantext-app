@@ -15,11 +15,29 @@ export const outsidePlace = (frame, name) => outsidePlaces(frame).find((p) => p.
 export const moduleUrl = (name) => "/v2/plugin/" + encodeURIComponent(name) + ".js";
 export const settled = () => last;   // the latest drawing, done (the tests wait on it)
 
+const tab = (p, current, showOrigin) => h("a", {
+  "data-place": p.name, href: "#" + encodeURIComponent(p.name), "aria-current": p.name === current ? "page" : null,
+  title: "Added by " + p.origin + (p.version ? " " + p.version : "") + ", a plug-in you turned on",
+}, p.title || p.name, showOrigin ? h("span", { class: "origin" }, p.origin) : null);
+
+// More places than this from one plug-in go under one menu, named for it, so a large pack costs the bar one tab.
+const OWN_TABS = 3;
+const opened = new Set();   // the menus left open: the bar is drawn again with every read, and must not shut one under you
+
 export function renderOutsideTabs(frame, current) {
-  $("tabs-outside").replaceChildren(...outsidePlaces(frame).map((p) => h("a", {
-    "data-place": p.name, href: "#" + encodeURIComponent(p.name), "aria-current": p.name === current ? "page" : null,
-    title: "Added by " + p.origin + (p.version ? " " + p.version : "") + ", a plug-in you turned on",
-  }, p.title || p.name, h("span", { class: "origin" }, p.origin))));
+  const byOrigin = new Map();
+  for (const p of outsidePlaces(frame)) byOrigin.set(p.origin, [...(byOrigin.get(p.origin) || []), p]);
+  const nodes = [];
+  for (const [origin, places] of byOrigin) {
+    if (places.length <= OWN_TABS) { nodes.push(...places.map((p) => tab(p, current, true))); continue; }
+    const here = places.find((p) => p.name === current);
+    const menu = h("details", { class: "place-menu", open: opened.has(origin) });
+    menu.addEventListener("toggle", () => { if (menu.open) opened.add(origin); else opened.delete(origin); });
+    menu.append(h("summary", { class: here ? "here" : null, title: places.length + " places added by " + origin }, here ? (here.title || here.name) : String(origin).replace(/^semantext-/, ""), h("span", { class: "origin" }, here ? origin : String(places.length))),
+      h("div", { class: "place-menu-list" }, places.map((p) => { const a = tab(p, current, false); a.addEventListener("click", () => opened.delete(origin)); return a; })));
+    nodes.push(menu);
+  }
+  $("tabs-outside").replaceChildren(...nodes);
 }
 
 function problemLine(el, why) {

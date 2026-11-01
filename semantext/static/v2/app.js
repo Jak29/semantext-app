@@ -113,7 +113,11 @@ export async function route() {
   S.sub = r.sub;
   if (moved && S.target && (S.target.place !== r.place || r.place === "record")) S.target = null;
   for (const a of document.querySelectorAll(".places a")) {
-    if (a.dataset.place === r.place) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    if (a.dataset.place === r.place) {
+      a.setAttribute("aria-current", "page");
+      const row = a.parentNode;   // on a phone the places are one row that scrolls: the current one stays in sight
+      if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = a.offsetLeft - row.offsetLeft - 16;
+    } else a.removeAttribute("aria-current");
   }
   if (S.frame) renderOutsideTabs(S.frame, r.place);
   $("main").className = r.place === "projects" || r.place === "map" || r.place === "work" || r.place === "rules" || (r.place === "today" && r.sub) ? "wide" : "";

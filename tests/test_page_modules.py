@@ -333,3 +333,70 @@ return (async () => {
     assert "ships no page module" in got["plain"] and '"tickets": "<i>3</i>"' in got["plain"]
     assert '"frame"' not in got["plain"]                                 # render gets the place's JSON, no frame
     assert "could not draw it: the place stopped (TypeError: x)" in got["stopped"]
+
+
+# ---------------------------------------------------------------- many places from one plug-in
+MANY = FRAME + """
+const many = (n, origin) => Array.from({ length: n }, (_, i) => place("p" + i + (origin || ""), { origin: "semantext-" + (origin || "pack") }));
+const links = (el) => el.all((e) => e.tagName === "A");
+"""
+
+
+@needs_node
+def test_more_than_three_places_from_one_plug_in_are_one_menu():   # must pass
+    got = run(MANY + """
+applyFrame(frameOf(...many(4)));
+const tabs = document.getElementById("tabs-outside");
+const menu = tabs.children[0];
+report({ tabs: tabs.children.length, tag: menu.tagName, summary: menu.children[0].textContent, inside: links(menu).map((a) => a.getAttribute("href")) });
+""")
+    assert got == {"tabs": 1, "tag": "DETAILS", "summary": "pack4", "inside": ["#p0", "#p1", "#p2", "#p3"]}
+
+
+@needs_node
+def test_three_places_keep_their_own_tabs_and_each_plug_in_is_judged_alone():   # must refuse a menu
+    got = run(MANY + """
+applyFrame(frameOf(...many(3), ...many(4, "big")));
+const tabs = document.getElementById("tabs-outside").children;
+report(tabs.map((t) => t.tagName));
+""")
+    assert got == ["A", "A", "A", "DETAILS"]
+
+
+@needs_node
+def test_the_menu_says_the_place_you_are_on_and_marks_it():
+    got = run(MANY + """
+applyFrame(frameOf(...many(4)));
+renderOutsideTabs(S.frame, "p2");
+const menu = document.getElementById("tabs-outside").children[0];
+report({ summary: menu.children[0].textContent, here: menu.children[0].className, current: links(menu).filter((a) => a.getAttribute("aria-current") === "page").map((a) => a.getAttribute("href")) });
+""")
+    assert got == {"summary": "P2semantext-pack", "here": "here", "current": ["#p2"]}
+
+
+@needs_node
+def test_a_menu_left_open_stays_open_when_the_bar_is_drawn_again():
+    got = run(MANY + """
+applyFrame(frameOf(...many(4)));
+let menu = document.getElementById("tabs-outside").children[0];
+menu.open = true; menu.dispatch("toggle");
+renderOutsideTabs(S.frame, null);
+const kept = document.getElementById("tabs-outside").children[0].open;
+menu = document.getElementById("tabs-outside").children[0];
+menu.open = false; menu.dispatch("toggle");
+renderOutsideTabs(S.frame, null);
+report([kept, document.getElementById("tabs-outside").children[0].open]);
+""")
+    assert got == [True, False]
+
+
+@needs_node
+def test_a_place_in_a_menu_is_still_routed_and_marked_nowhere_else():
+    got = run(MANY + """
+return (async () => {
+  applyFrame(frameOf(...many(4)));
+  const el = await go("p1", { tickets: 1 });
+  report({ place: S.place, tabs: document.getElementById("tabs-outside").children.length });
+})();
+""")
+    assert got == {"place": "p1", "tabs": 1}

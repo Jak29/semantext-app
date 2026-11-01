@@ -6,6 +6,12 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.7] - 2026-11-01
+
+### Changed
+- **A plug-in with more than three places gets one menu in the bar,** named for it, showing the place you are on. One with three or fewer keeps its tabs.
+- **On a phone the bar scrolls away with the page,** and its places are one row that scrolls across, keeping the current one in sight.
+
 ## [1.5.6] - 2026-11-01
 
 ### Fixed
