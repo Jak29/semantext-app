@@ -6,6 +6,11 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.6] - 2026-11-01
+
+### Fixed
+- **A plug-in's place cannot take a name the page itself answers at** (`today`, `settings` and the old home page's addresses). It was added and could never be reached; it is now refused with the reason, and `taken_names` lists those names.
+
 ## [1.5.5] - 2026-10-31
 
 Your agents can keep helpers for themselves, and you do not have to manage them.

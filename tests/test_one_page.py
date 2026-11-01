@@ -301,3 +301,31 @@ route();
 return settled().then(() => report(S.place));
 """)
     assert got == "waiting"
+
+
+# ---------------------------------------------------------------- the page's own names
+class _Place:
+    kind, title, name = "place", "A place", "x"
+
+    def build(self, sources):
+        return {}
+
+
+@pytest.mark.parametrize("name", ["today", "settings", "TODAY", "history", "agents", "decisions"])
+def test_an_outside_place_cannot_take_a_name_the_page_answers_at(name):   # must refuse: it could never be reached
+    from semantext.registry import Registry
+    with pytest.raises(ValueError, match="could never be reached"):
+        Registry().add("place", name, _Place(), origin="someone")
+
+
+def test_a_place_under_any_other_name_is_added_and_a_source_may_use_those_names():   # must pass
+    from semantext.registry import Registry
+    assert Registry().add("place", "board", _Place(), origin="someone").name == "board"
+
+
+def test_every_address_the_page_answers_at_is_in_the_taken_list():   # one list, checked against the page's own
+    from semantext import api, registry
+    app = text("app.js")
+    old = re.search(r"const OLD = \{([^}]*)\}", app).group(1)
+    assert set(re.findall(r"(\w+):", old)) <= set(registry.PAGE_NAMES)
+    assert {"today", "settings"} <= set(api.taken_names("place")) and set(registry.PAGE_NAMES) <= set(api.taken_names("place"))

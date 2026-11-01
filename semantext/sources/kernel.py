@@ -50,7 +50,7 @@ def taken_names(kind=None) -> list[str]:
     from .view import BUILT_IN   # here: view imports every reader
     if kind is not None and kind not in registry.KINDS + registry.RESERVED:
         raise ValueError(f"{kind!r} is not a kind of plug-in ({', '.join(registry.KINDS + registry.RESERVED)})")
-    pairs = {(e.kind, e.name) for e in BUILT_IN.entries()}
+    pairs = {(e.kind, e.name) for e in BUILT_IN.entries()} | {("place", n) for n in registry.PAGE_NAMES}
     try:
         found, _problems = registry._declared()   # every declaration, the ones declared twice included: all taken
     except Exception:  # noqa: BLE001  metadata that cannot be read takes no name; the built-ins are still listed

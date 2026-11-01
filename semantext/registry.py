@@ -30,6 +30,9 @@ from . import jsonread, outside, paths
 
 GROUP = "semantext.plugins"
 KINDS = ("source", "place", "checker")                                       # open now
+# Names the page itself answers at in its address (static/v2/app.js: its own places, and the home page's old addresses), with
+# no registered place behind them. An outside place under one would be added and never reached.
+PAGE_NAMES = ("today", "settings", "live", "inbox", "decisions", "agents", "layers", "test", "history")
 RESERVED = ("card-format", "evidence-policy", "door", "tool", "exporter")    # named, empty, refused
 BUILT_IN = "built-in"   # the words shown for a built-in's origin; never how one is told apart (Entry.builtin)
 ENABLED_FILE = "plugins.json"
@@ -146,6 +149,8 @@ class Registry:
             raise ValueError(f"a plug-in's name is letters, digits, _ and - (at most 64), not {str(name)[:80]!r}")
         if name in self._by[kind]:
             raise ValueError(f"there is already a {kind} named {name!r} ({self._by[kind][name].origin})")
+        if kind == "place" and origin is not None and name.casefold() in PAGE_NAMES:
+            raise ValueError(f"the page itself answers at {name!r}, so a place of that name could never be reached")
         missing = [a for a in NEEDS[kind] if not hasattr(obj, a)]
         if missing:
             raise ValueError(f"a {kind} needs {', '.join(missing)}")
