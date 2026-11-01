@@ -75,8 +75,9 @@ a:hover { text-decoration-color: currentColor; }
 .plugin-frame { margin-top: 12px; }
 .plugin-problem { padding: 8px 12px; border: 1px solid var(--danger); border-radius: 8px; }
 /* the place's own tools, in the bar: on Waiting, its sentence, the search and By project */
-.bar-place { display: flex; flex: 1 1 auto; min-width: 0; }
-.bar-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+/* a place's own tools are a row of their own under the places, so they never squeeze them or wrap in a narrow slot */
+.bar-place { display: flex; flex: 1 1 100%; order: 5; min-width: 0; }
+.bar-tools { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
 .bar-tools .say { font-size: 12px; color: var(--text-2); }
 .bar-tools .search { flex: 0 1 220px; height: 32px; min-width: 120px; }
 .toggle.small { height: 30px; padding: 0 10px; font-size: 12px; }
@@ -353,6 +354,9 @@ tr.not-applied td { color: var(--text-3); }
   .work-panel { position: static; max-height: none; }
   .prow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .prow.head-row { display: none; }
+}
+@media (max-width: 1000px) {
+  .bar { position: static; }   /* a bar of two or three rows would hold too much of a short window */
 }
 @media (max-width: 720px) {
   /* A phone keeps its screen for the page: the bar scrolls away, and its places are one row that scrolls across. */

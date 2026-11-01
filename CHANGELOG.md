@@ -6,6 +6,11 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.8] - 2026-11-01
+
+### Fixed
+- **A place's tools sit in a row of their own under the bar's places.** On Waiting they were wrapping in a narrow slot, which made the bar far too tall. Below 1000 pixels wide the bar scrolls away with the page.
+
 ## [1.5.7] - 2026-11-01
 
 ### Changed

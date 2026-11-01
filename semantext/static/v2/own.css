@@ -173,7 +173,7 @@
 
 /* Where the parts that came from the home page sit on the v2 page. */
 .places-gap { flex: 1; min-width: 12px; }
-.places { flex: 1 1 auto; }
+.places { flex: 1 1 0; min-width: 0; }
 .bar-place:empty { display: none; }
 .own h1 { font-size: 32px; line-height: 1.2; font-weight: 600; letter-spacing: -.015em; text-wrap: balance; }
 .own select, .own textarea { font: inherit; color: inherit; }
