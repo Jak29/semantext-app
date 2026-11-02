@@ -211,12 +211,13 @@ def test_an_outside_place_that_stops_costs_only_itself(home, offered):
 def test_built_in_places_and_keys_are_what_they_were():
     # The fixed tuples these replaced (1.2.2): the registry must give the same routes, in order, and the same keys.
     # One place and one source more since: Work (PM-DESIGN slice 2), after the others, so their order is kept; and
-    # one more place, Plug-ins (1.4), after Work.
-    assert view.ROUTES == ("waiting", "projects", "documents", "map", "record", "rules", "sources", "work", "plugins")
+    # one more place, Plug-ins (1.4), after Work. Diffmap (1.5.10) sits after Documents, whose cv folders it reads.
+    assert view.ROUTES == ("waiting", "projects", "documents", "diffmap", "map", "record", "rules", "sources", "work", "plugins")
     # Two keys more since: the run-record folders and their age bound, read by the rules reader (runs.py). The Work
-    # source adds two, for its verdict clauses (slice 2b): its store lies in the Semantext home.
+    # source adds two, for its verdict clauses (slice 2b): its store lies in the Semantext home. The Diffmap place
+    # adds two, its command template and the note beside it (1.5.10).
     assert set(KEYS) == {"name", "seats", "group", "requests", "changes", "inbox", "register", "notes", "cards", "map",
-                         "gaming", "game_folders", "inbox_app", "guards", "run_records", "run_record_days", "verdicts", "pieces"} and len(KEYS) == 18
+                         "gaming", "game_folders", "inbox_app", "guards", "run_records", "run_record_days", "verdicts", "pieces", "diffmap_command", "diffmap_note"} and len(KEYS) == 20
     assert view.BUILT_IN.names("source") == ("waiting", "record", "rules", "gates", "places", "work")
     assert all(e.origin == registry.BUILT_IN for e in view.BUILT_IN.entries())
 

@@ -6,6 +6,7 @@ import { closeDrawer, openDrawer, renderDrawer } from "./drawers.js";
 import * as waiting from "./waiting.js";
 import * as projects from "./projects.js";
 import * as documents from "./documents.js";
+import * as diffmap from "./diffmap.js";
 import * as map from "./map.js";
 import * as record from "./record.js";
 import * as work from "./work.js";
@@ -32,7 +33,7 @@ export function applyTarget(place, attr) {
   if (!t.focused) { t.focused = true; S.moved = true; el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }
 }
 // Today, Rules and Settings read their own data (ownplace.js); their route is only the frame.
-export const ROUTE = { today: "sources", rules: "sources", settings: "sources", waiting: "waiting", projects: "projects", documents: "documents", map: "map", record: "record", work: "work", plugins: "plugins" };
+export const ROUTE = { today: "sources", rules: "sources", settings: "sources", waiting: "waiting", projects: "projects", documents: "documents", diffmap: "diffmap", map: "map", record: "record", work: "work", plugins: "plugins" };
 export const DRAWER_ROUTE = { agent: "map", rules: "rules", gates: "projects", docs: "projects" };
 // A built-in place's route, or a place a plug-in adds (the frame lists those): its route is its own name.
 export const routeOf = (place) => ROUTE[place] || (outsidePlace(S.frame, place) ? place : null);
@@ -93,7 +94,7 @@ function parseHash() {
   const head = cut < 0 ? raw : raw.slice(0, cut);
   const sub = cut < 0 ? null : raw.slice(cut + 1) || null;
   if (!head) return { place: null, bare: true, sub: null };
-  if (head === "today" || head === "rules" || head === "settings" || head === "waiting" || head === "projects" || head === "documents" || head === "record" || head === "work" || head === "plugins") return { place: head, sub };
+  if (head === "today" || head === "rules" || head === "settings" || head === "waiting" || head === "projects" || head === "documents" || head === "diffmap" || head === "record" || head === "work" || head === "plugins") return { place: head, sub };
   if (head === "map" || (S.frame && S.frame.word && head === S.frame.word)) return { place: "map", sub };
   if (outsidePlace(S.frame, head)) return { place: head, sub };
   return { place: null, head, sub };
@@ -140,7 +141,7 @@ export async function route() {
 
 // Each place is a module: render(data, el) draws it from its route's answer, and mount(el), where a place has one,
 // makes the parts it keeps between drawings. A place a plug-in adds is drawn by its own page module (outside.js).
-const PLACES = { today: todayPlace, waiting, projects, documents, map, record, work, rules: rulesPlace, plugins, settings: settingsPlace };
+const PLACES = { today: todayPlace, waiting, projects, documents, diffmap, map, record, work, rules: rulesPlace, plugins, settings: settingsPlace };
 const placeNow = () => (S.place === "map" && S.sub && S.sub[0] === "~" ? agentsPlace : PLACES[S.place]);
 export function mount() {
   leave();

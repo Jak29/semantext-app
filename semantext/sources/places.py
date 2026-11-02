@@ -26,6 +26,10 @@ Links and junctions are never followed. Your inbox puts no limit on how many ent
 keeps one so that a folder of millions cannot stall it, and a folder over it is unknown: left out, with a problem that
 says so, and never shown with a date or a missing MASTER.md that only part of it would give.
 
+Change specs are what an agent writes for a change big enough to review in the diffmap viewer, in
+<home>/cv/<project>/diffmap/<name>.md, listed by the same rules (no MASTER.md needed). They are listed by title and
+never run; the Diffmap place builds each one's command from the person's own diffmap_command.
+
 assign() says which project a card (a request in the inbox) belongs to. Where a card ran comes first: a card whose cwd
 lies in a project belongs to the deepest project that holds it, whatever else its words mention. Only a card with no
 cwd inside a project is placed by what it writes: the deepest project that holds a full path written in the words the
@@ -56,6 +60,9 @@ TITLE_LIMIT = 160             # a group's title in the map's summary
 NAME_SURROGATE = 0x20000000   # a reparse tag with this bit names another place: a symlink or a junction
 CV = "cv"
 MASTER = "master.md"
+DIFFMAP = "diffmap"   # cv/<project>/diffmap/<name>.md: one change spec per file, for the diffmap viewer
+# A spec name the viewer's launcher takes; no path is ever one. It never starts with "-", so no name reads as an option.
+STEM = re.compile(r"[a-z0-9][a-z0-9-]{0,39}", re.ASCII)
 UNASSIGNED = "unassigned"
 TEXT_FIELDS = ("title", "why", "question", "options", "command", "does", "undo")   # what an agent writes to ask
 # "Name <email>", with an optional comment after it. Nothing else is an identity.
@@ -254,6 +261,20 @@ def _stat(entry, problems: list):
     except OSError as e:
         problems.append(problem(entry.path, None, "unreadable", f"cannot be examined: {e.strerror or e}"))
         return None
+
+
+def _second_name(path, problems: list) -> bool:
+    """Whether a plain file has another name elsewhere on the volume (a hard link), said as a problem. Its words are
+    then not read, not even for a title: the file is somewhere else as much as here. A folder entry's cached stat does
+    not count links on Windows, so the file is asked again."""
+    try:
+        linked = os.lstat(path).st_nlink > 1
+    except OSError as e:
+        problems.append(problem(path, None, "unreadable", f"cannot be examined: {e.strerror or e}"))
+        return True
+    if linked:
+        problems.append(problem(path, None, "hard-link", "has another name elsewhere (a hard link), so it is left out"))
+    return linked
 
 
 def _text(path, problems: list) -> str:
@@ -563,6 +584,10 @@ def _folder(agent: dict, slug: str, path: str, problems: list) -> dict | None:
                 if low == MASTER:
                     skipped = f"is over {DOC_CAP // (1024 * 1024)} MB"
                 continue
+            if _second_name(e.path, problems):   # the same hole the diffmap attack found (1.5.10), closed here too
+                if low == MASTER:
+                    skipped = "has another name elsewhere (a hard link)"
+                continue
             heading = _heading(_text(e.path, problems)) or e.name[:-3]
             if low == MASTER:
                 master, title = e.name, heading
@@ -579,8 +604,61 @@ def _folder(agent: dict, slug: str, path: str, problems: list) -> dict | None:
             "master": master, "docs": sorted(docs, key=lambda d: d["file"]), "diagrams": sorted(diagrams)}
 
 
-def _shelf(agent: dict, problems: list) -> list[dict]:
-    """The documents in one agent's <home>/cv/. A cv folder that is itself a link is not followed."""
+def _diffmap(agent: dict, slug: str, project: str, problems: list) -> dict | None:
+    """The change specs in one cv/<project>/diffmap/ folder, or None when there is no such folder. A spec is one plain
+    .md file; its stem names it to the viewer, so only a stem the viewer's launcher takes (STEM) gets a command. The
+    specs are other agents' words, listed by title and never run."""
+    path = os.path.join(project, DIFFMAP)
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        problems.append(problem(path, None, "unreadable", f"cannot be examined: {e.strerror or e}"))
+        return None
+    if _linked(st):
+        problems.append(problem(path, None, "link", "is a link, so it is not followed"))
+        return None
+    if not stat.S_ISDIR(st.st_mode):
+        return None
+    entries = _entries(path, problems, "which specs it holds are unknown, and none is shown")
+    if entries is None:
+        return None
+    specs, newest = [], 0
+    for e in entries:
+        st = _stat(e, problems)
+        if st is None:
+            continue
+        if _linked(st):
+            problems.append(problem(e.path, None, "link", "is a link, so it is not followed"))
+            continue
+        if not stat.S_ISREG(st.st_mode) or not e.name.lower().endswith(".md"):
+            continue
+        why = _plain(e.name)
+        if why:
+            if why != "hidden":
+                problems.append(problem(e.path, None, "name", f"is not a plain file name ({why}), so it is left out"))
+            continue
+        if st.st_size > DOC_CAP:
+            problems.append(problem(e.path, None, "too-big", f"is over {DOC_CAP // (1024 * 1024)} MB, so it is not read"))
+            continue
+        if _second_name(e.path, problems):
+            continue
+        secs = max(0, st.st_mtime_ns // 1_000_000_000)
+        newest = max(newest, secs)
+        stem = e.name[:-3]
+        specs.append({"file": e.name, "stem": stem, "title": _heading(_text(e.path, problems)) or stem,
+                      "updated": _iso(secs), "named": bool(STEM.fullmatch(stem))})
+    if not specs:
+        return None
+    return {"id": _node_id("diffmap", agent["id"], _key(path) or path), "agent": agent["name"], "agent_id": agent["id"],
+            "slug": slug, "path": path, "updated": _iso(newest),
+            "specs": sorted(specs, key=lambda s: s["updated"], reverse=True)}
+
+
+def _shelf(agent: dict, problems: list, specs: list | None = None) -> list[dict]:
+    """The documents in one agent's <home>/cv/, and into `specs` its diffmap folders. A cv folder that is itself a link
+    is not followed."""
     cv = os.path.join(agent["home"], CV)
     try:
         st = os.lstat(cv)
@@ -616,6 +694,10 @@ def _shelf(agent: dict, problems: list) -> list[dict]:
         doc = _folder(agent, e.name, e.path, problems)
         if doc:
             out.append(doc)
+        if specs is not None:
+            found = _diffmap(agent, e.name, e.path, problems)
+            if found:
+                specs.append(found)
     return out
 
 
@@ -802,9 +884,12 @@ def _seats(path, key: str, group: str | None, out: dict, problems: list, shut=_N
         roots = []
     out["agents"] = agents
     out["projects"] = _projects(roots or [], agents, by_email, base, source, problems, shut)
-    docs = [d for a in agents if a["home"] for d in _shelf(a, problems)]
+    specs: list[dict] = []
+    docs = [d for a in agents if a["home"] for d in _shelf(a, problems, specs)]
     out["documents"] = sorted(docs, key=lambda d: (d["agent"], d["slug"]))
     out["documents"].sort(key=lambda d: d["updated"], reverse=True)
+    out["diffmaps"] = sorted(specs, key=lambda d: (d["agent"], d["slug"]))
+    out["diffmaps"].sort(key=lambda d: d["updated"], reverse=True)
 
 
 def named_roots(cfg: dict) -> tuple[list[dict], list[dict]]:
@@ -881,7 +966,7 @@ def load(cfg: dict) -> dict:
         return own(cfg["_home"], name or None, group or None, problems)
     out: dict = {"off": len(missing) == 2, "missing": missing, "name": name or None, "group": group or None,
                  "seats_file": seats or None, "base": None, "agents": [], "projects": [], "levels": None,
-                 "documents": [], "map": {"off": True}, "problems": problems}
+                 "documents": [], "diffmaps": [], "map": {"off": True}, "problems": problems}
     if out["off"]:
         return out
     key = _key(_expand(seats or mapfile)) or str(seats or mapfile)   # what the whole is known by: the file defining it

@@ -76,5 +76,5 @@ def load(home, name, group, problems: list) -> dict:
                 me["placed"]["projects"].append(p["id"])
     top = {"id": _node_id("whole", "own", str(home)), "kind": "whole", "name": name, "measured": None, "members": [], "children": []}
     return {"off": False, "own": True, "missing": [], "name": name, "group": group, "seats_file": None, "base": None,
-            "agents": agents, "projects": list(projects.values()), "levels": top, "documents": [], "map": {"off": True},
+            "agents": agents, "projects": list(projects.values()), "levels": top, "documents": [], "diffmaps": [], "map": {"off": True},
             "problems": problems}

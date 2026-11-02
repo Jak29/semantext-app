@@ -63,7 +63,9 @@ SOURCES = (
     Reader("record", "Record", "record", ("register", "notes"), ("register",)),
     Reader("rules", "Rules", "rules", ("cards", "guards", "run_records", "run_record_days"), ("cards",)),
     Reader("gates", "Gates", "gates", ("seats", "group"), ("seats",)),
-    Reader("places", "Places", "places", ("seats", "map", "name", "group"), ("seats", "map")),
+    # diffmap_command and diffmap_note are read by the Diffmap place, beside the specs this reader lists
+    Reader("places", "Places", "places", ("seats", "map", "name", "group", "diffmap_command", "diffmap_note"),
+           ("seats", "map")),
     # The work store lies in the Semantext home, so no key turns it on; the register gives its parked decisions, and
     # the cards, run records and verdicts files the evidence its clauses are judged on (slice 2b).
     Reader("work", "Work", "work", ("seats", "group", "register", "notes", "cards", "run_records", "run_record_days",

@@ -88,8 +88,9 @@ def load_config(path: str | Path | None = None, keys=None) -> dict:
 LISTS = ("run_records",)        # a key that may also hold a list of texts (the run-record folders)
 NUMBERS = ("run_record_days",)  # a key that holds a whole number over 0 (the run records' age bound)
 BOOLS = ("inbox_app",)          # a key that holds true or false
-JUDGED = ("game_folders",)      # a key kept whatever it holds: its reader says when it is wrong, since a dropped one
-                                # would read as if it had never been set (the compute monitor could then say free)
+JUDGED = ("game_folders",       # a key kept whatever it holds: its reader says when it is wrong, since a dropped one
+          "diffmap_command")    # would read as if it had never been set (the compute monitor could then say free;
+                                # the Diffmap place, that no command was set)
 
 
 def _plain(v) -> bool:

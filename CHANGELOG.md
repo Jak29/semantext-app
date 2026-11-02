@@ -6,6 +6,15 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.10] - 2026-11-02
+
+### Added
+- **Diffmap: a page for the changes your agents want you to review.** An agent writes a change spec as `cv/<project>/diffmap/<name>.md` in its home; the page lists every spec, newest first, and opens one as text: its prose, each before-and-after diagram with the lines that go and come marked, and the commit range with its files in review order. Nothing is run. With `diffmap_command` set in your sources file (one line holding `{name}` once), each spec shows the command that opens it in the diffmap viewer, for you to copy; a spec whose name is not 1 to 40 of a-z, 0-9 and - gets no command, and says why. `diffmap_note` adds a line beside the command. A template that is not one line with `{name}` once is not used, and the page says so.
+- **Threads in the Record.** Your decisions are grouped by the project of the card each one answers; a decision no project groups can be given a topic by the model you chose in Semantext, when you ask: `semantext record topics` (or `--reader ollama:MODEL`). The model gets each decision's subject and your words, fenced as data, and answers with a topic of one to four words; a decision holding a key is never sent. Topics are kept in `record_topics.jsonl` in your Semantext home, each with the model, its version and a digest of the words it read, so a topic for words that changed is not used. Everything else keeps its own subject, as before. The page never calls a model, and says wherever a topic shows that it is a model's reading, not your words.
+
+### Fixed
+- **A file in a document or spec folder that has another name elsewhere (a hard link) is left out of the list,** so its first heading is never shown. Reading one was already refused.
+
 ## [1.5.9] - 2026-11-01
 
 ### Added

@@ -828,6 +828,38 @@ def cmd_attack(store: Store, args) -> int:
     return 0
 
 
+def cmd_record(store: Store, args) -> int:
+    """record topics: the model you chose in Semantext (or --reader) gives a topic to each decision no project groups,
+    for the Record's threads. Run only when you ask; the page never calls a model."""
+    from . import topics
+    from .sources import view
+    if args.reader:
+        reader = make_reader(args.reader, args.key_env)
+    else:
+        model = store.state().get("model")
+        if not model:
+            raise Refused("no model is chosen in Semantext, so the Record groups by project and subject only. Choose one "
+                          "on the page, or name one: --reader ollama:MODEL")
+        reader = OllamaReader(model)
+    if isinstance(reader, EndpointReader) and not is_local(reader.url):
+        _out(f"This sends each decision's subject and your words to {_host(reader.url)}, outside this machine ({reader.name}).")
+    if isinstance(reader, OllamaReader):
+        reader.resolve_version()
+    got = view.answer("record", home=store.root)
+    if not got or got.get("off"):
+        raise Refused("your Record is off: your sources file names no register, and you have answered nothing yet")
+    by_id = {e.get("id"): e for e in got.get("entries") or []}
+    loose = [by_id[i] for g in got.get("groups") or [] if g.get("kind") != "project" for i in g.get("entries") or []
+             if i in by_id and not by_id[i].get("superseded_by")]
+    if args.limit:
+        loose = loose[: max(0, args.limit)]
+    c = topics.run(store.root, loose, reader, again=args.again)
+    _out(f"Topics by {reader.name} (version {getattr(reader, 'version', '?')}): {c['named']} named, {c['kept']} kept from "
+         f"before, {c['secret_skipped']} left out for a secret, {c['unparsed']} answers that were not a topic, "
+         f"{c['failed']} calls that failed. A topic is the model's reading, and the page says so.")
+    return 0
+
+
 def cmd_helper(store: Store, args) -> int:
     from .helpers import FRESH, Helpers, helper_row
     keeper, who = Helpers(store.root), _as(store, args.source)
@@ -1322,6 +1354,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--notes", help="retire: where its notes are kept")
     sp.add_argument("--all", action="store_true", help="list: every agent's helpers")
     sp.add_argument("--from", dest="source", help="who you are, as stated: a claim (default: worked out from this shell)")
+    sp = add("record", cmd_record, "topics: the model you chose gives a topic to each decision no project groups, for "
+                                   "the Record's threads (run only when you ask)")
+    sp.add_argument("action", choices=("topics",))
+    sp.add_argument("--reader", help="ollama:MODEL or endpoint:URL#MODEL[@KEY_VARIABLE] (default: the model chosen in Semantext)")
+    sp.add_argument("--key-env", dest="key_env", help="the environment variable holding an endpoint's key")
+    sp.add_argument("--again", action="store_true", help="ask again for every decision, not only the new or changed ones")
+    sp.add_argument("--limit", type=int, help="at most this many decisions")
     add("agents", cmd_agents, "list the AI agents Semantext has seen or you have named, with their sessions")
     sp = add("agent", cmd_agent, "who this shell's agent is; bind a folder to an agent; give an agent a display name")
     sp.add_argument("action", choices=("whoami", "bind", "unbind", "name"))

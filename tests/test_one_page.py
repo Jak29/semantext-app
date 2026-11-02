@@ -118,10 +118,10 @@ report([one.textContent, moved.needsYou()]);
     assert got == ["2 decisions are waiting for you", None]
 
 
-def test_the_bar_lists_ten_places_in_the_agreed_order():
+def test_the_bar_lists_eleven_places_in_the_agreed_order():
     html = text("index.html")
-    assert re.findall(r'data-place="([a-z]+)"', html) == ["today", "waiting", "work", "projects", "documents", "map", "record",
-                                                          "rules", "plugins", "settings"]
+    assert re.findall(r'data-place="([a-z]+)"', html) == ["today", "waiting", "work", "projects", "documents", "diffmap", "map",
+                                                          "record", "rules", "plugins", "settings"]
     assert html.index('id="tab-record"') < html.index('id="tabs-outside"') < html.index('id="tab-rules"')
 
 

@@ -225,6 +225,14 @@ table.events td.mono { white-space: nowrap; }
 .doc-tools { display: flex; gap: 10px; margin: 0 0 16px; }
 .doc-tools button { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent-ink); font-weight: 600; }
 .doc-tools button:disabled { opacity: .5; cursor: default; }
+.doc-tools .command { align-self: center; font: 12px/1.5 var(--mono); padding: 6px 8px; background: var(--raised); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; white-space: pre; max-width: 100%; }
+@media (max-width: 640px) { .doc-tools { flex-wrap: wrap; } }
+.spec-diff { margin: 16px 0 0; }
+.spec-diff pre { margin: 6px 0 0; padding: 8px 10px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; font: 12px/1.65 var(--mono); white-space: pre-wrap; overflow: auto; }
+.spec-diff .del { color: var(--danger); }
+.spec-diff .add { color: var(--accent-ink); font-weight: 600; }
+.spec-diff .same { color: var(--text-2); }
+.spec-changes ol { margin: 6px 0 0; padding-left: 22px; }
 textarea.copy-box { width: 100%; min-height: 160px; margin-top: 12px; font: 12px/1.5 var(--mono); background: var(--raised); color: var(--text); border: 1px solid var(--line-2); border-radius: 8px; }
 .md { overflow-wrap: anywhere; }
 .md > * + * { margin-top: 12px; }

@@ -26,11 +26,13 @@ import copy
 import json
 import re
 import stat
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import jsonread, outside, paths, registry
+from .. import topics as _topics
 from . import builtin, cards, closed, compute, config_path, gaming, gates, load_config, places, problem, record, refused_keys, rules, unusable_sources
 from . import change as change_card
 from . import evidence_gitindex as evidence_way   # which files a change may cite: one module per way (evidence.py)
@@ -721,6 +723,51 @@ def documents_place(src: _Sources) -> dict:
     return {"off": bool(src.got["places"].get("off")), "documents": docs}
 
 
+COMMAND_LIMIT = 300
+
+
+def diffmap_command(cfg: dict) -> tuple[str | None, str | None, str | None]:
+    """(the command template, the note beside it, why there is no template). The template is one line holding {name}
+    exactly once; it is the person's own setting, shown for them to copy and never run."""
+    template, note = cfg.get("diffmap_command"), cfg.get("diffmap_note")
+    note = note.strip()[:COMMAND_LIMIT] if isinstance(note, str) and note.strip() else None
+    if template is None or template == "":
+        return None, note, "no diffmap_command is set in your sources file"
+    if (not isinstance(template, str) or template.count("{name}") != 1 or len(template) > COMMAND_LIMIT
+            or any(unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") for c in template)):   # no hidden line or direction mark
+        return None, note, (f"diffmap_command must be one line of at most {COMMAND_LIMIT} characters holding "
+                            f"{{name}} once")
+    return template.strip(), note, None
+
+
+def diffmap_place(src: _Sources) -> dict:
+    """Every change spec an agent keeps in cv/<project>/diffmap/, newest first, with the command that opens each one
+    in the diffmap viewer, built from the person's diffmap_command. A spec whose name the launcher would not take gets
+    no command, and says why. Nothing is run: the person starts the viewer."""
+    rows, _homes = _project_rows(src)
+    names = {r["id"]: r["name"] for r in rows}
+    keys = sorted(((_key(r["path"]), r["id"]) for r in rows), key=lambda t: len(t[0]), reverse=True)
+    template, note, why = diffmap_command(src.cfg)
+    specs = []
+    for folder in src.got["places"].get("diffmaps") or []:
+        project = next((pid for k, pid in keys if _inside(_key(folder.get("path")), k)), None)
+        for s in folder.get("specs") or []:
+            if not s.get("named"):
+                command, reason = None, ("its name is not 1 to 40 of a-z, 0-9 and - (not starting with -), so the "
+                                         "viewer cannot be given it")
+            elif template is None:
+                command, reason = None, why
+            else:
+                command, reason = template.replace("{name}", s["stem"]), None
+            specs.append({"folder": folder.get("id"), "agent": folder.get("agent"), "slug": folder.get("slug"),
+                          "project": project, "project_name": names.get(project), "file": s.get("file"),
+                          "stem": s.get("stem"), "title": s.get("title"), "updated": s.get("updated"),
+                          "command": command, "no_command": reason})
+    specs.sort(key=lambda s: s["updated"] or "", reverse=True)
+    return {"off": bool(src.got["places"].get("off")), "specs": specs, "note": note, "template_problem":
+            why if template is None and (src.cfg.get("diffmap_command") not in (None, "")) else None}
+
+
 # ---- one document, read ------------------------------------------------------------------------------------------
 class DocumentRefused(Exception):
     """A document read the page may not make, with the HTTP status to answer and the reason in plain words."""
@@ -773,13 +820,27 @@ def document(doc_id, file, home=None) -> dict:
         raise DocumentRefused(404, "your sources file cannot be read")
     found = places.load(cfg)
     d = next((x for x in found.get("documents") or [] if x.get("id") == doc_id), None)
-    if d is None:
-        raise DocumentRefused(404, "no document of yours has this id now")
-    listed = {d.get("master")} | {x.get("file") for x in d.get("docs") or []} | set(d.get("diagrams") or [])
-    if file not in listed:
-        raise DocumentRefused(404, "this file is not one the documents reader lists in that folder")
+    spec = None
+    if d is None:   # a diffmap folder's spec, read the same way (cv/<project>/diffmap/<name>.md)
+        spec = next((x for x in found.get("diffmaps") or [] if x.get("id") == doc_id), None)
+        if spec is None:
+            raise DocumentRefused(404, "no document of yours has this id now")
+        if low.endswith(".svg") or file not in {s.get("file") for s in spec.get("specs") or []}:
+            raise DocumentRefused(404, "this file is not one the diffmap reader lists in that folder")
+        d = {"path": spec.get("path"), "master": None,
+             "docs": [{"file": s.get("file"), "title": s.get("title")} for s in spec.get("specs") or []]}
+    else:
+        listed = {d.get("master")} | {x.get("file") for x in d.get("docs") or []} | set(d.get("diagrams") or [])
+        if file not in listed:
+            raise DocumentRefused(404, "this file is not one the documents reader lists in that folder")
     folder = d.get("path")
-    if not isinstance(folder, str) or os.path.basename(os.path.dirname(folder)).lower() != places.CV:
+    if not isinstance(folder, str):
+        raise DocumentRefused(403, "the folder is not a cv/<project> folder")
+    if spec is not None:
+        if (os.path.basename(folder).lower() != places.DIFFMAP
+                or os.path.basename(os.path.dirname(os.path.dirname(folder))).lower() != places.CV):
+            raise DocumentRefused(403, "the folder is not a cv/<project>/diffmap folder")
+    elif os.path.basename(os.path.dirname(folder)).lower() != places.CV:
         raise DocumentRefused(403, "the folder is not a cv/<project> folder")
     target = os.path.join(folder, file)
     try:
@@ -819,7 +880,7 @@ def document(doc_id, file, home=None) -> dict:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
         raise DocumentRefused(415, "it is not saved as UTF-8 text") from None
-    return {"kind": "markdown", "doc": doc_id, "file": file, "master": file == d.get("master"),
+    return {"kind": "spec" if spec is not None else "markdown", "doc": doc_id, "file": file, "master": file == d.get("master"),
             "title": d.get("title") if file == d.get("master") else
             next((x.get("title") for x in d.get("docs") or [] if x.get("file") == file), file),
             "text": text}
@@ -927,12 +988,76 @@ def thread_key(thread: dict) -> str:
     return hashlib.sha256(basis.encode("utf-8", "surrogatepass")).hexdigest()[:12]
 
 
+def _group_key(kind: str, basis: str) -> str:
+    return hashlib.sha256((kind + "\x1f" + basis).encode("utf-8", "surrogatepass")).hexdigest()[:12]
+
+
+def record_groups(entries: list, threads: list, views: list, topics: dict) -> list[dict]:
+    """The decisions grouped for the Record (Jak's pick, I-20261102-114442 option 3, falling back to 1): by the project
+    of a card a decision names, when that card has one; otherwise by the topic the person's model gave it, when its
+    words are the ones the topic was read from; otherwise by its own subject, as the register's threads are. The newest
+    touched first. A group is an index over the register, rebuilt each time; the register stays the authority."""
+    projects = {v.get("id"): v.get("project") for v in views if isinstance(v.get("id"), str) and v.get("project")}
+    by_subject = {}
+    for t in threads:
+        for i in t.get("entries") or []:
+            by_subject[i] = t
+    groups: dict = {}
+
+    def add(kind, name, key, e, model=None):
+        g = groups.setdefault(key, {"key": key, "kind": kind, "name": name, "entries": [], "models": []})
+        g["entries"].append(e)
+        if model and model not in g["models"]:
+            g["models"].append(model)
+
+    def when(x) -> tuple:   # a date that is not text (the register passes such values on) sorts as no date
+        line = x.get("line")
+        return (x.get("date") if isinstance(x.get("date"), str) else "", line if type(line) is int else 0)
+
+    for e in sorted(entries, key=when):
+        did = e.get("id")
+        mentions = e.get("mentions") if isinstance(e.get("mentions"), dict) else {}
+        project = next((projects[c] for c in mentions if isinstance(c, str) and c in projects), None)
+        topic = topics.get(did) if isinstance(did, str) else None
+        if project and project.get("id"):
+            add("project", project.get("name") or project.get("id"), _group_key("project", str(project["id"])), e)
+        elif topic and topic.get("digest") == _topics.digest(e):
+            add("topic", topic["topic"], _group_key("topic", topic["topic"].casefold()), e,
+                topic["model"] + (" " + topic["version"] if topic.get("version") else ""))
+        else:
+            t = by_subject.get(did) if isinstance(did, str) else None
+            subject = e.get("subject")
+            name = subject if isinstance(subject, str) and subject.strip() else "(no subject)"
+            add("subject", name, thread_key(t) if t else _group_key("alone", str(e.get("line"))), e)
+    out = []
+    for g in groups.values():
+        rows = g.pop("entries")
+        live = [e for e in rows if not e.get("superseded_by")]
+        latest = live[-1] if live else None
+        out.append((when(rows[-1]), {
+            **g, "entries": [e.get("id") for e in rows], "latest": latest.get("id") if latest else None,
+            "current": latest.get("computed_status") if latest else "superseded",
+            "to": list(dict.fromkeys(str(e["to"]) for e in rows if e.get("to"))),
+            "first": rows[0].get("date"), "last": rows[-1].get("date")}))
+    return [g for _, g in sorted(out, key=lambda x: x[0], reverse=True)]
+
+
 def record_place(src: _Sources) -> dict:
     r = src.got["record"]
     threads = [{**t, "key": thread_key(t)} for t in r.get("threads") or []]
+    try:
+        home = Path(src.home) if src.home else paths.home()
+        topics, topic_problems = _topics.read(home)
+    except (RuntimeError, KeyError, OSError):
+        topics, topic_problems = {}, []
+    views = src.card_views() if not r.get("off") else []
+    groups = record_groups(r.get("entries") or [], threads, views, topics)
+    kinds = Counter(g["kind"] for g in groups)
     return {"off": bool(r.get("off")), "own": bool(r.get("own")), "notes_off": bool(r.get("notes_off")), "files": r.get("files") or {},
-            "entries": r.get("entries") or [], "threads": threads, "counts": r.get("counts") or {},
-            "whole_bytes": WHOLE_BYTES}
+            "entries": r.get("entries") or [], "threads": threads, "groups": groups,
+            "grouped": {"project": kinds.get("project", 0), "topic": kinds.get("topic", 0), "subject": kinds.get("subject", 0),
+                        "topics_file": bool(topics), "topic_problems": topic_problems[:20]},
+            "counts": r.get("counts") or {}, "whole_bytes": WHOLE_BYTES}
 
 
 RULE_FIELDS = ("id", "kind", "words", "applies_when", "as_of", "basis", "quote", "ratified_by", "candidate", "live",
@@ -990,8 +1115,9 @@ BUILT_IN = builtin.registry()
 for _place in (Place("waiting", "Waiting", waiting_place, ("waiting", "record", "places", "gates")),
                Place("projects", "Projects", projects_place, ("places", "gates", "waiting", "record")),
                Place("documents", "Documents", documents_place, ("places", "gates", "waiting", "record")),
+               Place("diffmap", "Diffmap", diffmap_place, ("places", "gates", "waiting", "record")),
                Place("map", "Map", map_place, ("places", "gates", "waiting", "record", "rules")),
-               Place("record", "Record", record_place, ("record",)),
+               Place("record", "Record", record_place, ("record", "waiting", "places", "gates")),
                Place("rules", "Rules", rules_place, ("rules", "places")),
                Place("sources", "Sources", sources_place, _ALL),
                Place("work", "Work", work_place, ("work", "waiting", "record")),

@@ -99,6 +99,25 @@ export function sourceNode(e, byId) {
   return parts;
 }
 
+// How the threads were made: "(3 by project, 12 by a model's topic)", or nothing when every one is a subject.
+export function groupedBy(g) {
+  if (!g || !(g.project || g.topic)) return "";
+  return " (" + [g.project ? g.project + " by project" : null, g.topic ? g.topic + " by a model's topic" : null].filter(Boolean).join(", ") + ")";
+}
+
+// A group's line: how many decisions, where it stands now, to whom, and when.
+export function groupMeta(g) {
+  return plural((g.entries || []).length, "decision") + " · now " + (g.current || "no status") + ((g.to || []).length ? " · to " + g.to.join(", ") : "")
+    + " · " + (g.first === g.last ? day(g.last) : day(g.first) + " to " + day(g.last));
+}
+
+// Whose grouping it is: a project's is the card's project; a topic's is a model's reading, never your words.
+export function groupWhose(g) {
+  if (g.kind === "project") return "Grouped by the project of the cards these decisions answer.";
+  if (g.kind === "topic") return "Grouped by " + ((g.models || []).join(", ") || "a model") + ": a model's reading of your words, not your words. Your words below are as you gave them.";
+  return null;
+}
+
 export function render(data, el) {
   if (!data) { R.head.replaceChildren(header("Record", "Reading your files…")); return; }
   if (data.off) {
@@ -111,7 +130,8 @@ export function render(data, el) {
   const counts = data.counts || {};
   const by = counts.by_status || {};
   R.head.replaceChildren(header("Record", data.own && !counts.entries ? "Nothing yet. What you answer in Waiting is kept here, in your words."
-    : plural(counts.entries || 0, "decision") + " in " + plural(counts.threads || 0, "thread") + ", newest first. Your words are kept as you gave them.",
+    : plural(counts.entries || 0, "decision") + " in " + (data.groups ? plural(data.groups.length, "thread") + groupedBy(data.grouped)
+      : plural(counts.threads || 0, "thread")) + ", newest first. Your words are kept as you gave them.",
     data.files && data.files.register ? "From " + data.files.register + (data.notes_off ? "" : ", with its notes") + "." : null));
   const facets = [["all", "All", counts.entries || 0], ...Object.entries(by).filter(([, n]) => n > 0).map(([s, n]) => [s, cap(s), n])];
   if (!facets.some(([k]) => k === S.facet)) S.facet = "all";
@@ -123,7 +143,7 @@ export function render(data, el) {
   const all = h("a", { href: "#record" }, "Record");
   const sub = S.sub || "";
   // Level 3: one decision at its source.
-  if (sub && !sub.startsWith("t/")) {
+  if (sub && !sub.startsWith("t/") && !sub.startsWith("g/")) {
     R.tools.hidden = true;
     R.empty.hidden = true;
     const e = byId.get(sub);
@@ -131,6 +151,17 @@ export function render(data, el) {
     if (!e) { R.head.replaceChildren(header("No such decision", "No decision in your register has the id " + sub + " now.", null, crumbs(all, sub))); R.list.replaceChildren(); return; }
     R.head.replaceChildren(header(e.id, null, null, crumbs(all, t ? h("a", { href: "#record/t/" + t.key }, t.subject || "(no subject)") : e.subject || "(no subject)", e.id)));
     R.list.replaceChildren(h("p", { class: "subject" }, e.subject || "(no subject)"), ...sourceNode(e, byId));
+    return;
+  }
+  // Level 2, a group: a project's decisions, or a topic's (a model's grouping, said as one), newest first.
+  if (sub.startsWith("g/")) {
+    R.tools.hidden = true;
+    R.empty.hidden = true;
+    const g = (data.groups || []).find((x) => x.key === sub.slice(2) && x.kind !== "subject");
+    if (!g) { R.head.replaceChildren(header("No such group", "No project or topic groups your decisions at this address now.", null, crumbs(all, "a group"))); R.list.replaceChildren(); return; }
+    const ents = (g.entries || []).map((id) => byId.get(id)).filter(Boolean).reverse();
+    R.head.replaceChildren(header(g.name, groupMeta(g), groupWhose(g), crumbs(all, g.name)));
+    R.list.replaceChildren(h("div", { class: "thread" }, ents.map((e) => entryNode(e, limit, true))));
     return;
   }
   // Level 2: one thread's decisions, newest first.
@@ -154,14 +185,16 @@ export function render(data, el) {
       for (const e of (t.entries || []).map((id) => byId.get(id)).filter((x) => x && fits(x)).reverse()) { shown++; out.push(h("div", { class: "thread" }, entryNode(e, limit, true))); }
     }
   } else {
-    for (const t of data.threads || []) {
-      const ents = (t.entries || []).map((id) => byId.get(id)).filter((e) => e && fits(e));
+    // The groups when the server gives them (project, then a model's topic, then the subject); the threads otherwise.
+    const rows = data.groups || (data.threads || []).map((t) => ({ ...t, kind: "subject", name: t.subject }));
+    for (const g of rows) {
+      const ents = (g.entries || []).map((id) => byId.get(id)).filter((e) => e && fits(e));
       if (!ents.length) continue;
       shown += ents.length;
-      out.push(h("a", { class: "thread threadrow", href: "#record/t/" + t.key, "data-k": "thread:" + t.key },
-        h("span", { class: "subject" }, t.subject || "(no subject)"),
-        h("span", { class: "meta" }, plural((t.entries || []).length, "decision") + " · now " + (t.current || "no status") + ((t.to || []).length ? " · to " + t.to.join(", ") : "")
-          + " · " + (t.first === t.last ? day(t.last) : day(t.first) + " to " + day(t.last)))));
+      const href = g.kind === "subject" ? "#record/t/" + g.key : "#record/g/" + g.key;
+      out.push(h("a", { class: "thread threadrow", href, "data-k": (g.kind === "subject" ? "thread:" : "group:") + g.key },
+        h("span", { class: "subject" }, g.kind === "subject" ? g.name || "(no subject)" : [h("span", { class: "chip kind" }, g.kind === "project" ? "project" : "topic"), " ", g.name]),
+        h("span", { class: "meta" }, groupMeta(g) + (g.kind === "topic" ? " · grouped by a model" : ""))));
     }
   }
   R.list.replaceChildren(...out);
