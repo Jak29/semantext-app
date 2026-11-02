@@ -647,7 +647,10 @@ def _diffmap(agent: dict, slug: str, project: str, problems: list) -> dict | Non
         secs = max(0, st.st_mtime_ns // 1_000_000_000)
         newest = max(newest, secs)
         stem = e.name[:-3]
-        specs.append({"file": e.name, "stem": stem, "title": _heading(_text(e.path, problems)) or stem,
+        # no format character (a direction override, a zero-width mark) reaches a title: it can make one spec's
+        # title read as another's (Orithises's attack on 1.5.10, N5)
+        title = "".join(c for c in _heading(_text(e.path, problems)) if unicodedata.category(c) != "Cf").strip()
+        specs.append({"file": e.name, "stem": stem, "title": title or stem,
                       "updated": _iso(secs), "named": bool(STEM.fullmatch(stem))})
     if not specs:
         return None

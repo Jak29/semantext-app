@@ -1017,7 +1017,11 @@ def record_groups(entries: list, threads: list, views: list, topics: dict) -> li
     for e in sorted(entries, key=when):
         did = e.get("id")
         mentions = e.get("mentions") if isinstance(e.get("mentions"), dict) else {}
-        project = next((projects[c] for c in mentions if isinstance(c, str) and c in projects), None)
+        # a card the decision answers is one named in your words or in the offer you accepted; a note or the scribe's
+        # reading naming a card does not make the decision its answer (Orithises's attack on 1.5.10, N1)
+        answered = [c for c, fields in mentions.items() if isinstance(c, str) and isinstance(fields, list)
+                    and {"words", "offer"} & set(fields)]
+        project = next((projects[c] for c in answered if c in projects), None)
         topic = topics.get(did) if isinstance(did, str) else None
         if project and project.get("id"):
             add("project", project.get("name") or project.get("id"), _group_key("project", str(project["id"])), e)

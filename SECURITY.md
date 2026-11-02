@@ -24,9 +24,10 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   transcript to check that the words are yours. The hook records each session's transcript path, never its prompts, in
   `sessions.json`. The page lists the names of local Ollama models, from `~/.ollama/models/manifests/`.
 - **The network:** none by default. There is no telemetry, no account and no update check, and the page listens on this
-  machine only. The one exception is opt-in: `semantext backtest --reader` sends the card and the messages it scores to
-  the model you name (Ollama on this machine, or an endpoint you give; one off this machine is announced before its
-  first call).
+  machine only. Two exceptions are opt-in, and each refuses an agent's shell: `semantext backtest --reader` sends the
+  card and the messages it scores to the model you name (Ollama on this machine, or an endpoint you give; one off this
+  machine only from your own terminal, announced before its first call), and `semantext record topics` sends each
+  decision's subject and your words to a model on this machine, never off it.
 - **Your prompts.** They are not kept unless you switch on `semantext config hear-prompts on`, which is off by default.
   If you do, they are kept in `~/.semantext/heard/`, on this machine.
 - **The feed.** The hook keeps one line per card it hands out in `~/.semantext/feed.jsonl`, so the page can show what

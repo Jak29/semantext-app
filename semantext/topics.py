@@ -6,7 +6,9 @@ itself, and the page never calls a model; it only reads what this wrote.
 
 For each decision the model is given its subject and your words, fenced as data, and the topics it has already named,
 so it can reuse one; it answers with one JSON object holding a topic of one to four words. Anything else is no topic.
-A decision whose words look like they hold a key, a token or a password is never sent, and is counted. Each topic is
+A decision whose words match a known key or password pattern (inbox.SECRET) is never sent, and is counted; a long
+key-like run that no pattern names is held back only from a reader off this machine, and the CLI refuses those
+anyway. Only you start a run, at your own terminal, and only with a model on this machine (cli.cmd_record). Each topic is
 kept with the model, its version, and a digest of the words it read, so a topic for words that have since changed is
 not used. A topic is a model's reading, never your words: the page says so wherever it shows one.
 

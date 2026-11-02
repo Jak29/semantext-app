@@ -32,7 +32,8 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 ```
 
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
-own; the one exception is opt-in: `semantext backtest --reader` asks a model you name.
+own; the two exceptions are opt-in and started at your own terminal: `semantext backtest --reader` asks a model you
+name, and `semantext record topics` asks a model on this machine.
 
 > **Status: version 1.5.9.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
@@ -380,6 +381,7 @@ More: [docs/claude-code.md](docs/claude-code.md).
 | `semantext mine [FILE ...] [--dry-run]` | Keep your own past messages from Claude Code's transcripts of this project as heard, for `propose` (never a rule, never a secret) |
 | `semantext backtest [FILE ...] [--split DATE] [--cases FILE] [--show]` | Score the card against the misreadings in your transcripts, beside two null cards (see [docs/backtest.md](docs/backtest.md)) |
 | `semantext backtest --reader SPEC [--judge SPEC --judge SPEC] [--ablate]` | Score a model's reading of your messages, with the card and without it (off unless you name a reader; an outside endpoint is announced first) |
+| `semantext record topics [--reader ollama:MODEL] [--again] [--limit N]` | Give each decision no project groups a topic from a model on this machine, for the Record's threads (yours to run, at your own terminal; never off this machine) |
 | `semantext config hear-prompts [on\|off]` | Show or set whether the hook keeps your prompts (off unless you switch it on) |
 | `semantext feed [on\|off] [-n N]` | What each prompt was sent, newest first: who asked, whose words, which card, its layers and size, never what was said (on by default; off writes nothing) |
 | `semantext serve [--port PORT] [--open]` | Open the page on this machine, at `http://127.0.0.1:8765` |
@@ -444,9 +446,10 @@ rules stay in `~/.semantext` until you delete that folder yourself.
 ## Privacy
 
 - **No network of its own.** Semantext needs no account and collects no telemetry, and none of its commands makes a
-  network call, with one opt-in exception: `semantext backtest --reader` sends the card and the messages it scores to
-  the model you name (Ollama on this machine, or an endpoint you give, announced before its first call off this
-  machine). Your AI tool sends the card to its own provider with your prompt, as it does your prompt. Your rules,
+  network call, with two opt-in exceptions you start at your own terminal: `semantext backtest --reader` sends the
+  card and the messages it scores to the model you name (Ollama on this machine, or an endpoint you give; one off this
+  machine only from your own terminal, announced before its first call), and `semantext record topics` sends each
+  decision's subject and your words to a model on this machine, never off it. Your AI tool sends the card to its own provider with your prompt, as it does your prompt. Your rules,
   history and heard log are ordinary files in a folder you choose.
 - **What it reads outside its folder.** `semantext mine` and `semantext backtest` read Claude Code's transcripts for the
   current project, under `~/.claude/projects/`. `semantext teach`, run from Claude Code's shell, reads that session's

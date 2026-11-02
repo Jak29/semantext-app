@@ -67,7 +67,7 @@ function commandNode(s, note) {
   const tools = h("div", { class: "doc-tools" }, h("code", { class: "command" }, s.command), copy);
   copy.addEventListener("click", () => copyText(copy, s.command, tools));
   return h("div", null, tools, note ? h("p", { class: "meta" }, note) : null,
-    h("p", { class: "meta" }, "Run it yourself to open this change in the viewer. This page runs nothing."));
+    h("p", { class: "meta" }, "Run it yourself to open this change in the viewer. This page runs nothing. The command is built from diffmap_command in your sources file, which an agent can edit: read it before you run it."));
 }
 
 export function render(data, el) {

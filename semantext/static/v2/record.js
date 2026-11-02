@@ -114,7 +114,7 @@ export function groupMeta(g) {
 // Whose grouping it is: a project's is the card's project; a topic's is a model's reading, never your words.
 export function groupWhose(g) {
   if (g.kind === "project") return "Grouped by the project of the cards these decisions answer.";
-  if (g.kind === "topic") return "Grouped by " + ((g.models || []).join(", ") || "a model") + ": a model's reading of your words, not your words. Your words below are as you gave them.";
+  if (g.kind === "topic") return "Grouped by " + ((g.models || []).join(", ") || "a model") + ", as the topics file in your Semantext home says: a model's reading of your words, not your words, and anything that can write to that file could have written it. Your words below are as you gave them.";
   return null;
 }
 

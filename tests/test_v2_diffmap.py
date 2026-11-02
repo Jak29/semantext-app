@@ -225,3 +225,9 @@ def test_a_template_with_a_hidden_line_or_direction_mark_gives_no_command(world,
     world.write_config(diffmap_command=bad)
     got = view.answer("diffmap")
     assert all(s["command"] is None for s in got["specs"]) and got["template_problem"]
+
+def test_a_spec_title_keeps_no_format_character(world):
+    touch(world.specs / "bidi.md", "# Safe \u202echange\u200b\n")
+    specs = by_stem(view.answer("diffmap"))
+    assert specs["bidi"]["title"] == "Safe change"                                        # N5: must-refuse
+    assert specs["pele-crlf"]["title"] == "The Pele CRLF fix"                             # must-pass

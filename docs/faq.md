@@ -6,8 +6,10 @@ counts as a yes, which acts must wait for you. It puts those rules in front of e
 
 **Does it send my rules anywhere?**
 No. Semantext makes no network calls of its own, and has no account or telemetry. Your AI tool receives the card as
-part of your prompt, as it would anything else you type. The page answers only on `127.0.0.1`. The one opt-in
-exception is `semantext backtest --reader`, which sends the card and the messages it scores to the model you name.
+part of your prompt, as it would anything else you type. The page answers only on `127.0.0.1`. There are two opt-in
+exceptions, each started by you at your own terminal: `semantext backtest --reader`, which sends the card and the
+messages it scores to the model you name, and `semantext record topics`, which sends each decision's subject and
+your words to a model on this machine (never off it) for the Record's threads.
 
 **Does the hook read my prompts?**
 It receives each prompt event from Claude Code, prints your inbox's notes and your card, and keeps nothing. If you

@@ -6,6 +6,20 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.11] - 2026-11-02
+
+### Fixed
+- **`semantext record topics` is yours to run, at your own terminal, and only with a model on this machine.** In 1.5.10 an agent's shell could run it and name any host with `--reader endpoint:`, sending your decisions' words there with only a notice printed to its own screen. It now refuses an agent's shell and any reader off this machine.
+- **`semantext backtest --reader` reaches a model off this machine only from your own terminal**, for the same reason.
+- **The docs name both opt-in network calls.** README, SECURITY.md, the FAQ and the architecture page said `backtest --reader` was the only one.
+- **A decision is grouped by the project of a card named in your words or the offer you accepted,** never by a card a note or the scribe's reading names.
+- **A spec's title keeps no invisible format character,** so one title cannot be made to read as another.
+
+### Changed
+- The Diffmap page says that the command it offers is built from your sources file, which an agent can edit, so read it before you run it. A topic group says that anything able to write to the topics file in your Semantext home could have written it.
+
+Found by Orithises's attack of record on 1.5.10 (KILLED: two kills, six notes); each fix has a test that fails without it.
+
 ## [1.5.10] - 2026-11-02
 
 ### Added

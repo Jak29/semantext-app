@@ -472,6 +472,11 @@ def _model_backtest(store: Store, name: str, args, files) -> int:
         if len(hosts) > 1:   # one key goes to the one host it was issued for, never to another provider
             raise Refused(f"the key in {var} would go to {', '.join(sorted(hosts))}: one key goes to one host. Give "
                           f"each endpoint its own key variable: endpoint:URL#MODEL@VARIABLE")
+    off = [x for x in (reader, *judges) if isinstance(x, EndpointReader) and not is_local(x.url)]
+    why_not = human_terminal() if off else None
+    if why_not:   # the same shape as record topics (Orithises's attack on 1.5.10, K1): off this machine is yours to start
+        raise Refused(f"a reading that leaves this machine ({_host(off[0].url)}) is yours to start, at your own "
+                      f"terminal: this is {why_not}")
     for x in (reader, *judges):
         if isinstance(x, EndpointReader) and not is_local(x.url):
             what = ("the card and the messages" if x is reader else
@@ -833,6 +838,11 @@ def cmd_record(store: Store, args) -> int:
     for the Record's threads. Run only when you ask; the page never calls a model."""
     from . import topics
     from .sources import view
+    # Your words go to a model, so asking is your act: at your own terminal, never from an agent's shell (Orithises's
+    # attack on 1.5.10, K1: an agent could run this and name any host).
+    why_not = human_terminal()
+    if why_not:
+        raise Refused(f"record topics is yours to run, at your own terminal: this is {why_not}")
     if args.reader:
         reader = make_reader(args.reader, args.key_env)
     else:
@@ -842,7 +852,8 @@ def cmd_record(store: Store, args) -> int:
                           "on the page, or name one: --reader ollama:MODEL")
         reader = OllamaReader(model)
     if isinstance(reader, EndpointReader) and not is_local(reader.url):
-        _out(f"This sends each decision's subject and your words to {_host(reader.url)}, outside this machine ({reader.name}).")
+        raise Refused(f"your decisions stay on this machine: {_host(reader.url)} is not. Use a model on this machine "
+                      f"(ollama:MODEL, or an endpoint at 127.0.0.1)")
     if isinstance(reader, OllamaReader):
         reader.resolve_version()
     got = view.answer("record", home=store.root)
