@@ -264,3 +264,47 @@ def test_a_card_named_only_in_a_note_does_not_group_the_decision():
     assert g[0]["kind"] == "subject"                                                      # N1: must-refuse
     e["mentions"] = {"B-20261002-080000": ["note", "offer"]}
     assert view.record_groups([e], [], views, {})[0]["kind"] == "project"                 # must-pass
+
+# ---------------------------------------------------------------- Orithises's recheck of 1.5.11: K3
+from semantext.reader import is_local
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:11434/api", "http://localhost/v1", "https://localhost:8443/v1",
+                                 "http://[::1]:9/v1", "http://127.0.0.1/v1"])
+def test_a_url_on_this_machine_is_local(url):
+    assert is_local(url)                                                                  # must-pass
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:80@evil.invalid/v1", "https://localhost:x@evil.invalid/v1",
+                                 "http://127.0.0.1:80@203.0.113.9:8080/v1", "http://user@127.0.0.1/v1",
+                                 "http://127.0.0.1:abc/v1", "http://127.0.0.1:99999/v1", "ftp://127.0.0.1/x",
+                                 "http://127.0.0.1.evil.invalid/v1", "http://localhost\\@evil.invalid/v1",
+                                 "http://127.0.0.1 @evil.invalid/v1", "http://127.0.0.1\t/v1", "//127.0.0.1/v1",
+                                 "http://evil.invalid/127.0.0.1", "", None, 5])
+def test_a_url_that_could_reach_another_machine_is_not_local(url):
+    assert not is_local(url)                                                              # K3: must-refuse
+
+
+def test_record_topics_refuses_a_userinfo_url_even_from_your_terminal(world, tmp_path, monkeypatch, capsys):
+    home = tmp_path / "home"
+    assert cli.main(["--home", str(home), "init"]) == 0
+    monkeypatch.setattr(cli, "human_terminal", lambda: None)
+    reached = []
+    monkeypatch.setattr(topics, "run", lambda *a, **k: reached.append(a) or {})
+    capsys.readouterr()
+    assert cli.main(["--home", str(home), "record", "topics", "--reader",
+                     "endpoint:http://127.0.0.1:80@evil.invalid/v1#m"]) != 0
+    said = capsys.readouterr()
+    assert "stay on this machine" in said.out + said.err and reached == []
+
+
+def test_a_backtest_userinfo_url_refuses_an_agents_shell(tmp_path, monkeypatch):
+    import types
+    from semantext.store import Refused, Store
+    monkeypatch.setenv("CLAUDECODE", "1")
+    store = Store.open(tmp_path / "home") if hasattr(Store, "open") else Store(tmp_path / "home")
+    args = types.SimpleNamespace(reader="endpoint:http://127.0.0.1:80@evil.invalid/v1#m", judge=[], key_env=None,
+                                 cases=None, split=None, samples=1, ablate=False, clean_sample=None, json=False)
+    with pytest.raises(Refused) as e:
+        cli._model_backtest(store, "base", args, ["a-transcript.jsonl"])
+    assert "at your own terminal" in str(e.value)

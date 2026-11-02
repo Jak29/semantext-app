@@ -231,3 +231,15 @@ def test_a_spec_title_keeps_no_format_character(world):
     specs = by_stem(view.answer("diffmap"))
     assert specs["bidi"]["title"] == "Safe change"                                        # N5: must-refuse
     assert specs["pele-crlf"]["title"] == "The Pele CRLF fix"                             # must-pass
+
+@pytest.mark.parametrize("name", ["evil\u202egnp.md", "zero\u200bwidth.md"])
+def test_a_spec_file_name_with_a_format_character_is_left_out(world, name):
+    touch(world.specs / name, "# Looks like another\n")
+    got = view.answer("diffmap")
+    assert all(s["file"] != name for s in got["specs"])                                   # N5: must-refuse
+    assert "pele-crlf" in by_stem(got)                                                     # must-pass
+
+
+def test_a_project_folder_with_a_format_character_is_left_out(world):
+    touch(world.base / "alder" / "cv" / "no\u202etes" / "diffmap" / "x.md", "# Hidden folder\n")
+    assert all("\u202e" not in s["slug"] for s in view.answer("diffmap")["specs"])

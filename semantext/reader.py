@@ -606,6 +606,22 @@ class EndpointReader:
             return jsonread.loads(r.read().decode("utf-8"))["choices"][0]["message"]["content"]
 
 
-def is_local(url: str) -> bool:
-    host = (url.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]).lower()
-    return host in ("127.0.0.1", "localhost", "::1", "[::1]")
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+
+def is_local(url) -> bool:
+    """Whether a reader's URL reaches this machine, judged as urllib will connect: the host urlsplit gives. Anything a
+    connection could read another way is not local: a user-information part (http://127.0.0.1:80@elsewhere/ connects
+    to elsewhere), a scheme other than http or https, a port that is not a number, a backslash, or any white space or
+    control character (Orithises's recheck of 1.5.11, K3: the old check cut the address at its first colon)."""
+    from urllib.parse import urlsplit
+    if not isinstance(url, str) or not url or any(c.isspace() or ord(c) < 32 or ord(c) == 127 or c == "\\" for c in url):
+        return False
+    try:
+        p = urlsplit(url)
+        port = p.port   # raises ValueError for a port that is not a number
+    except ValueError:
+        return False
+    if p.scheme.lower() not in ("http", "https") or "@" in p.netloc or (port is not None and not 0 < port < 65536):
+        return False
+    return (p.hostname or "") in LOCAL_HOSTS

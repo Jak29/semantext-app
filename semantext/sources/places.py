@@ -530,7 +530,9 @@ def _plain(name: str) -> str:
         return "empty or over 120 bytes"
     if name.startswith("."):
         return "hidden"
-    if ".." in name or any(c in "/\\:" or unicodedata.category(c) == "Cc" for c in name):
+    # a format character (a direction override, a zero-width mark) is refused as a control character is: it makes a
+    # name read as another on the page (Orithises's recheck of 1.5.11, N5's other half)
+    if ".." in name or any(c in "/\\:" or unicodedata.category(c) in ("Cc", "Cf") for c in name):
         return "not one plain segment"
     return ""
 

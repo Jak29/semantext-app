@@ -6,6 +6,14 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.12] - 2026-11-02
+
+### Fixed
+- **Whether a model's address is on this machine is judged as the connection will be made.** The check read the host up to the first colon, so `http://127.0.0.1:80@elsewhere/` counted as this machine while the call went elsewhere; through it, `backtest --reader` could still be sent off this machine from an agent's shell. An address with a user-information part, a scheme other than http or https, a port that is not a number, a backslash or white space is now never counted as this machine. Every check that rests on it is fixed with it: `record topics`, `backtest --reader`, and the rule that a key never goes over plain http to another machine.
+- **A file or folder name with an invisible format character is left out** of Documents and Diffmap, as one with a control character already was.
+
+Found by the recheck of 1.5.11; each fix has a test that fails without it.
+
 ## [1.5.11] - 2026-11-02
 
 ### Fixed
