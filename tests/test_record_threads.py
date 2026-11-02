@@ -308,3 +308,75 @@ def test_a_backtest_userinfo_url_refuses_an_agents_shell(tmp_path, monkeypatch):
     with pytest.raises(Refused) as e:
         cli._model_backtest(store, "base", args, ["a-transcript.jsonl"])
     assert "at your own terminal" in str(e.value)
+
+# ---------------------------------------------------------------- Orithises's recheck of 1.5.12: K4, the route
+import http.server
+import socket
+import threading
+
+from semantext.reader import EndpointReader, OllamaReader
+
+
+class _Stub(http.server.BaseHTTPRequestHandler):
+    seen: list = []
+
+    def _any(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        type(self).seen.append((self.command, self.path, self.rfile.read(n)))
+        body = b'{"choices": [{"message": {"content": "via the stub"}}], "response": "via the stub", "models": []}'
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = do_POST = _any
+
+    def log_message(self, *a):
+        pass
+
+
+@pytest.fixture
+def stub():
+    _Stub.seen = []
+    srv = http.server.HTTPServer(("127.0.0.1", 0), _Stub)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield srv
+    srv.shutdown()
+
+
+def _closed_port() -> int:
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def _proxy_everything(monkeypatch, stub):
+    url = f"http://127.0.0.1:{stub.server_port}"
+    for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        monkeypatch.setenv(var, url)
+    for var in ("NO_PROXY", "no_proxy"):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_a_local_reader_never_goes_through_a_proxy(stub, monkeypatch):
+    _proxy_everything(monkeypatch, stub)
+    port = _closed_port()
+    with pytest.raises(OSError):                                                           # direct, so nothing answers
+        EndpointReader(f"http://127.0.0.1:{port}/v1", "m")("the person's words")
+    with pytest.raises(OSError):
+        OllamaReader("m", host=f"http://127.0.0.1:{port}")("the person's words")
+    OllamaReader("m", host=f"http://127.0.0.1:{port}").resolve_version()
+    assert _Stub.seen == []                                                                # K4: must-refuse
+
+
+def test_a_local_reader_reaches_its_own_address_directly(stub, monkeypatch):
+    other = http.server.HTTPServer(("127.0.0.1", 0), _Stub)
+    threading.Thread(target=other.serve_forever, daemon=True).start()
+    try:
+        _proxy_everything(monkeypatch, other)                                              # a proxy that is not the stub
+        assert EndpointReader(f"http://127.0.0.1:{stub.server_port}/v1", "m")("hi") == "via the stub"
+        assert _Stub.seen and _Stub.seen[0][1] == "/v1"                                    # must-pass: direct, not proxied
+    finally:
+        other.shutdown()

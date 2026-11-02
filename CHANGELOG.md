@@ -6,6 +6,13 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.13] - 2026-11-02
+
+### Fixed
+- **A model on this machine is called directly, never through a proxy or a redirect.** Python's default way of opening an address follows `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and the system's proxy, so a variable set for one command could send a local reader's words, and the card, to whatever proxy it named. 1.5.12's "judged as the connection will be made" was not true while such a variable was set; now it is. An address off this machine keeps the system's proxy: that call is announced, and is only ever started at your own terminal.
+
+Found by the recheck of 1.5.12; the test runs a stub proxy on this machine that must see nothing.
+
 ## [1.5.12] - 2026-11-02
 
 ### Fixed

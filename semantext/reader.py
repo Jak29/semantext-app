@@ -535,7 +535,7 @@ class OllamaReader:
         """The model's digest on this machine's Ollama, as its version; left as it was if Ollama does not say."""
         want = self.model if ":" in self.model else self.model + ":latest"
         try:
-            with urllib.request.urlopen(self.host.rstrip("/") + "/api/tags", timeout=10) as r:
+            with _open(urllib.request.Request(self.host.rstrip("/") + "/api/tags"), timeout=10) as r:
                 for m in jsonread.loads(r.read().decode("utf-8")).get("models") or []:
                     if want in (m.get("name"), m.get("model")) and m.get("digest"):
                         self.version = "sha256:" + str(m["digest"])[:12]
@@ -553,7 +553,7 @@ class OllamaReader:
         body.update({k: self.decoding[k] for k in ("think", "format") if k in self.decoding})
         req = urllib.request.Request(self.host.rstrip("/") + "/api/generate", data=json.dumps(body).encode("utf-8"),
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with _open(req, timeout=300) as r:   # never through a proxy or a redirect: see _open
             out = jsonread.loads(r.read().decode("utf-8"))
         ctx = options.get("num_ctx")
         if ctx and (out.get("prompt_eval_count") or 0) + (out.get("eval_count") or 0) >= ctx:
@@ -571,7 +571,14 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _open(req, timeout):
-    return urllib.request.build_opener(_NoRedirect).open(req, timeout=timeout)
+    """Never through a redirect; and for an address on this machine, never through a proxy either. urllib's default
+    opener follows HTTP_PROXY, HTTPS_PROXY, ALL_PROXY and the system's proxy, so one variable set for one command would
+    send a local reader's words to whatever proxy it names (Orithises's recheck of 1.5.12, K4). An address off this
+    machine keeps the system's proxy: that call is announced, and only ever started at the person's own terminal."""
+    handlers = [_NoRedirect]
+    if is_local(req.full_url):
+        handlers.append(urllib.request.ProxyHandler({}))
+    return urllib.request.build_opener(*handlers).open(req, timeout=timeout)
 
 
 @dataclass

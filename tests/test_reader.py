@@ -414,12 +414,12 @@ def test_a_local_model_reads_with_its_thinking_off_and_never_past_its_context(mo
             return json.dumps(self.body).encode()
 
     def fake_open(req, timeout=0):
-        if isinstance(req, str):                               # the version lookup
+        if isinstance(req, str) or req.data is None:          # the version lookup (a GET, with no body)
             return Resp({"models": [{"name": "qwen3.6:latest", "digest": "07d35212591f" + "0" * 52}]})
         sent.append(json.loads(req.data.decode("utf-8")))
         return Resp(said)
 
-    monkeypatch.setattr("urllib.request.urlopen", fake_open)
+    monkeypatch.setattr("semantext.reader._open", fake_open)   # every reader call goes through _open (1.5.13)
     reader = OllamaReader("qwen3.6")
     assert reader.resolve_version() == "sha256:07d35212591f"
     assert reader("prompt") == reply([], "x")
