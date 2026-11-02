@@ -457,6 +457,24 @@ def _host(url: str) -> str:
     return url.split("://", 1)[-1].split("/", 1)[0].lower()
 
 
+def _via_proxy(url: str) -> str:
+    """", by way of the proxy HOST" when this machine's proxy settings route the call: an address off this machine
+    keeps them (reader._open), so the notice names every host the words pass through (Orithises, 1.5.13)."""
+    import urllib.parse
+    import urllib.request
+    scheme = url.split("://", 1)[0].lower()
+    proxy = urllib.request.getproxies().get(scheme)
+    # the very host urllib's ProxyHandler hands proxy_bypass, port and all, so the answer is the one the call gets
+    if not proxy or urllib.request.proxy_bypass(urllib.request.Request(url).host):
+        return ""
+    try:   # its host and port only: a proxy's address can carry a name and password, and those are never printed
+        p = urllib.parse.urlsplit(proxy if "://" in proxy else "http://" + proxy)
+        where = (f"[{p.hostname}]" if ":" in (p.hostname or "") else p.hostname or "?") + (f":{p.port}" if p.port else "")
+    except ValueError:
+        where = "named in your proxy settings"
+    return f", by way of the proxy {where}"
+
+
 def _model_backtest(store: Store, name: str, args, files) -> int:
     reader = make_reader(args.reader, args.key_env)
     judges = [make_reader(j, args.key_env) for j in args.judge]
@@ -484,7 +502,7 @@ def _model_backtest(store: Store, name: str, args, files) -> int:
                     "corrections and the end of each reply you corrected)")
             clear = (", in clear: readable on the network on its way" if x.url.lower().startswith("http://")
                      else "")
-            _out(f"This sends {what} to {_host(x.url)}, outside this machine{clear} ({x.name}).")
+            _out(f"This sends {what} to {_host(x.url)}, outside this machine{clear}{_via_proxy(x.url)} ({x.name}).")
         if isinstance(x, OllamaReader):
             x.resolve_version()                    # the model's digest on this machine, so a reading names its build
     r = model_backtest(store, name, reader, judges=judges, files=files, cases=args.cases, split=args.split,
@@ -848,13 +866,16 @@ def cmd_record(store: Store, args) -> int:
     else:
         model = store.state().get("model")
         if not model:
-            raise Refused("no model is chosen in Semantext, so the Record groups by project and subject only. Choose one "
-                          "on the page, or name one: --reader ollama:MODEL")
+            raise Refused("name the model to ask, on this machine: --reader ollama:MODEL (`ollama list` shows yours). "
+                          "Until you do, the Record groups by project and subject only")
         reader = OllamaReader(model)
     if isinstance(reader, EndpointReader) and not is_local(reader.url):
         raise Refused(f"your decisions stay on this machine: {_host(reader.url)} is not. Use a model on this machine "
                       f"(ollama:MODEL, or an endpoint at 127.0.0.1)")
     if isinstance(reader, OllamaReader):
+        why = reader.missing()
+        if why:
+            raise Refused(why)
         reader.resolve_version()
     got = view.answer("record", home=store.root)
     if not got or got.get("off"):
@@ -868,6 +889,10 @@ def cmd_record(store: Store, args) -> int:
     _out(f"Topics by {reader.name} (version {getattr(reader, 'version', '?')}): {c['named']} named, {c['kept']} kept from "
          f"before, {c['secret_skipped']} left out for a secret, {c['unparsed']} answers that were not a topic, "
          f"{c['failed']} calls that failed. A topic is the model's reading, and the page says so.")
+    if c.get("stopped"):
+        _out(f"Stopped after {topics.STOP_AFTER} calls in a row failed: is the model still running? What was named is "
+             "kept; run this again to go on.")
+        return 1
     return 0
 
 

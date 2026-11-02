@@ -160,7 +160,8 @@ def test_record_topics_with_no_model_chosen_refuses_and_names_the_fallback(world
     capsys.readouterr()
     assert cli.main(["--home", str(home), "record", "topics"]) != 0
     said = capsys.readouterr()
-    assert "no model is chosen" in (said.out + said.err)
+    assert "--reader ollama:MODEL" in (said.out + said.err)
+    assert "on the page" not in (said.out + said.err)          # 1.5.14: nothing on the page chooses one, so none is offered
     assert not (home / topics.FILE).exists()                                          # must-refuse: nothing written
 
 
@@ -380,3 +381,107 @@ def test_a_local_reader_reaches_its_own_address_directly(stub, monkeypatch):
         assert _Stub.seen and _Stub.seen[0][1] == "/v1"                                    # must-pass: direct, not proxied
     finally:
         other.shutdown()
+
+# ---------------------------------------------------------------- 1.5.14
+class _Models(_Stub):
+    def _any(self):
+        body = b'{"models": [{"name": "here:latest", "model": "here:latest", "digest": "abc"}]}'
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = do_POST = _any
+
+
+def test_a_model_that_cannot_answer_is_said_before_a_run(stub):
+    gone = OllamaReader("here", host=f"http://127.0.0.1:{_closed_port()}").missing()
+    assert gone and "start Ollama" in gone                                                 # must-refuse: not running
+    assert "no model named here" in OllamaReader("here", host=f"http://127.0.0.1:{stub.server_port}").missing()
+    srv = http.server.HTTPServer(("127.0.0.1", 0), _Models)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        assert OllamaReader("here", host=f"http://127.0.0.1:{srv.server_port}").missing() is None   # must-pass
+    finally:
+        srv.shutdown()
+
+
+def test_record_topics_stops_before_the_run_when_the_model_cannot_answer(world, tmp_path, monkeypatch, capsys):
+    home = tmp_path / "home"
+    assert cli.main(["--home", str(home), "init"]) == 0
+    monkeypatch.setattr(cli, "human_terminal", lambda: None)
+    reached = []
+    monkeypatch.setattr(topics, "run", lambda *a, **k: reached.append(a) or dict.fromkeys(
+        ("asked", "named", "kept", "secret_skipped", "unparsed", "failed"), 0))
+    monkeypatch.setattr(OllamaReader, "missing", lambda self: "Ollama did not answer: start Ollama, then run this again")
+    capsys.readouterr()
+    assert cli.main(["--home", str(home), "record", "topics", "--reader", "ollama:here"]) != 0
+    assert "start Ollama" in "".join(capsys.readouterr()) and reached == []               # must-refuse
+    monkeypatch.setattr(OllamaReader, "missing", lambda self: None)
+    monkeypatch.setattr(OllamaReader, "resolve_version", lambda self: self.version)
+    assert cli.main(["--home", str(home), "record", "topics", "--reader", "ollama:here"]) == 0
+    assert len(reached) == 1                                                               # must-pass
+
+
+def test_a_run_stops_when_the_reader_fails_three_times_in_a_row(tmp_path):
+    es = [entry(f"J-{i}", f"S{i}") for i in range(1, 7)]
+    gone = Fake({f"S{i}": OSError("refused") for i in range(1, 7)})
+    c = topics.run(tmp_path, es, gone)
+    assert c["stopped"] and c["failed"] == topics.STOP_AFTER and len(gone.prompts) == topics.STOP_AFTER  # must-refuse
+    flaky = Fake({"S1": OSError("x"), "S2": OSError("x"), "S4": OSError("x"), "S5": OSError("x")},
+                 default='{"topic": "Fine"}')
+    (tmp_path / "b").mkdir()
+    c = topics.run(tmp_path / "b", es, flaky)
+    assert not c["stopped"] and (c["failed"], c["named"]) == (4, 2)                        # must-pass: never 3 in a row
+
+
+def test_a_line_cut_off_part_way_does_not_swallow_the_next(tmp_path):
+    e1, e2 = entry("J-1", "Vesuvius"), entry("J-2", "Etna")
+    good = json.dumps({"id": "J-1", "digest": topics.digest(e1), "topic": "Volcanoes", "model": "ollama:fake"})
+    (tmp_path / topics.FILE).write_text(good + "\n" + good[:30], encoding="utf-8")       # a write stopped mid-line
+    topics.run(tmp_path, [e1, e2], Fake({"Etna": '{"topic": "Etna"}'}))
+    have, problems = topics.read(tmp_path)
+    assert have["J-1"]["topic"] == "Volcanoes" and have["J-2"]["topic"] == "Etna"         # must-pass: both read
+    assert [p["line"] for p in problems] == [2]                                            # only the cut line is lost
+    topics.run(tmp_path, [entry("J-3", "Hekla")], Fake({}))
+    assert topics.read(tmp_path)[1] == problems                                            # an ended file gains no gap line
+
+
+def test_the_notice_names_the_proxy_a_call_off_this_machine_goes_through(monkeypatch):
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "getproxies", lambda: {"https": "http://proxy.test:8080"})
+    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
+    assert cli._via_proxy("https://elsewhere.test/v1") == ", by way of the proxy proxy.test:8080"   # must-pass
+    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: host == "elsewhere.test")
+    assert cli._via_proxy("https://elsewhere.test/v1") == ""                               # bypassed: not named
+    monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
+    assert cli._via_proxy("https://elsewhere.test/v1") == ""                               # must-refuse: no proxy, none named
+
+
+# ---------------------------------------------------------------- the review of 1.5.14
+def _proxies(monkeypatch, proxy, no_proxy=None):
+    for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy", "NO_PROXY", "no_proxy"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", proxy)
+    if no_proxy:
+        monkeypatch.setenv("NO_PROXY", no_proxy)
+
+
+def test_the_proxy_notice_never_prints_the_proxys_name_and_password(monkeypatch):
+    _proxies(monkeypatch, "http://alice:s3cret@proxy.corp:8080")
+    said = cli._via_proxy("https://elsewhere.test/v1")
+    assert said == ", by way of the proxy proxy.corp:8080"                                 # must-pass: host and port
+    assert "alice" not in said and "s3cret" not in said                                    # must-refuse: no credentials
+
+
+def test_the_proxy_notice_follows_urllibs_own_bypass_port_and_all(monkeypatch):
+    _proxies(monkeypatch, "http://proxy.corp:8080", no_proxy="elsewhere.test:8443")
+    assert cli._via_proxy("https://elsewhere.test:8443/v1") == ""                          # bypassed by urllib: not named
+    assert cli._via_proxy("https://elsewhere.test/v1") == ", by way of the proxy proxy.corp:8080"   # another port: proxied
+
+
+def test_a_decision_too_long_for_the_model_does_not_stop_the_run(tmp_path):
+    from semantext.store import Refused
+    es = [entry(f"J-{i}", f"S{i}") for i in range(1, 6)]
+    c = topics.run(tmp_path, es, Fake({f"S{i}": Refused("reached its context") for i in range(1, 6)}))
+    assert not c["stopped"] and c["failed"] == 5                                           # the reader answered each time

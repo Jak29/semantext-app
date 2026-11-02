@@ -6,6 +6,17 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.14] - 2026-11-02
+
+### Fixed
+- **`record topics` checks that the model can answer before it starts.** With Ollama not running, or no model of the name given, it says which and stops, instead of failing once for every decision. A run whose reader fails three times in a row stops too, and says so; what was named is kept.
+- **A topics line cut off part way no longer swallows the next one.** A run stopped mid-write leaves a last line with no end; the next run starts a new line, so only the cut line is lost.
+- **The message with no model named says how to name one.** It offered to choose one "on the page", which nothing on the page does; it now names `--reader ollama:MODEL` and `ollama list`.
+- **The notice before a reading off this machine names the proxy it goes through,** when your proxy settings route it, so every host your words pass is said. It names the proxy's host and port only, never a name or password in its address, and it asks Python's own bypass rule with the same host, port and all, that the call will use.
+- `record topics` exits non-zero when a run stops; a decision too long for the model's context does not count toward stopping.
+
+A review of the change before release found the proxy notice printing a proxy's credentials and judging the bypass with the port stripped; both are fixed here, each with a test that fails without it.
+
 ## [1.5.13] - 2026-11-02
 
 ### Fixed

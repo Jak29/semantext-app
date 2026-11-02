@@ -31,6 +31,7 @@ TOPIC = re.compile(r"[A-Za-z0-9][A-Za-z0-9 '&-]{0,39}")   # one to four words, p
 WORDS_SENT = 1200      # characters of a decision's words a model is given
 MAX_FILE = 16 * 1024 * 1024
 MAX_SHOWN_TOPICS = 200  # topics named so far that a model is shown, newest first
+STOP_AFTER = 3          # calls failed in a row that end a run
 
 
 def digest(entry: dict) -> str:
@@ -119,9 +120,11 @@ def run(home: Path, entries: list[dict], reader, again: bool = False, now: str |
     have, _problems = read(home)
     model, version = name(reader)
     known = list(dict.fromkeys(t["topic"] for t in reversed(list(have.values()))))
-    counts = {"asked": 0, "named": 0, "kept": 0, "secret_skipped": 0, "unparsed": 0, "failed": 0}
+    counts = {"asked": 0, "named": 0, "kept": 0, "secret_skipped": 0, "unparsed": 0, "failed": 0, "stopped": False}
     outside = getattr(reader, "url", None) is not None
     lines = []
+    torn = _torn(path)   # a run stopped mid-write leaves a last line with no end; the next line must not join it
+    failed_in_a_row = 0
     for e in entries:
         did = e.get("id")
         if not isinstance(did, str) or not did.strip():
@@ -137,9 +140,18 @@ def run(home: Path, entries: list[dict], reader, again: bool = False, now: str |
         counts["asked"] += 1
         try:
             topic = parse(reader(prompt(e, known)))
+        except Refused:   # the reader answered and refused this one (a decision too long for its context): not gone
+            counts["failed"] += 1
+            failed_in_a_row = 0
+            continue
         except Exception:  # noqa: BLE001  a reader's failure costs only its own decision; Ctrl-C still stops the run
             counts["failed"] += 1
+            failed_in_a_row += 1
+            if failed_in_a_row >= STOP_AFTER:   # the reader has gone, not one answer: stop rather than fail each one
+                counts["stopped"] = True
+                break
             continue
+        failed_in_a_row = 0
         if topic is None:
             counts["unparsed"] += 1
             continue
@@ -150,5 +162,19 @@ def run(home: Path, entries: list[dict], reader, again: bool = False, now: str |
                       "at": now or datetime.now(timezone.utc).isoformat(timespec="seconds")})
         have[did] = {"digest": d, "topic": topic}   # the same decision given twice is asked once
         with path.open("a", encoding="utf-8") as f:   # one line at a time: a run stopped part way keeps what it named
-            f.write(json.dumps(lines[-1], ensure_ascii=False) + "\n")
+            f.write(("\n" if torn else "") + json.dumps(lines[-1], ensure_ascii=False) + "\n")
+        torn = False
     return counts
+
+
+def _torn(path: Path) -> bool:
+    """True when the file's last line has no line end, as a write cut off part way leaves it."""
+    try:
+        with path.open("rb") as f:
+            f.seek(0, 2)
+            if f.tell() == 0:
+                return False
+            f.seek(-1, 2)
+            return f.read(1) != b"\n"
+    except OSError:
+        return False

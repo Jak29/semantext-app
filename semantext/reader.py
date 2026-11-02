@@ -545,6 +545,19 @@ class OllamaReader:
             pass
         return self.version
 
+    def missing(self) -> str | None:
+        """Why this model cannot answer now, or None: Ollama is not answering, or has no model of this name. Asked
+        before a run, so a run does not fail once for every item (Jak's first `record topics`, Ollama not started)."""
+        want = self.model if ":" in self.model else self.model + ":latest"
+        try:
+            with _open(urllib.request.Request(self.host.rstrip("/") + "/api/tags"), timeout=10) as r:
+                models = jsonread.loads(r.read().decode("utf-8")).get("models") or []
+        except (OSError, ValueError) as e:
+            return f"Ollama did not answer at {self.host} ({getattr(e, 'reason', None) or e}): start Ollama, then run this again"
+        if not any(want in (m.get("name"), m.get("model")) for m in models if isinstance(m, dict)):
+            return f"Ollama has no model named {self.model}: `ollama list` shows the ones it has"
+        return None
+
     def __call__(self, prompt: str) -> str:
         # "think" and "format" (an output schema, which constrains a judge to its verdicts) go to Ollama as they are;
         # the rest are the model's options.
