@@ -167,6 +167,10 @@ def load(cfg: dict, readers=None, now=None, projects=None) -> dict:
     from .workitems import item_view
     items = [item_view(i, by_item.get(i["id"], []), readers, now, known, ctx) for i in
              sorted(st["items"].values(), key=lambda i: (i["project"], i["n"]))]
+    for view, i in zip(items, sorted(st["items"].values(), key=lambda i: (i["project"], i["n"]))):
+        # the seq of the last event that changed the item (comments and links do not): what a change from the page
+        # names, so the writer refuses one made against an item that has changed since it was drawn (PAGE-ACTS r2, M1)
+        view["version"] = i.get("version")
     out["items"] = items
     read = list(getattr(readers, "problems", None) or [])
     out["problems"] += read[:PROBLEM_CAP]

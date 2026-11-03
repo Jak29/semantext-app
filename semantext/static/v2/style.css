@@ -329,7 +329,16 @@ a.threadrow:hover .subject { text-decoration: underline; text-underline-offset: 
 .lane + .lane { margin-top: 28px; }
 .lane-head { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
 .wcols { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: 10px; overflow-x: auto; }
-.wcol { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.wcol { display: grid; gap: 8px; align-content: start; min-width: 0; min-height: 48px; border-radius: 10px; }
+.wcol.drop { outline: 2px dashed var(--accent); outline-offset: 2px; background: var(--raised); }
+.witem[draggable="true"] { cursor: grab; }
+.wnew, .wedit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
+.wedit { flex-direction: column; align-items: stretch; }
+.wfield { font: inherit; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+.wnew .wfield[type="text"] { flex: 1 1 220px; }
+.wfield.narrow { width: 6em; }
+.work-panel .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.toggle.bad { color: var(--bad, inherit); }
 .wcol-fold > summary { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
 .wcol-fold > .witem { margin-top: 8px; }
 .witem { display: grid; gap: 4px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); color: inherit; }

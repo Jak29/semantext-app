@@ -34,9 +34,10 @@ def test_the_other_places_still_change_nothing_of_your_rules():   # must refuse
             assert "ownbase.js" not in t or name in OWN, name         # no other place reaches the one way to change them
 
 
-def test_only_the_three_known_modules_ever_post():   # must refuse any new writer
+def test_only_the_four_known_modules_ever_post():   # must refuse any new writer
+    # workact.js joined in 1.5.15: the person's own Work changes (PAGE-ACTS r2; tests/test_work_page_acts.py)
     posting = sorted(p.name for p in V2.glob("*.js") if re.search(r'method:\s*"POST"', p.read_text("utf-8")))
-    assert posting == ["cards.js", "ownbase.js", "plugins.js"]
+    assert posting == ["cards.js", "ownbase.js", "plugins.js", "workact.js"]
 
 
 def test_the_moved_parts_name_only_their_own_routes():   # must refuse answers, parks and plug-ins from them

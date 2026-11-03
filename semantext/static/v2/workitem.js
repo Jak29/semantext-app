@@ -1,9 +1,10 @@
 // Work: one item as a side panel beside the board, and the pieces every Work view draws an item with (PM-DESIGN r5).
-// Badges are words, never colour alone. Everything an agent wrote is set as text. The page writes nothing: your acts
-// are the inbox's link (it only selects and shows the item there) or the one line you would type in the chat.
+// Badges are words, never colour alone. Everything an agent wrote is set as text. Your acts are made here (workact.js,
+// the one module that changes work), or by the inbox's link, or by the one line you would type in the chat.
 import { h } from "./dom.js";
 import { listWords, when } from "./words.js";
 import { S } from "./app.js";
+import { panelControls } from "./workact.js";
 
 // ---------------------------------------------------------------- the inbox's link, checked again before it is drawn
 const SLUG = "[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?";
@@ -73,7 +74,8 @@ function historyRow(e) {
   // a person's act says it was read again, and held: checked against your turn (one that did not is not applied)
   // attested: checked when it was applied, and its transcript has since moved, been linked or rotated
   const checked = e.check === "verified" ? " (checked against your turn)" :
-    e.check === "attested" ? " (checked against your turn when applied; the transcript has moved since)" : "";
+    e.check === "attested" ? " (checked against your turn when applied; the transcript has moved since)" :
+    e.check === "page" ? " (made on your page)" : "";
   const result = e.applied ? "applied" + checked : (e.code === "PROPOSAL" ? "not applied: a proposal" : "not applied: " + e.code) + (e.reason ? ": " + e.reason : "");
   const cells = [String(e.seq === null || e.seq === undefined ? "–" : e.seq), when(e.at), e.event, e.who || "–", assurance(e), e.what || ""];
   return h("tr", { class: e.applied ? null : "not-applied" },
@@ -89,7 +91,7 @@ export function workPanel(data, i, close) {
     ["Priority", i.priority === null || i.priority === undefined ? "not ranked" : String(i.priority)],
     ["Epic", i.epic_path && i.epic_path.length ? i.epic_path.join(" › ") : "none"]];
   const part = (label, ...kids) => h("section", { class: "part" }, h("h3", { class: "label" }, label), ...kids);
-  const acts = [inboxNode(i, projects)];
+  const acts = [...panelControls(i), inboxNode(i, projects)];
   for (const a of i.asks || []) acts.push(h("p", { class: "meta" }, a.why + (a.pressed ? "; or press it in your inbox." : ".")), workActLine(a.line));
   if (i.rank_line) acts.push(h("p", { class: "meta" }, "Ranking is yours: to move it from backlog to next,"), workActLine(i.rank_line));
   const links = (i.links || []).length ? h("ul", { class: "wlist" }, i.links.map((l) => h("li", null,

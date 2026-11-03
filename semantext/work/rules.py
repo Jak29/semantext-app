@@ -26,6 +26,17 @@ import hashlib
 
 from .chain import canonical
 from .events import PERSON, SEAT_RE, parse_id
+from .span import is_page
+
+# what does not move an item's version: talk about it, not the item (Koinos's F1, on b8f1a35: an agent's comment between
+# the page's draw and the person's click refused the click as stale, 20 of 20; one that comments often could starve it)
+UNVERSIONED = ("comment", "link", "unlink", "propose_park", "propose_reassign")
+
+
+def from_page(rec) -> bool:
+    """The page's evidence, exactly, on a record the writer stamped as made on the page (Koinos's F3: a person record on
+    another channel carrying the page's evidence is not the page's)."""
+    return rec.get("channel") == "page" and is_page(rec.get("evidence"))
 from .turns import ACT_SECONDS, act_line, when
 
 AUTHORITY = ("create", "edit", "assign_self", "move", "void", "person_act")   # comment, link, propose_* bear none
@@ -48,7 +59,7 @@ def new_item(ident: str, f: dict, who: str, assurance: str, seq: int, imported: 
             "creator_assurance": assurance, "reviewer": None, "links": list(f.get("links") or []),
             "clauses": list(f.get("clauses") or []), "parked_from": None, "voided": None, "reached_doing": False,
             "done_by": None, "comments": [], "proposals": [], "source": "import" if imported else None,
-            "events": [seq]}
+            "events": [seq], "version": seq}
 
 
 def apply(items: dict, event: str, f: dict, rec: dict, assurance: str, parked: frozenset, used_acts: set) -> None:
@@ -61,7 +72,10 @@ def apply(items: dict, event: str, f: dict, rec: dict, assurance: str, parked: f
         raise Refuse("MALFORMED", "the record's actor is not a name the kernel stamps (a letter, then at most 39 "
                                   "letters, digits and . _ -)")
     seat = assurance == "bound" and who != PERSON
-    if event in AUTHORITY and event != "person_act" and event != "create" and not seat:
+    by_page = who == PERSON and assurance == "bound" and from_page(rec)   # PAGE-ACTS r1
+    if event == "edit" and by_page:
+        pass   # the person edits any item from their page; the edit branch below holds them to its states
+    elif event in AUTHORITY and event != "person_act" and event != "create" and not seat:
         raise Refuse("NOT_BOUND", f"{who} is {assurance}, not a seat the kernel stamped, so this is a proposal "
                                   f"and holds no rights")
     if event == "create":
@@ -90,11 +104,11 @@ def apply(items: dict, event: str, f: dict, rec: dict, assurance: str, parked: f
         item["proposals"].append({"what": event[8:], "to": f.get("to_seat"), "who": who, "assurance": assurance,
                                   "text": f.get("text", ""), "seq": rec["seq"]})
     elif event == "edit":
-        if item["owner"] != who:
+        if item["owner"] != who and not by_page:
             raise Refuse("NOT_AUTHORIZED", "only the item's owner edits it")
         if item["state"] == "done":
             raise Refuse("TERMINAL", "a done item is not edited; a later defect is a new item linking it")
-        if item["state"] == "parked":
+        if item["state"] == "parked" and not by_page:
             raise Refuse("PARKED", "a parked item is the person's until they bring it back")
         item.update({k: f[k] for k in ("title", "text", "kind") if k in f})
     elif event == "assign_self":
@@ -115,6 +129,8 @@ def apply(items: dict, event: str, f: dict, rec: dict, assurance: str, parked: f
     elif event == "person_act":
         _person(item, f, rec, assurance, parked, used_acts)
     item["events"].append(rec["seq"])
+    if event not in UNVERSIONED:
+        item["version"] = rec["seq"]
 
 
 def _create(items, f, rec, who, assurance):
@@ -130,6 +146,8 @@ def _create(items, f, rec, who, assurance):
         raise Refuse("MALFORMED", "an unknown source")
     if imported and who == PERSON:
         raise Refuse("NOT_AUTHORIZED", "an import is never the person's act")
+    if who == PERSON and not (assurance == "bound" and from_page(rec)):   # PAGE-ACTS r2
+        raise Refuse("NOT_AUTHORIZED", "the person files an item only on their own page, on the chain")
     epic = f.get("epic")
     if epic is not None and (epic == ident or epic not in items or items[epic]["kind"] != "epic" or
                              items[epic]["project"] != f["project"] or items[epic]["voided"]):
@@ -209,6 +227,10 @@ def _person(item, f, rec, assurance, parked, used_acts):
     ev = rec.get("evidence")
     if rec.get("who") != PERSON or assurance != "bound":
         raise Refuse("NOT_AUTHORIZED", "only the person's own act, bound to a turn of theirs, does this")
+    if from_page(rec):   # made on their own page (PAGE-ACTS r1): no turn to name it; a retry is one request_key
+        act, value = f["act"], f.get("value")
+        _person_effect(item, act, f, value, parked)
+        return
     if not isinstance(ev, dict) or not all(isinstance(ev.get(k), str) for k in ("session", "turn", "turn_at", "line")):
         raise Refuse("NOT_AUTHORIZED", "the person's act carries no evidence of their turn")
     act, value = f["act"], f.get("value")

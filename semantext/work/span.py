@@ -20,7 +20,15 @@ from pathlib import Path
 from .. import jsonread, provenance
 
 MAX_SPAN = 256 * 1024          # bytes of one turn's record; a longer span is never read
-VERIFIED, UNVERIFIED, ATTESTED = "verified", "unverified", "attested"
+VERIFIED, UNVERIFIED, ATTESTED, PAGE = "verified", "unverified", "attested", "page"
+# The person's act made on their own Semantext page (PAGE-ACTS r1): exactly this evidence, which the writer stamps, and
+# nothing in it to re-read. It is as strong as the page's answer to a card, no stronger: applied only on the chain.
+PAGE_EVIDENCE = {"kind": "page", "route": "/api/work"}
+PERSON_EVENTS = ("person_act", "create", "edit")   # the events that may be the person's own
+
+
+def is_page(ev) -> bool:
+    return isinstance(ev, dict) and ev == PAGE_EVIDENCE
 UNREADABLE = "its span cannot be read inside the transcript roots"   # a verdict of this kind is never kept (writer)
 SPAN_KEYS = ("path", "offset", "length", "sha256")
 
@@ -150,6 +158,14 @@ def check(rec: dict, roots, on_chain: bool = False) -> tuple[str, str]:
     ev = rec.get("evidence") if isinstance(rec.get("evidence"), dict) else {}
     if not ev:
         return UNVERIFIED, "it carries no evidence of the person's turn"
+    if "kind" in ev:   # the page's evidence, exactly, or nothing: a span beside it, or another kind, is unverified
+        if not is_page(ev):
+            return UNVERIFIED, "its evidence is not the page's own, exactly"
+        if not on_chain:
+            return UNVERIFIED, "an act from the page counts only on the chain"
+        return PAGE, "made on the person's own Semantext page (as strong as the page's answer to a card)"
+    if rec.get("event") != "person_act":
+        return UNVERIFIED, "the person's create or edit is made only on their page"
     span = ev.get("span")
     if span is None:   # every act the kernel writes carries one; Work was never live without (follow-ups to A1, (b))
         return UNVERIFIED, "its evidence names no span of the transcript, so it cannot be checked"
@@ -199,4 +215,4 @@ def checks(records, roots) -> dict:
     claims to be the person's and carries evidence; the table refuses the others with its own codes, as before."""
     from .events import PERSON
     return {n: check(rec, roots, on_chain) for n, rec, on_chain in records
-            if rec.get("event") == "person_act" and rec.get("who") == PERSON and isinstance(rec.get("evidence"), dict)}
+            if rec.get("event") in PERSON_EVENTS and rec.get("who") == PERSON and isinstance(rec.get("evidence"), dict)}

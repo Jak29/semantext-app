@@ -6,6 +6,22 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.5.15] - 2026-11-02
+
+### Added
+- **Work: change your own items on the page.** On the board, drag a card between Backlog, Next, Doing and Review, or
+  open it and use Move to. File a new item with New item in a project's lane. In an item's panel: Edit (title, kind,
+  text), Done, Park, Bring back, Reopen, Rank and Void. Done and Void ask first. A change made from a board drawn
+  before another change is refused as out of date, and the board says so; what you wrote is kept.
+- Each change is recorded as yours, with the page's own evidence, and counts only on the store's chain; the item's
+  history shows it as made on your page. Assigning to a seat and changing acceptance clauses stay typed lines.
+
+### Security
+- New route `/api/work`, behind every page write guard plus a `Referer` naming the page and a same-origin fetch; a
+  fixed list of fields per change; the item's version checked under the writer's lock. SECURITY.md states what the
+  page's evidence proves and what it does not. Attacked at design (Koinos), with three fixes made before the code.
+- A create or edit recorded as the person's without the page's evidence on the chain is no longer applied.
+
 ## [1.5.14] - 2026-11-02
 
 ### Fixed

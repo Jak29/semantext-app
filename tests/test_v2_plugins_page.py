@@ -171,8 +171,12 @@ def test_the_module_writes_only_to_its_own_routes():   # must refuse any other w
     others = [p.name for p in (paths.static_dir() / "v2").glob("*.js") if p.name != "plugins.js" and not p.name.startswith("own")]   # those: test_one_page.py
     posting = {n: (paths.static_dir() / "v2" / n).read_text("utf-8") for n in others}
     posting = {n: t for n, t in posting.items() if re.search(r'method:\s*"POST"', t)}
-    # One exception, for two routes: a request in your own inbox is answered or parked from its card.
-    assert list(posting) == ["cards.js"] and posting["cards.js"].count('method: "POST"') == 2
+    # Two exceptions: a request in your own inbox is answered or parked from its card (two routes), and your own work is
+    # changed from the Work place (one route, /api/work, 1.5.15; tests/test_work_page_acts.py)
+    assert sorted(posting) == ["cards.js", "workact.js"] and posting["cards.js"].count('method: "POST"') == 2
+    assert posting["workact.js"].count('method: "POST"') == 1
+    assert re.findall(r'fetch\(([^,]+),', posting["workact.js"]) == ["WORK_ROUTE"]
+    assert 'export const WORK_ROUTE = "/api/work";' in posting["workact.js"]
     assert re.search(r'fetch\("/api/park", \{ method: "POST"', posting["cards.js"])
     assert re.search(r'fetch\("/api/answer", \{ method: "POST"', posting["cards.js"])
     assert re.findall(r'fetch\("([^"]+)"', posting["cards.js"]) == ["/api/answer", "/api/park"]

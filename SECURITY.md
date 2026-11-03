@@ -97,6 +97,25 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
 
 ## The inbox
 
+- **Your work items, changed on your page (1.5.15).** On the Work place you file an item, edit it, move it between
+  backlog, next, doing and review (by dragging or with Move to), mark it done, park it, bring it back, rank it, reopen
+  it or void it. Each is recorded as your act with the page's own evidence, `{"kind": "page", "route": "/api/work"}`,
+  and counts only on the store's chain. What holds it:
+  - the page's write guards (above), and a `Referer` that names this server and one of the page's own addresses,
+    with a same-origin fetch where the browser says. **That proves a script on this page's origin, not the Work place
+    itself**: a page module or any script running in the page can send it (the page-module limit below);
+  - a fixed list of fields per change, so the page can carry nothing the kernel stamps (who, when, the evidence);
+  - the item's version, the last event applied to it as the page drew it, checked under the writer's lock, so a
+    change made from a board drawn before another change is refused, never applied to what you did not see;
+  - done and void are confirmed by naming the item;
+  - assigning to a seat and changing acceptance clauses stay typed lines in chat.
+
+  **The page's evidence is weaker than a typed line's:** a line you type is checked against the tool's own record of
+  your turn, every time the store is read; a change from the page has nothing outside the store to check. It is as
+  strong as an answer from the page, no stronger. A program that can write both the store and its head can write one,
+  as it can write any record there (the store's stated limit), and a local program that forges the page's headers can
+  send one, as it can answer a request. Since the server listens on this machine only, another user signed in to the
+  same computer can reach it too.
 - **Answering is your act.** An agent may file a request and withdraw its own; it must never answer one. Semantext
   holds that rule where it can:
   - `semantext answer` refuses in an agent's shell, which it knows by `CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`,
@@ -343,8 +362,8 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   own distribution's listed files, only once you turned the place on. The page's policy stops it loading anything from
   another site, and the text-only helpers it is handed (`h`, `text`) make setting text as text the easy path. **They
   are not a sandbox:** the module runs with the page's whole reach, as the plug-in's Python runs with the process's.
-  **So a page module can act as you on the page:** answer requests, teach or change rules, and change settings,
-  since it can send everything the page sends. A change whose `Referer` is a module's path, or that a browser marks
+  **So a page module can act as you on the page:** answer requests, teach or change rules, change settings, and
+  file, change, move, park, end or void your work items, since it can send everything the page sends. A change whose `Referer` is a module's path, or that a browser marks
   as anything but a plain fetch, is refused; a module calling `fetch()` from inside the page is not told apart by
   that. Running each module in a sandboxed frame of its own is designed, not built (`docs/page-module-sandbox.md`).
 - **Documents by row.** An outside place may serve its own files to the page at `/api/v2/doc/<place>/<row_id>`. The

@@ -4,6 +4,7 @@ import { h } from "./dom.js";
 import { plural } from "./words.js";
 import { disclosure } from "./parts.js";
 import { workBadges } from "./workitem.js";
+import { draggable, dropTarget, newItemNode } from "./workact.js";
 
 export const WORK_STATES = ["backlog", "next", "doing", "review", "done", "parked"];
 const FOLDED = new Set(["done", "parked"]);
@@ -11,9 +12,11 @@ const OPEN = new Set(["backlog", "next", "doing", "review"]);
 const STATE_TITLE = { backlog: "Backlog", next: "Next", doing: "Doing", review: "Review", done: "Done", parked: "Parked" };
 
 // One item, as a button that opens it in the side panel.
-export function itemButton(i, sel, select, extra) {
+export function itemButton(i, sel, select, extra, drag) {
+  const d = drag ? draggable(i) : {};
   return h("button", { class: "witem" + (sel === i.id ? " selected" : ""), type: "button", "data-k": "wi:" + i.id,
-    "aria-pressed": String(sel === i.id), on: { click: () => select(i.id) } },
+    "aria-pressed": String(sel === i.id), draggable: d.draggable || null,
+    on: { click: () => select(i.id), ...((d.on) || {}) } },
   h("span", { class: "witem-head" }, h("span", { class: "mono" }, i.id), h("span", { class: "chip kind" }, i.kind),
     i.priority !== null && i.priority !== undefined ? h("span", { class: "chip" }, "priority " + i.priority) : null),
   h("span", { class: "witem-title" }, i.title),
@@ -30,18 +33,21 @@ function lane(data, p, sel, select) {
   const items = ofProject(data, p.name);
   const cols = WORK_STATES.map((s) => {
     const here = items.filter((i) => i.shown === s).sort(rank);
-    const cards = here.map((i) => itemButton(i, sel, select, s === "review" ? i.waits : null));
+    const cards = here.map((i) => itemButton(i, sel, select, s === "review" ? i.waits : null, true));
     if (FOLDED.has(s)) {
       const box = disclosure("work:" + s + ":" + p.name, STATE_TITLE[s] + " " + here.length, "wcol-fold");
       box.append(...cards);   // folded until opened; the fold remembers being opened
       return h("div", { class: "wcol", role: "group", "aria-label": STATE_TITLE[s] + ", " + p.name }, box);
     }
-    return h("div", { class: "wcol", role: "group", "aria-label": STATE_TITLE[s] + ", " + p.name },
+    // a column you move work between takes a card dropped on it; the panel's "Move to" does the same from the keyboard
+    const drop = dropTarget(s, items);
+    return h("div", { class: "wcol", role: "group", "aria-label": STATE_TITLE[s] + ", " + p.name, "data-drop": drop["data-drop"] || null, on: drop.on || null },
       h("p", { class: "label" }, STATE_TITLE[s] + " " + here.length), ...cards);
   });
   return h("section", { class: "lane", "aria-label": "Project " + p.name },
     h("h2", { class: "lane-head" }, p.name, p.known ? null : h("span", { class: "meta" }, " (not a project in your seats file)"),
       h("span", { class: "meta" }, " · " + plural(items.length, "item"))),
+    p.known ? newItemNode(p.name) : null,
     h("div", { class: "wcols" }, cols));
 }
 

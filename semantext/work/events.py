@@ -200,7 +200,8 @@ def request(event: str, req) -> tuple[dict, dict]:
 
 
 STAMPS = {"v", "seq", "event", "who", "at", "assurance", "channel", "prev", "hash"}
-STAMPED_FOR = {"create": {"id", "source"}, "person_act": {"evidence"}}   # what the writer adds to these events
+# what the writer adds to these events: the person's create and edit from the page carry evidence too (PAGE-ACTS r1)
+STAMPED_FOR = {"create": {"id", "source", "evidence"}, "edit": {"evidence"}, "person_act": {"evidence"}}
 
 
 def from_record(rec: dict) -> tuple[str, dict]:

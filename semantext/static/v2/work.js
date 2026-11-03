@@ -1,12 +1,14 @@
 // Work: every piece of work across your projects, read from the work store through the kernel's fold (PM-DESIGN r5).
 // At the top, what waits on you; then the board, the backlog or the estate view, with the item you pick in a side
-// panel beside it. The page only reads: your acts are a link into your inbox, or the one line you type in the chat.
+// panel beside it. Your acts are made on the board and in the panel (workact.js), or by a link into your inbox, or by
+// the one line you type in the chat.
 import { $, h } from "./dom.js";
 import { plural } from "./words.js";
 import { disclosure, header } from "./parts.js";
 import { fill, S } from "./app.js";
 import { itemButton, workBacklog, workBoard, workEstate } from "./workboard.js";
 import { inboxNode, itemAddress, parseItemAddress, workActLine, workPanel } from "./workitem.js";
+import { workSaid } from "./workact.js";
 
 // The view is in the address (#work, #work/backlog, #work/estate), and so is the item open in the panel
 // (#work/item/<project>/<n>, checked as the inbox link is). An item of a project your seats file does not name has no
@@ -79,6 +81,8 @@ export function render(data, el) {
   const notes = [];
   if (!st.exists) notes.push(h("p", { class: "empty" }, "No work items yet. Agents file them with the work tool; `semantext work new` files one from a shell."));
   if (st.exists && !st.intact) notes.push(h("p", { class: "refused" }, "The store's chain is broken (cut, edited or reordered): no event in it is trusted, so every one counts as claimed and holds no rights. The problems list says where."));
+  const said = workSaid();   // what your last change did, or why it was refused
+  if (said) notes.push(said);
   WK.head.replaceChildren(h("h1", { class: "sr-only" }, "Work"), ...notes);
   WK.strip.replaceChildren(...workStrip(data, workSelect));
   WK.strip.hidden = !st.exists;

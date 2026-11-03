@@ -229,7 +229,7 @@ _JS, _CSS = "text/javascript; charset=utf-8", "text/css; charset=utf-8"
 V2_FILES = {f"/v2/{name}": (name, _CSS if name.endswith(".css") else _JS) for name in (
     "style.css", "app.js", "dom.js", "words.js", "parts.js", "frame.js", "cards.js", "drawers.js", "markdown.js",
     "waiting.js", "projects.js", "documents.js", "diffmap.js", "map.js", "record.js", "outside.js", "work.js", "workboard.js",
-    "workitem.js", "plugins.js", "own.css", "ownbase.js", "ownevents.js", "ownplace.js", "owntoday.js", "ownrules.js",
+    "workitem.js", "workact.js", "plugins.js", "own.css", "ownbase.js", "ownevents.js", "ownplace.js", "owntoday.js", "ownrules.js",
     "ownsky.js", "ownagents.js", "ownspace.js", "ownsettings.js")}
 # The v2 page and each of its files carry this policy. Scripts only from this server's own files (no inline script
 # and no handler attributes; tests/test_v2_page.py checks index.html), styles only from its stylesheet (no style
@@ -325,6 +325,46 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         return (self.headers.get("X-Semantext") == "1" and site in (None, "same-origin")
                 and (origin is None or self._origin_ok()))
+
+    PAGE_PATHS = ("/", "/index.html", "/v2")   # where the one page is served (do_GET)
+
+    def _from_the_page(self) -> bool:
+        """A positive sign that a change came from the page itself (Koinos's M3), beside the refusals do_POST makes:
+        a Referer that names this server and one of the page's own addresses, with no query, and, where the browser
+        says, a same-origin fetch. A fetch sent with no Referer (a no-referrer policy) is refused, so a part of the page
+        cannot hide where it runs. The limit, as docs/page-module-sandbox.md says: a module imported into the page
+        itself sends the page's own Referer."""
+        referer = self.headers.get("Referer")
+        if not referer:
+            return False
+        p = urlparse(referer)
+        if f"{p.scheme}://{p.netloc}" not in {f"http://{h}" for h in self._own()} or p.path not in self.PAGE_PATHS \
+                or p.query or p.params:
+            return False
+        return self.headers.get("Sec-Fetch-Site") in (None, "same-origin") and \
+            self.headers.get("Sec-Fetch-Mode") in (None, "cors", "same-origin")
+
+    WORK_ACTIONS = {"create": "create", "edit": "edit", "act": "person_act"}
+
+    def _work_change(self, b: dict) -> dict:
+        """One change to the work store, the person's own: {action: create | edit | act, request: {...}}. The request
+        carries only the event's own fields and the page's request_key; the kernel stamps who, when and the evidence."""
+        from .work.events import WorkRefused
+        from .work.writer import Writer
+        action, req = b.get("action"), b.get("request")
+        allowed = {"action", "request", "version", "confirm"}
+        if not set(b) <= allowed or action not in self.WORK_ACTIONS or not isinstance(req, dict):
+            raise Refused("send {action: create, edit or act, request: {...}, version}")
+        # done and void are not undone by one more click: the page asks, and says so here by naming the item
+        if action == "act" and req.get("act") in ("done", "void") and b.get("confirm") != req.get("id"):
+            raise Refused(f"{req.get('act')} is confirmed by naming the item (confirm)")
+        if "confirm" in b and not (action == "act" and req.get("act") in ("done", "void")):
+            raise Refused("only done and void are confirmed")
+        try:
+            got = Writer(self.store.root).person_from_page(self.WORK_ACTIONS[action], req, b.get("version"))
+        except WorkRefused as e:
+            raise Refused(f"{e.code}: {e.reason}") from None
+        return {"id": got["id"], "applied": got["applied"], "repeat": bool(got.get("repeat"))}
 
     def _drain(self) -> None:
         """Read and drop a refused request's body before answering. A socket closed with unread data is reset, and
@@ -528,7 +568,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path.startswith(PLUGINS_PREFIX):   # the Plug-ins tab's changes (pluginpage.py)
                 return self._plugin_change(u.path[len(PLUGINS_PREFIX):])
-            b = self._body()
+            b = self._body(unique=u.path == "/api/work")   # a key named twice is refused there (Koinos's F6)
             r = {"ok": True}
             if u.path == "/api/active":
                 st.set_active(b.get("name"))
@@ -590,6 +630,15 @@ class Handler(BaseHTTPRequestHandler):
                 if type(rid) is not int or type(parked) is not bool:   # true is an int to Python; "no" is true to it
                     raise Refused("name the request by its number, and say whether to park it")
                 r["request"] = Inbox(st.root).park(rid, parked, via="page")
+            elif u.path == "/api/work":
+                # The person's create, edit or act on a work item, from their own page (PAGE-ACTS r1): held to the same
+                # page as an answer, and as strong as one, no stronger.
+                if self.headers.get("Origin") not in {f"http://{h}" for h in self._own()}:
+                    return self._send(403, {"error": "a change to your work is accepted only from the Semantext page"})
+                if not self._from_the_page():
+                    return self._send(403, {"error": "a change to your work is accepted only from the Semantext page "
+                                                     "itself, which names its own address"})
+                r.update(self._work_change(b))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(200, r)

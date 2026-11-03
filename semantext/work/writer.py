@@ -34,7 +34,7 @@ from .chain import GENESIS, line_of, parse_line, read_head, seal
 from .events import PERSON, SEAT_RE, VERSION, WorkRefused, request, valid_project
 from .chain import extend, walk
 from .fold import Folder
-from .rules import Refuse, apply, clauses_hash
+from .rules import PERSON_MOVES, Refuse, apply, clauses_hash
 from .turns import check_turn
 
 RATE_PER_MINUTE = 120              # events per actor per minute (the attack, F9)
@@ -287,7 +287,46 @@ class Writer:
         return self._append(Actor(PERSON, "bound", "person", session), "person_act", fields, claimed,
                             evidence=evidence)
 
-    def _append(self, actor, event, fields, claimed, *, source=None, evidence=None) -> dict:
+    # what each change from the page may carry, and nothing else (Koinos's M2: an allowlist, so a field added to an
+    # event later is not let through by a page that never sends it)
+    PAGE_KEYS = {"create": frozenset({"project", "title", "kind", "text", "epic", "request_key"}),
+                 "edit": frozenset({"id", "title", "text", "kind", "request_key"}),
+                 "person_act": frozenset({"id", "act", "from", "value", "request_key"})}
+    PAGE_ACTS = ("backlog", "next", "doing", "review", "done", "park", "unpark", "reopen", "priority", "void")
+
+    def person_from_page(self, event: str, req: dict, version=None) -> dict:
+        """The person's create, edit or act, made on their own Semantext page (PAGE-ACTS r2). Only the page server's
+        /api/work calls this, after its own checks of where the request came from (a test pins the one caller). The
+        evidence is the kernel's, exactly span.PAGE_EVIDENCE; a request_key, minted by the page per click, is required,
+        so a retry records once. An edit or act names the item's `version` (the seq of the last event applied to it,
+        as the page drew it), checked under the writer's lock: a change made against an item that has changed since is
+        STALE_VERSION, never applied to what the person did not see (Koinos's M1)."""
+        if event not in self.PAGE_KEYS:
+            raise WorkRefused("NOT_AUTHORIZED", "from the page the person creates, edits, or acts on an item")
+        if not isinstance(req, dict) or not isinstance(req.get("request_key"), str) or not req["request_key"]:
+            raise WorkRefused("MALFORMED", "a change from the page carries its request_key")
+        extra = set(req) - self.PAGE_KEYS[event]
+        if extra:
+            raise WorkRefused("MALFORMED", f"{sorted(map(str, extra))[0]!r} is not something the page sends for {event}")
+        if event == "person_act" and req.get("act") not in self.PAGE_ACTS:
+            raise WorkRefused("NOT_AUTHORIZED", "from the page: a move, done, park, bring back, reopen, priority or void")
+        if event == "person_act":   # a value only with priority, and then a whole number 1 to 999 (Koinos's F2)
+            v = req.get("value")
+            if req["act"] == "priority" and not (type(v) is int and 1 <= v <= 999):   # true is an int to Python
+                raise WorkRefused("MALFORMED", "a priority is a whole number from 1 (first) to 999")
+            if req["act"] != "priority" and "value" in req:
+                raise WorkRefused("MALFORMED", f"{req['act']} carries no value")
+        if event != "create" and (type(version) is not int or version < 1):   # true is an int to Python
+            raise WorkRefused("MALFORMED", "a change from the page names the item's version, as the page drew it")
+        if event == "create" and version is not None:
+            raise WorkRefused("MALFORMED", "a new item has no version")
+        fields, claimed = request(event, req)
+        if event == "person_act" and fields["act"] in PERSON_MOVES + ("done",) and "from" not in fields:
+            raise WorkRefused("MALFORMED", "a move from the page says the state it was drawn in (from)")
+        return self._append(Actor(PERSON, "bound", "page"), event, fields, claimed, evidence=dict(span.PAGE_EVIDENCE),
+                            version=version)
+
+    def _append(self, actor, event, fields, claimed, *, source=None, evidence=None, version=None) -> dict:
         self._contained()
         if actor.assurance not in ("bound", "claimed", "observed", "fallback") or not SEAT_RE.fullmatch(actor.who):
             raise WorkRefused("MALFORMED", "the actor is not one the kernel knows how to stamp")
@@ -322,7 +361,13 @@ class Writer:
                 if n > 999999:
                     raise WorkRefused("STORE_FULL", "the project has used every item number")
                 rec["id"] = f"W-{fields['project']}-{n}"
-            self._repeat(st, actor, rec, out)
+            self._repeat(st, actor, rec, out)   # an exact retry answers first, whatever the version now (Koinos's F4)
+            if version is not None:   # under the lock, against the fold just made (M1); comments do not move it (F1)
+                item = st["items"].get(fields.get("id"))
+                have = item.get("version") if item else None
+                if have != version:
+                    raise WorkRefused("STALE_VERSION", f"{fields.get('id')} has changed since the page drew it "
+                                                       f"(version {have}, not {version}): look again, then act")
             self._limits(st, tail, actor, now)
             out.update(self._dry_run(st, event, fields, rec))
             sealed = seal(rec, st["end"]["seq"] + 1, st["end"]["hash"])
