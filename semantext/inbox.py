@@ -112,7 +112,12 @@ SECRET = re.compile(
     r"hf_[A-Za-z0-9]{30,}|npm_[A-Za-z0-9]{30,}|"                                             # Hugging Face, npm
     r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|"                          # a JSON web token
     r"-----BEGIN [A-Z0-9 ]+-----|"                                                           # a PEM key
-    r"[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@|"                                              # user:password@ in a URL
+    # user:password@ in a URL. The scheme is bounded (Koinos X1): unbounded, a long run of letters made this arm retry
+    # from every start, quadratic (80,000 letters took 32 s, and re holds the GIL). Bounded, it is linear, and a scheme
+    # after a long run is still found (a lookbehind cure would miss it: the silent direction). Limit, stated (Orithises):
+    # a scheme whose last 32 characters hold no letter (a, then 32 digits, then ://u:p@h) is not found; no client
+    # resolves such a scheme.
+    r"[a-z][a-z0-9+.-]{0,31}://[^\s/:@]+:[^\s/@]+@|"
     r"(password|passwd|passphrase|secret|token|api[_-]?key)\s*[=:]\s*\S{6,}|"
     r"\b(password|passphrase|passcode)\s+(is|was)\s+\S{4,})", re.I)                          # said in prose
 TOKEN_RUN = re.compile(r"[A-Za-z0-9+/=_-]{32,}")

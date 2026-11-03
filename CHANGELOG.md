@@ -6,6 +6,16 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-03
+
+### Fixed
+- **The key-shape check no longer stalls on a long line.** Its arm for a password in a URL tried a long run of letters
+  from every start: 20,000 letters took about 2.5 s and 80,000 about 32 s, holding every thread, and it runs on cards,
+  feeds, the model point's card and prompt (twice) and more. The URL's scheme is now bounded at 32 characters:
+  100,000 characters take well under a second, a password URL after a long run is still found, and nothing it caught
+  before is missed (Koinos X1; checked by Orithises: 0 differences on 6,000 random strings). Limit, stated: a scheme
+  whose last 32 characters hold no letter is not found; no client resolves one.
+
 ## [1.6.1] - 2026-11-03
 
 ### Added
