@@ -264,6 +264,9 @@ def test_PB03_M_HOST_partner_connects_only_to_the_named_address(rt):            
     got = run_scripted(p, conf_for(rt))
     assert got.proposals == ["sent"]
     assert ("socket.connect", ("127.0.0.1", rt.port)) in got.watch.seen                 # the watch saw the partner
+    deadline = time.monotonic() + 3                    # the listener counts on its own thread: wait for it (CI race)
+    while rt.raw_connections < 1 and time.monotonic() < deadline:
+        time.sleep(0.01)
     assert rt.raw_connections == 1                                                       # and so did its listener
 
 
