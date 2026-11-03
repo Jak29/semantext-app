@@ -160,20 +160,30 @@ class ConnectsTo(Scripted):
 
 @pytest.fixture
 def rt_other_loopback():
-    """A real listener on 127.0.0.2 (Orithises K8): a refusal there is the watch's, not an address nothing answers."""
+    """A real listener on 127.0.0.2 (Orithises K8): a refusal there is the watch's, not an address nothing answers.
+    None where this machine has no 127.0.0.2 (macOS answers only 127.0.0.1 unless an alias is added): only the
+    other-loopback arm then skips; the other arms do not need it (1.6.0's CI run)."""
     r = FakeRuntime(pieces=["elsewhere"], host="127.0.0.2")
-    r.start()
+    try:
+        r.start()
+    except OSError:
+        yield None
+        return
     yield r
     r.stop()
 
 
 @pytest.mark.parametrize("variant", ["hostname", "zero", "other-loopback", "other-port"])
 def test_PB03_M_HOST_a_provider_that_connects_elsewhere_is_refused(rt, rt2, rt_other_loopback, variant):
+    if variant == "other-loopback" and rt_other_loopback is None:
+        pytest.skip("this machine has no 127.0.0.2 to listen on")
+    other_port = rt_other_loopback.port if rt_other_loopback else 9
     target = {"hostname": ("localhost", rt2.port), "zero": ("0.0.0.0", rt2.port),          # must-refuse, each sub-arm;
-              "other-loopback": ("127.0.0.2", rt_other_loopback.port),                    # none carries key text, so
+              "other-loopback": ("127.0.0.2", other_port),                                 # none carries key text, so
               "other-port": ("127.0.0.1", rt2.port)}[variant]                              # each breaks one rule (K2)
     refused("M-HOST", run_scripted, ConnectsTo(target), conf_for(rt))
-    assert rt2.raw_connections == 0 and rt_other_loopback.raw_connections == 0         # observed at the listeners
+    assert rt2.raw_connections == 0                                                      # observed at the listeners
+    assert rt_other_loopback is None or rt_other_loopback.raw_connections == 0
 
 
 class RawTo(Scripted):
@@ -219,7 +229,11 @@ def test_F1_M_HOST_a_raw_socket_call_to_a_name_is_refused_before_the_resolver(rt
 
 def test_F1_M_HOST_partner_a_raw_connect_to_the_named_literal_passes(rt):             # must-pass
     got = run_scripted(RawTo("127.0.0.1", rt.port), conf_for(rt))
-    assert got.proposals == ["sent"] and rt.raw_connections >= 1
+    assert got.proposals == ["sent"]
+    deadline = time.monotonic() + 3                    # the listener counts on its own thread: wait for it (CI race)
+    while rt.raw_connections < 1 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert rt.raw_connections >= 1
 
 
 def test_PB03_M_HOST_a_raw_connect_with_no_lookup_is_refused_by_the_connect_watch(rt, rt2):   # must-refuse
