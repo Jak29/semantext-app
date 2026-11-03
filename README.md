@@ -32,8 +32,8 @@ A time limit: Kept word for word: "later". No date is invented.  [base.time-kept
 ```
 
 Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Semantext makes no network calls of its
-own; the two exceptions are opt-in and started at your own terminal: `semantext backtest --reader` asks a model you
-name, and `semantext record topics` asks a model on this machine.
+own; the three exceptions are opt-in and started at your own terminal: `semantext backtest --reader` asks a model you
+name, and `semantext record topics` and `semantext model ask` ask a model on this machine.
 
 > **Status: version 1.5.9.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
@@ -382,6 +382,7 @@ More: [docs/claude-code.md](docs/claude-code.md).
 | `semantext backtest [FILE ...] [--split DATE] [--cases FILE] [--show]` | Score the card against the misreadings in your transcripts, beside two null cards (see [docs/backtest.md](docs/backtest.md)) |
 | `semantext backtest --reader SPEC [--judge SPEC --judge SPEC] [--ablate]` | Score a model's reading of your messages, with the card and without it (off unless you name a reader; an outside endpoint is announced first) |
 | `semantext record topics [--reader ollama:MODEL] [--again] [--limit N]` | Give each decision no project groups a topic from a model on this machine, for the Record's threads (yours to run, at your own terminal; never off this machine) |
+| `semantext model show\|set\|clear\|ask\|check` | A model on this machine: its one loopback address, its name and the digest you expect, its budget and token cap (`set`); ask it with your card (`ask`, yours to run, at your own terminal; its answers wait in your inbox as proposals labelled MODEL); hash its file against your digest (`check`). See [docs/model.md](docs/model.md) |
 | `semantext config hear-prompts [on\|off]` | Show or set whether the hook keeps your prompts (off unless you switch it on) |
 | `semantext feed [on\|off] [-n N]` | What each prompt was sent, newest first: who asked, whose words, which card, its layers and size, never what was said (on by default; off writes nothing) |
 | `semantext serve [--port PORT] [--open]` | Open the page on this machine, at `http://127.0.0.1:8765` |

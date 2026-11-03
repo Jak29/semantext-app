@@ -113,9 +113,12 @@ def name(reader) -> tuple[str, str]:
     return str(getattr(reader, "name", "?")), str(getattr(reader, "version", "?"))
 
 
-def run(home: Path, entries: list[dict], reader, again: bool = False, now: str | None = None) -> dict:
+def run(home: Path, entries: list[dict], reader, again: bool = False, now: str | None = None,
+        identity: str | None = None) -> dict:
     """Ask the reader for a topic for each decision in `entries` that has none yet for its words (all of them, with
-    again). Appends one line per topic named; returns the counts. The reader is called one decision at a time."""
+    again). Appends one line per topic named; returns the counts. The reader is called one decision at a time.
+    `identity` says how the version was known (cli.cmd_record): matched the digest the person expects, differs from
+    it, or is only the runtime's own claim; it is kept on each line."""
     path = Path(home) / FILE
     have, _problems = read(home)
     model, version = name(reader)
@@ -159,7 +162,8 @@ def run(home: Path, entries: list[dict], reader, again: bool = False, now: str |
         if topic not in known:
             known.insert(0, topic)
         lines.append({"id": did, "digest": d, "topic": topic, "model": model, "version": version,
-                      "at": now or datetime.now(timezone.utc).isoformat(timespec="seconds")})
+                      "at": now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                      **({"identity": identity} if identity else {})})
         have[did] = {"digest": d, "topic": topic}   # the same decision given twice is asked once
         with path.open("a", encoding="utf-8") as f:   # one line at a time: a run stopped part way keeps what it named
             f.write(("\n" if torn else "") + json.dumps(lines[-1], ensure_ascii=False) + "\n")

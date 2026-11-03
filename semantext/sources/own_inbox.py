@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..inbox import flags as _flags, Inbox
+from ..inbox import MODEL_LABEL, flags as _flags, Inbox
 from . import problem
 
 CHANGE_WORDS = "It proposes a rule for the environment "
@@ -35,6 +35,13 @@ def _choices(r: dict) -> list[dict]:
     if not isinstance(options, list) or not all(isinstance(o, str) for o in options):
         return []
     return [{"label": o, "choice": str(i)} for i, o in enumerate(options, 1)]
+
+
+def _model(r: dict) -> dict:
+    m = r.get("model") if isinstance(r.get("model"), dict) else {}
+    return {"label": MODEL_LABEL, "name": _text(m.get("name")), "version": _text(m.get("version")),
+            "digest": _text(m.get("digest")),
+            "problems": [p for p in m.get("problems") or [] if isinstance(p, str)] if isinstance(m.get("problems"), list) else []}
 
 
 def _card(r: dict) -> dict:
@@ -64,6 +71,8 @@ def _card(r: dict) -> dict:
             "run": None, "output": None, "parked_at": _text(r.get("parked_at")), "asks": who, "acts": who,
             "asks_basis": "it says it filed this request; the name is its own claim" if claimed else "it filed this request", "acts_basis": "it acts on your answer", "line": None,
             "choices": _choices(r), "own_inbox": True, "rule": kind == "rule",
+            # a model's proposal: the label is the kernel's word, its fields the person's settings (model.py)
+            "label": MODEL_LABEL if kind == "model" else None, "model": _model(r) if kind == "model" else None,
             # worked out from the command itself, so a line edited by hand cannot drop the warning
             "flags": _flags(r["command"]) if kind == "command" and isinstance(r.get("command"), str) else []}
 
@@ -80,7 +89,9 @@ def _decision(r: dict, path) -> dict:
             "offer": "\n".join(x for x in offered if x) or None, "reading": f"You picked: {picked}" if picked and words else None,
             "source": f"{path}, request #{r['id']}", "pin": None, "stored_status": "answered", "computed_status": "answered",
             "supersedes": [], "superseded_by": [], "notes": [], "mentions": {}, "added_by": VIA.get(a.get("via"), "the line does not say it came from you"),
-            "added": at or None}
+            "added": at or None,
+            # your answer to a model's proposal: the Record keeps that it was a MODEL proposal you answered
+            "label": MODEL_LABEL if r.get("kind") == "model" else None, "model": _model(r) if r.get("kind") == "model" else None}
 
 
 def decisions(home) -> tuple[list[dict], str, list[dict]]:

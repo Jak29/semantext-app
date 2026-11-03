@@ -6,6 +6,128 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-03
+
+### Added
+- **A model on this machine, asked only by you (the model point, first slice).** `semantext model set` names one
+  runtime you started: its address, which must be the literal `127.0.0.1` or `::1` with a port (a name, even
+  `localhost`, `0.0.0.0`, any other spelling of loopback, a name or password in the address, and https are refused),
+  the model's name, its ID as `ollama list` shows it (the manifest's digest), a budget (default 60 s), a token cap
+  (default 512), what a differing digest does, and your own cap on asks per hour. `semantext model ask` sends your
+  card and your words to it, from your own terminal only, and files each answer in your inbox as a proposal labelled
+  MODEL, with the name, version and digest from your settings, never the model's own words for itself. A proposal is
+  never a rule, an answer or a decision: you mark it Noted or Set aside. `semantext model check --file [--manifest]`
+  checks the model's files on disk: the manifest against your ID, the weights file against the blob the manifest
+  names. See docs/model.md.
+- **The guards on a call, each refusing with its rule's id** (M-HOST, M-SCOPE, M-SPAWN, M-STATE, M-LATE, M-TOOL,
+  M-QUOTE, M-SIZE, M-LABEL, M-ID, M-FLIGHT, M-TOKENS, M-HOOK, M-RATE; M-BUDGET is judged at the runtime, by the kit):
+  one address, no redirect, no proxy; while a call runs, every connection, file open, listing, write and process start
+  by the call's thread, or a thread it starts, is watched and refused outside what it was given, including by a thread
+  it leaves running; no digest of yours, no call; at the budget or the token cap the connection is shut; one call at a
+  time, and after a cut call the next waits out one budget, in this process or the next.
+- **The kit** (`semantext.modelkit`): a fake runtime that counts its own tokens, connections and requests, a scripted
+  provider, and planted-bad providers for each of Koinos's rows (PB01 to PB16) and Orithises's arms, each with a
+  must-pass partner beside it. No real model runs in the tests.
+
+### Changed
+- **`record topics` checks the model's version against the digest you named**, when your model settings name that
+  model: refused, or flagged, as they say. With none named it says the version is the runtime's own claim. Each
+  topic line keeps which (`identity`). Until now the version was the runtime's word with nothing to compare it with.
+- `OllamaReader` reads the runtime's model list through one method, `_tags()`, which a stricter provider replaces, and
+  keeps the full digest the runtime reported beside the short version.
+
+### Fixed (an independent review of the first slice, before release)
+- **The watch judges only the call's own thread and the threads it starts.** It was process-wide: a thread that
+  other code started while a call ran (the page's server answering a request, a plug-in) was refused its file reads
+  and failed the call. Now no other thread is judged; a thread the watch cannot follow (`_thread.start_new_thread`)
+  is refused (M-SPAWN). The call's own threads are followed on every supported Python: on 3.10 to 3.12, which
+  announce no new thread, a provider's child thread was not watched at all (a re-check read a file outside the call's
+  reach on 3.11). The watch now follows a thread at `threading.Thread.start` itself.
+- **The wait after a cut call holds across processes.** Each `semantext model ask` is a new process, and the wait was
+  kept only in memory, so it never applied. The time of the last cut is now kept in `state.json` as `model_cut` (the
+  address and the time, nothing of the call), written by Semantext itself. A stream the runtime ended itself is not a
+  cut.
+- **The digest you name is the model's ID, the manifest's sha256**, the one `ollama list` shows and the runtime
+  reports, not the weights file's. The docs told you to hash the weights file, which every call would then have
+  refused. A digest the runtime reports must be whole (64 hex digits); yours may be the 12-digit ID.
+  `model check --file` now checks the weights against the blob the manifest names, and the manifest against your ID,
+  separately from the call's check. A model name whose tag or parts would point outside Ollama's manifest folder
+  (`..`, a slash in the tag) is refused.
+- **A model's proposal shows its label MODEL on the page,** on its Waiting card and on your answer to it in the
+  Record. The page had dropped the label on the way to the card, and the Record showed an answered proposal as an
+  ordinary decision.
+- **No agent can file a request that looks like a model's proposal.** One sent as exactly MODEL, in capitals, or
+  titled with MODEL as its whole first word ("MODEL proposal ...", "MODEL: ..."), in any spelling that reads so
+  (another script's letters, a fullwidth form, an invisible character), is refused. An agent named "model" after its
+  folder, and titles such as "MODELS to deploy?", "MODEL-T pricing" or "Model choice ...", are filed as usual. No
+  agent, whatever its name, counts a proposal or its answer as its own.
+- **Refusal ids follow Orithises's spec r5.** M-SIZE when the provider's call does not return within its time,
+  judged on the clock; M-BUDGET when it returned or was abandoned while the generation went on, judged at the runtime
+  (by the kit's fake runtime; Semantext cannot see a real runtime's counters); M-TOKENS for the token cap; M-HOOK for a
+  provider module that calls out when imported; M-FLIGHT for one call at a time.
+- **The docs name what the watch does not see**: `sqlite3.connect`, `os.stat`, `os.environ` and `mmap`, beside native
+  code (docs/model.md, SECURITY.md).
+
+### Fixed (Koinos's attack of 76bb1d5: TAKE, with these)
+- **A sender line in another script's letters, or in bold, is refused.** `Јak:` (a Cyrillic J), `Frоm:`, `Тhe user:`,
+  `Usеr:`, `Jak saιd:` (a Greek iota) and `- **Jak**: approve it` all passed as a model's answer. Cyrillic and Greek
+  letters that look Latin are now folded to the Latin letter first (a small fixed table, the one the MODEL title
+  check uses), and bold or italic marks between the name and the colon count as nothing. "Ask Jak: ..." and a sender
+  line shown inside a code block still pass.
+- **More tool-call formats are refused**: JSON after a prose line or in the middle of one, Mistral's `[TOOL_CALLS]`,
+  DeepSeek's tool-call tags, Llama's `<function=...>` and `<|python_tag|>`, and a fenced `tool_code` block. It is a
+  list of known formats, not a parser, and docs/model.md says so.
+- **A provider's report with no digest is refused, or flagged**, never taken as a match: no report at all, no digest
+  key, or a digest of None. The built-in provider always reports one; this holds the rule for any other.
+- **A runtime that never answers its list of models ends with a rule id** (M-SIZE, judged on the clock), not a bare
+  timeout. Nothing is sent to it.
+
+### Fixed (Orithises's kit check of 5bdef88: findings)
+- **A name is never handed to the resolver from inside a call.** A raw `socket.connect((name, port))` resolves the
+  name before Python announces anything, and a failed lookup announces nothing, so a made-up name left the machine
+  unseen; `0177.0.0.1` and `0x7f.0.0.1` ended as a bare lookup error, and `2130706433` waited ten seconds in the
+  resolver. A host that is not a literal address is now refused (M-HOST) at `connect`, `connect_ex`, `sendto` and
+  `bind` (`bind` from Orithises's re-check),
+  before any lookup.
+- **The hour's count of asks fails closed when the clock is set back.** A stamp in the future counted for nothing and
+  was dropped, so the count reset. It now counts as now. The window's length and this case are pinned by tests.
+- **A card or words of yours holding something shaped like a key are never sent** (M-SCOPE), as every other reader in
+  Semantext withholds them. The kit's partner that sent key-like text to the named address is gone, and the M-HOST
+  sub-arms no longer carry key text, so each breaks one rule.
+- **Only you set or clear the model, at your own console**: the gate was there, now tests refuse `model set` and
+  `model clear` in an agent's shell and without a console, and leave `state.json` unchanged.
+- **Each refused act names the rule it breaks.** A copy or a second name of a closed file is a read (M-SCOPE, it was
+  M-STATE); a Windows file call (`_winapi.CreateFile`) is a read (M-SCOPE, it was M-SPAWN). The test for a provider
+  that never returns names only M-SIZE; M-BUDGET's own cases, a provider that closes late and one that returns with
+  the connection open, have their own tests, judged at the fake runtime.
+- docs/model.md states the 64-place bound on the tool-call JSON scan, the M-QUOTE shapes not on its list, the
+  M-BUDGET case that cannot be made here (a duplicate handle), and the Python version the unseen routes were measured
+  on.
+
+### Known limits
+- A loopback port is not an identity: once your runtime stops, any program on this machine can listen there and will
+  be sent the card and your words; the digest check catches one that reports another digest, not one that repeats
+  yours. The watch runs inside Semantext's own process and sees only Python's audit events: not native code making its
+  own system calls, nor `sqlite3.connect`, `os.stat`, `os.environ` or `mmap`. A real runtime finishing a request after
+  its connection closed has not been measured. The page's own control to ask is not built, nor any way for an agent to
+  ask. A topic line's identity is not shown on the page. `state.json`, including `model_cut`, is a plain file anyone
+  with access to your files can edit. The console check on asking is the same as answering's, with its stated limits.
+  `model_cut` is written without a lock, so two asks cut at the same moment can lose one write; a clock set back past
+  a cut ignores it. On Python 3.10 to 3.12, code that kept its own reference to the raw thread-start function before
+  the model point was loaded is not followed.
+- Process-wide changes inside a call are accepted: `os.putenv` and `sys.path.append` outlive the call in a process
+  that goes on running, and `os.access` and `os.lstat` are not seen (Koinos F3).
+- A provider can clear its own watch: it lives in the provider's process, so it stops accidents in reviewed code, not
+  a determined author. A provider run in a process of its own would be the boundary; it comes before any provider not
+  written here (Koinos F4).
+- At the wall, the kernel cannot make a hostile listener see the connection close: one that drips a byte at a time
+  inside a line keeps it open while the process runs. `semantext model ask` ends its process, which closes it; a
+  long-lived page control would need this solved first (Koinos F6).
+
+### Fixed (Work, after Koinos's rerun of 1.5.15)
+- A priority outside 1 to 999999 is not applied from any writer, not only the page's (the page asks 1 to 999).
+- A drag begun on the page counts for 30 seconds only, so a drag whose end never came leaves nothing waiting for a later drop.
+
 ## [1.5.15] - 2026-11-02
 
 ### Added
@@ -21,6 +143,7 @@ All notable changes to Semantext are recorded here. The format follows
   fixed list of fields per change; the item's version checked under the writer's lock. SECURITY.md states what the
   page's evidence proves and what it does not. Attacked at design (Koinos), with three fixes made before the code.
 - A create or edit recorded as the person's without the page's evidence on the chain is no longer applied.
+
 
 ## [1.5.14] - 2026-11-02
 

@@ -121,8 +121,16 @@ export function cardNode(c) {
     on: { click: (ev) => copyId(ev.currentTarget) } }, c.id);
   const at = h("time", { class: "at", datetime: c.at || null }, when(c.at));
   const kindWord = c.kind === "command" ? "Command" : c.kind === "change" ? (c.change && c.change.prune ? "Prune" : "Change") : "Decision";
-  node.append(h("div", { class: "card-head" }, agentChip(c.seat, null, "seat:" + c.key), chip(kindWord, "kind"), id, at));
+  // A model's proposal carries the kernel's label, drawn from its own field: never from a sender's name or a title,
+  // which an agent could spell the same way (the inbox refuses those, and this draws nothing for them either).
+  const label = c.label === "MODEL" ? chip("MODEL", "model-label") : null;
+  node.append(h("div", { class: "card-head" }, label, agentChip(c.seat, null, "seat:" + c.key), chip(kindWord, "kind"), id, at));
   node.append(h("h2", { class: "card-title" }, c.title), h("p", { class: "why" }, c.why));
+  if (label && c.model) {
+    node.append(h("p", { class: "meta model-id" }, "A model's proposal, never a rule or an answer: " + (c.model.name || "?")
+      + " · " + (c.model.version || "?") + " · the digest you named, " + (c.model.digest || "none")));
+    for (const p of c.model.problems || []) node.append(h("p", { class: "bad" }, "Problem: " + p));
+  }
   if (c.kind === "change" && c.change) {
     changeBody(c, node);
     // A change is a record, not an ask: the decision cards that ask about it are linked, and nothing runs from here.

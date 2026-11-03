@@ -45,12 +45,18 @@ export function wordsNode(text, limit, whole) {
 export const recordHref = (id) => "#record/" + encodeURIComponent(id);
 export const recordLinks = (ids) => ids.map((id, i) => [i ? ", " : "", h("a", { href: recordHref(id) }, id)]);
 
+// Your answer to a model's proposal keeps the kernel's label MODEL, from its own field, so the Record never shows a
+// model's words as an ordinary decision.
+function modelLabel(e) {
+  return e.label === "MODEL" ? [h("span", { class: "chip model-label", title: "Your answer to a model's proposal" }, "MODEL"), " "] : null;
+}
+
 // A decision in its thread: its id, date and status, your words (whole up to 512 bytes), and what superseded it.
 export function entryNode(e, limit, withSubject) {
   const node = h("div", { class: "entry", "data-entry": e.id, "data-k": "entry:" + e.id, tabindex: "-1" });
   if (withSubject) node.append(h("p", { class: "subject" }, e.subject || "(no subject)"));
   const stored = e.stored_status && e.stored_status !== e.computed_status ? " (stored as " + e.stored_status + ")" : "";
-  node.append(h("p", { class: "meta" }, h("a", { class: "mono", href: recordHref(e.id), title: "Open it at its source" }, e.id), " · " + day(e.date) + " · ",
+  node.append(h("p", { class: "meta" }, modelLabel(e), h("a", { class: "mono", href: recordHref(e.id), title: "Open it at its source" }, e.id), " · " + day(e.date) + " · ",
     statusWord(e.computed_status), stored + (e.to ? " · to " + e.to : "")));
   node.append(wordsNode(e.words, limit, e.id ? recordHref(e.id) : null));
   const rel = h("p", { class: "rel" });
@@ -68,6 +74,11 @@ export function sourceNode(e, byId) {
   add("Status", [statusWord(e.computed_status), e.stored_status && e.stored_status !== e.computed_status ? " (stored as " + e.stored_status + ")" : ""]);
   add("Date", e.date ? day(e.date) + (e.time ? " · " + e.time + " UTC" : "") : null);
   add("To", e.to);
+  if (e.label === "MODEL" && e.model) {
+    add("Proposed by", [modelLabel(e), (e.model.name || "?") + " · " + (e.model.version || "?") + " (the digest you named: "
+      + (e.model.digest || "none") + "). A model's proposal, never a rule or an answer; your answer is below."]);
+    for (const p of e.model.problems || []) add("Problem", p, "bad");
+  }
   if (e.pin) {
     add("Written down", h("span", { class: "mono" }, e.pin.repo + " at commit " + e.pin.commit + ", " + e.pin.file + ", "
       + (e.pin.last_line !== e.pin.line ? "lines " + e.pin.line + " to " + e.pin.last_line : "line " + e.pin.line)));

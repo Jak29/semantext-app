@@ -453,6 +453,9 @@ class _Cards:
             "options": [o for o in c.get("options") or [] if isinstance(o, str)],
             "number": c.get("number"), "choices": c.get("choices") or [], "own_inbox": bool(c.get("own_inbox")),
             "flags": c.get("flags") or [], "rule": bool(c.get("rule")), "recommend": c.get("recommend"), "answered_before": c.get("answered_before"),
+            # a model's proposal: the kernel's label and the person's settings, from your own inbox only (own_inbox)
+            "label": c.get("label") if c.get("own_inbox") and c.get("label") == "MODEL" else None,
+            "model": c.get("model") if c.get("own_inbox") and c.get("label") == "MODEL" else None,
             "closing": {"at": closing.get("at"), "how": closing.get("how"),
                         "earlier": len(closing.get("earlier") or [])} if isinstance(closing, dict) else None,
             "run": {k: run.get(k) for k in ("started", "finished", "exit", "timed_out")} if isinstance(run, dict)

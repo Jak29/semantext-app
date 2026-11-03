@@ -34,6 +34,49 @@ MAX_RULE = 400        # the same limit as a rule taught at the user's own termin
 HOW_WORDS = {"bound": "bound by you", "claimed": "claimed", "observed": "seen", "fallback": "unnamed"}
 NOTES_BYTES = 3_000   # the inbox's share of the hook's output, so the card always keeps most of the room
 ASKER = "ai"          # who is asking when an agent does not say: `ask --from`, `answers` and the hook all default to it
+MODEL_LABEL = "MODEL"  # the kernel's word on a model's proposal (model.py), never the provider's text
+MODEL_CHOICES = ["Noted", "Set aside"]
+# Letters of other scripts that read as Latin ones, folded to the Latin letter before a check reads a name: a UTS #39
+# style skeleton, cut to a small fixed table. It covers the Cyrillic and Greek capitals and small letters that look
+# like one Latin letter in common fonts, the Cherokee M D E L, and the Roman numerals D and l. It does not cover every
+# confusable Unicode lists (Armenian, Coptic, Latin small capitals, and the like): those still pass (docs/model.md).
+CONFUSABLES = str.maketrans({
+    # Cyrillic capitals
+    "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O",
+    "Р": "P", "С": "C", "Т": "T", "У": "Y", "Х": "X", "Ѕ": "S", "І": "I",
+    "Ј": "J", "Ԛ": "Q", "Ԝ": "W",
+    # Cyrillic small
+    "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x",
+    "ѕ": "s", "і": "i", "ј": "j", "һ": "h", "ԁ": "d", "ԛ": "q", "ԝ": "w",
+    "ӏ": "l",
+    # Greek capitals
+    "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z", "Η": "H", "Ι": "I", "Κ": "K",
+    "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P", "Τ": "T", "Υ": "Y", "Χ": "X",
+    # Greek small
+    "α": "a", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "υ": "u",
+    # Cherokee and Roman numerals
+    "Ꮇ": "M", "Ꭰ": "D", "Ꭼ": "E", "Ꮮ": "L", "Ⅾ": "D", "ⅼ": "l"})
+_LOOKALIKE = CONFUSABLES
+
+
+def _reads_as(text) -> str:
+    """Text as it reads: compatibility forms folded (a fullwidth letter or space), invisible format characters gone,
+    lookalike letters mapped to Latin, leading white space and punctuation dropped. Spaces between words are kept."""
+    import unicodedata
+    t = unicodedata.normalize("NFKC", str(text or ""))
+    t = "".join(c for c in t if unicodedata.category(c) != "Cf").translate(_LOOKALIKE)
+    return re.sub(r"^[\W_]+", "", t)
+
+
+# MODEL as a whole first word: then a space (" proposal" too), a colon, or the end. "MODELS to deploy?", "MODEL-T
+# pricing" and "MODELLING the costs" are other words, and stay an agent's to use (re-check N2).
+MODEL_TITLE = re.compile(MODEL_LABEL + r"(?:$|[\s:])")
+
+
+def model_shaped(source, title) -> bool:
+    """Whether an agent's request would read as the kernel's MODEL proposal: sent as exactly MODEL (in capitals; an
+    agent named "model" after its folder is its own name), or titled with MODEL as its whole first word."""
+    return _reads_as(source).strip() == MODEL_LABEL or bool(MODEL_TITLE.match(_reads_as(title)))
 FROM_THE_USER = ("terminal", "page", "chat")
 # The shape of an answer typed in chat: "#12 2" (an option), "#12 done" or "#12 won't" (a command), each with the
 # user's words after one of the marks . , ; : ("#12 2, after lunch"); "#12 add" or "#12 no" alone (a proposed rule;
@@ -267,6 +310,9 @@ class Inbox:
         claimed wherever the request appears. `key` and `session` say whose request it is (see mine())."""
         title, why = _text(title, "a title", MAX_TITLE), _text(why, "a why (--why)", MAX_TEXT)
         source = _text(source, "a sender name", 60)
+        if model_shaped(source, title):   # only the kernel files a MODEL proposal (propose_model); no lookalike either
+            raise Refused(f"a request may not be sent as {MODEL_LABEL} or titled {MODEL_LABEL} ...: that is the "
+                          f"label of a model's proposal, which only Semantext itself files")
         how = how if how in ("bound", "claimed", "observed", "fallback") else ""
         # Every field is kept in the inbox file, shown on the page and sent with the next prompt, so none may carry one;
         # the sender's name neither. A seen agent's name comes from its folder's, so the name gets the key shapes only:
@@ -307,6 +353,28 @@ class Inbox:
             if session:
                 event["from_session"] = str(session)[:100]
             self._append(event)
+            self.seq_path.write_text(str(rid), encoding="utf-8")
+        return self.get(rid)
+
+    def propose_model(self, text: str, model: dict, why: str) -> dict:
+        """A model's proposal, as the kernel files it (model.ask): kind "model", labelled MODEL with the name, version
+        and digest from the person's settings. It waits for the person like a decision, Noted or Set aside, and is
+        never a rule: no answer to it adds one. Its sender key is its own, so no agent's name or key matches it."""
+        if not isinstance(text, str) or not text.strip() or not isinstance(model, dict):
+            raise Refused("a model's proposal is text, with the model's settings")
+        if SECRET.search(text) or SECRET.search(why):
+            raise Refused("that looks like it holds a key, a token or a password; never put one in a request")
+        name = str(model.get("name") or "?")
+        meta = {"label": MODEL_LABEL, "name": name[:200], "version": str(model.get("version") or "")[:80],
+                "digest": str(model.get("digest") or "")[:80],
+                "problems": [str(p)[:400] for p in model.get("problems") or []][:5]}
+        with self._locked():
+            rid = 1 + max(self._seq(), max((e["id"] for e in self.events()), default=0))
+            uid = stamp()
+            self._append({"type": "request", "id": rid, "uid": uid, "at": now(), "from": MODEL_LABEL,
+                          "from_key": f"model:{uid}:{rid}", "title": f"{MODEL_LABEL} proposal from {name}"[:MAX_TITLE],
+                          "why": _text(why, "a why", MAX_TEXT), "kind": "model", "question": text,
+                          "options": list(MODEL_CHOICES), "recommend": None, "model": meta})
             self.seq_path.write_text(str(rid), encoding="utf-8")
         return self.get(rid)
 
@@ -355,7 +423,7 @@ class Inbox:
             if r["status"] != "open":
                 raise Refused(f"request #{rid} is already {r['status']}")
             picked = None
-            if r["kind"] == "decision" and r["options"] and choice.isdigit():
+            if r["kind"] in ("decision", "model") and r["options"] and choice.isdigit():
                 n = int(choice)
                 if not 1 <= n <= len(r["options"]):
                     raise Refused(f"request #{rid} has options 1 to {len(r['options'])}")
@@ -515,7 +583,10 @@ def mine(r: dict, who) -> bool:
     filed in the same session, or under the same key, which a claim never shares with a bound or seen agent of the
     same name. A request with no key goes by its name and the assurance it was filed with: a claimed one reaches only
     claims, any other only what is not a claim, and one that never said (filed before anyone did) any asker of that
-    name, as it always has. A plain name, as older callers pass, matches by name."""
+    name, as it always has. A plain name, as older callers pass, matches by name. A model's proposal is no asker's:
+    the kernel filed it, so no agent, whatever its name, sees it or its answer as its own."""
+    if r.get("kind") == "model":
+        return False
     if isinstance(who, str):
         return r.get("from") == who
     session = getattr(who, "session", None)

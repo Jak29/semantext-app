@@ -1260,6 +1260,21 @@ class Store:
             return []
         return sorted(f"{m.name}:{t.name}" for m in base.iterdir() if m.is_dir() for t in m.iterdir() if t.is_file())
 
+    def set_model_provider(self, raw: dict | None) -> None:
+        """The person's model settings (model.settings checks them): the one loopback address, the model's name and
+        the digest they expect, the budget, the token cap, what a differing digest does, asks per hour. None clears."""
+        from .model import SETTING, settings   # here: the card hook imports the store, and never the model point
+        s = self.state()
+        if raw is None:
+            s.pop(SETTING, None)
+            what = "Cleared the model settings"
+        else:
+            conf = settings(raw)
+            s[SETTING] = conf
+            what = f"Set the model: {conf['model']} at {conf['address']}, expecting {conf['digest'] or 'no digest'}"
+        self.put_state(s)
+        self.log(what)
+
     def set_model(self, model: str | None) -> None:
         if model is not None and model not in self.local_models():
             raise Refused("that model is not on this machine")

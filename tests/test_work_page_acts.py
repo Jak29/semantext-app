@@ -401,3 +401,57 @@ def test_f6_a_key_named_twice_is_refused(server, home):   # must refuse
     raw = b'{"action": "create", "action": "edit", "request": {"project": "demo", "title": "x", "request_key": "d2"}}'
     assert call(server, None, raw=raw)[0] == 400
     assert Writer(home).state()["items"] == {}
+
+# ---------------------------------------------------------------- Koinos's rerun of cb1c6c5 (1.5.16)
+@pytest.mark.parametrize("value", ["abc", True, None, [1], 0, -3, 10 ** 7, 2.0])
+def test_note1_a_priority_out_of_range_is_not_applied_from_any_writer(value):   # must refuse, at the fold
+    c = rec(1, "create", id="W-demo-1", project="demo", title="x")
+    p = rec(2, "person_act", id="W-demo-1", act="priority", value=value)
+    got = folded([(1, c, True), (2, p, True)])
+    assert got["items"]["W-demo-1"]["priority"] is None and not got["events"][1]["applied"]
+
+
+@pytest.mark.parametrize("value", [1, 999, 999999])
+def test_note1_the_typed_lines_range_is_kept(value):   # must pass
+    c = rec(1, "create", id="W-demo-1", project="demo", title="x")
+    p = rec(2, "person_act", id="W-demo-1", act="priority", value=value)
+    assert folded([(1, c, True), (2, p, True)])["items"]["W-demo-1"]["priority"] == value
+
+
+def test_note5_an_agents_move_makes_the_persons_click_stale(server, home):   # must refuse (a real change)
+    w = Writer(home, seats={"koinos"})
+    agent = Actor("koinos", "bound", "mcp")
+    iid = w.write(agent, "create", {"project": "demo", "title": "agent's"})["id"]
+    v = item(home, iid)["version"]
+    assert change(server, "act", {"id": iid, "act": "next", "from": "backlog"}, v)[0] == 200
+    v = item(home, iid)["version"]
+    assert w.write(agent, "move", {"id": iid, "from": "next", "to": "doing"})["applied"]
+    code, got = change(server, "act", {"id": iid, "act": "park"}, v)
+    assert code == 400 and "STALE_VERSION" in got["error"]
+
+
+DROP = r"""
+const sent = [];
+workPost.post = (body) => { sent.push(body); return new Promise(() => {}); };
+const items = [{ id: "W-demo-1", state: "backlog", version: 3 }];
+const drop = dropTarget("next", items).on.drop;
+const ev = (id) => ({ preventDefault() {}, currentTarget: { classList: { remove() {} } },
+  dataTransfer: { getData: () => id } });
+const out = {};
+WA.dragging = null; drop(ev("W-demo-1")); out.none = sent.length;                                  // no drag of the page's
+WA.dragging = "W-demo-1"; WA.dragAt = Date.now() - DRAG_MS - 1000; drop(ev("W-demo-1")); out.stale = sent.length;
+WA.dragging = "W-demo-2"; WA.dragAt = Date.now(); drop(ev("W-demo-1")); out.other = sent.length;   // another card's
+WA.dragging = "W-demo-1"; WA.dragAt = Date.now(); drop(ev("W-demo-1")); out.fresh = sent.length;
+out.after = WA.dragging;
+out.body = sent[0] && { action: sent[0].action, act: sent[0].request.act, from: sent[0].request.from, version: sent[0].version };
+report(out);
+"""
+
+
+@pytest.mark.skipif(__import__("shutil").which("node") is None, reason="node is not installed")
+def test_note4_a_drop_counts_only_for_the_pages_own_fresh_drag():   # must refuse three, pass one
+    from v2_node import run
+    got = run(DROP)
+    assert (got["none"], got["stale"], got["other"], got["fresh"]) == (0, 0, 0, 1)
+    assert got["after"] is None
+    assert got["body"] == {"action": "act", "act": "next", "from": "backlog", "version": 3}

@@ -530,17 +530,25 @@ class OllamaReader:
     def __post_init__(self):
         self.name = f"ollama:{self.model}"
         self.family = self.family or self.model.split(":")[0].lower()   # a family given by the user wins
+        self.digest = None   # the runtime's own full digest, once resolve_version has read it: its claim, never proof
+
+    def _tags(self) -> list:
+        """The runtime's list of its models. The one path both questions below take; a provider held to a stricter
+        connection (model.OllamaProvider) replaces only this."""
+        with _open(urllib.request.Request(self.host.rstrip("/") + "/api/tags"), timeout=10) as r:
+            return jsonread.loads(r.read().decode("utf-8")).get("models") or []
 
     def resolve_version(self) -> str:
-        """The model's digest on this machine's Ollama, as its version; left as it was if Ollama does not say."""
+        """The model's digest on this machine's Ollama, as its version; left as it was if Ollama does not say. This is
+        the runtime's report of itself: model.digest_matches compares it with the digest the person expects."""
         want = self.model if ":" in self.model else self.model + ":latest"
         try:
-            with _open(urllib.request.Request(self.host.rstrip("/") + "/api/tags"), timeout=10) as r:
-                for m in jsonread.loads(r.read().decode("utf-8")).get("models") or []:
-                    if want in (m.get("name"), m.get("model")) and m.get("digest"):
-                        self.version = "sha256:" + str(m["digest"])[:12]
-                        # the model file's architecture: a fine-tune's name is its tuner's, its architecture the base's
-                        self.arch = str((m.get("details") or {}).get("family") or "") or None
+            for m in self._tags():
+                if isinstance(m, dict) and want in (m.get("name"), m.get("model")) and m.get("digest"):
+                    self.version = "sha256:" + str(m["digest"])[:12]
+                    self.digest = "sha256:" + str(m["digest"])
+                    # the model file's architecture: a fine-tune's name is its tuner's, its architecture the base's
+                    self.arch = str((m.get("details") or {}).get("family") or "") or None
         except (OSError, ValueError):
             pass
         return self.version
@@ -550,8 +558,7 @@ class OllamaReader:
         before a run, so a run does not fail once for every item (Jak's first `record topics`, Ollama not started)."""
         want = self.model if ":" in self.model else self.model + ":latest"
         try:
-            with _open(urllib.request.Request(self.host.rstrip("/") + "/api/tags"), timeout=10) as r:
-                models = jsonread.loads(r.read().decode("utf-8")).get("models") or []
+            models = self._tags()
         except (OSError, ValueError) as e:
             return f"Ollama did not answer at {self.host} ({getattr(e, 'reason', None) or e}): start Ollama, then run this again"
         if not any(want in (m.get("name"), m.get("model")) for m in models if isinstance(m, dict)):

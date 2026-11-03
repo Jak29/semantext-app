@@ -288,6 +288,10 @@ def _person_effect(item, act, f, value, parked):
         _not_held(item, parked)   # reopen re-enters doing, and the hold is for everyone (ec.parked-holds)
         item.update(state="doing", done_by=None)
     elif act == "priority":
+        # a whole number, as the typed line's own range (turns.py), for every writer: a chain-valid record holding
+        # anything else is not applied (Koinos's rerun of cb1c6c5, note 1; the page asks 1 to 999 of itself)
+        if type(value) is not int or not 1 <= value <= 999999:
+            raise Refuse("MALFORMED", "a priority is a whole number from 1 to 999999")
         item["priority"] = value
     elif act == "assign":
         item["owner"] = value

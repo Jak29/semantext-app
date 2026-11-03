@@ -6,7 +6,8 @@ import { h } from "./dom.js";
 import { fill, load } from "./app.js";
 
 export const WORK_ROUTE = "/api/work";
-export const WA = { said: null, ok: null, drafts: {}, adding: null, editing: null, dragging: null };
+export const WA = { said: null, ok: null, drafts: {}, adding: null, editing: null, dragging: null, dragAt: 0 };
+export const DRAG_MS = 30000;
 export const STATES = ["backlog", "next", "doing", "review"];
 export const STATE_WORD = { backlog: "Backlog", next: "Next", doing: "Doing", review: "Review" };
 const KINDS = ["task", "story", "bug", "research", "epic"];
@@ -144,7 +145,9 @@ export function panelControls(i) {
 export function draggable(i) {
   if (!STATES.includes(i.state) || i.voided) return {};
   return { draggable: "true", on: {
-    dragstart: (e) => { WA.dragging = i.id; e.dataTransfer.setData("text/x-semantext-item", i.id); e.dataTransfer.effectAllowed = "move"; },
+    // a drag of the page's own counts for DRAG_MS only: one whose dragend never came (the board redrawn mid-drag)
+    // does not leave its id waiting for a later drop from elsewhere (Koinos's rerun of cb1c6c5, note 4)
+    dragstart: (e) => { WA.dragging = i.id; WA.dragAt = Date.now(); e.dataTransfer.setData("text/x-semantext-item", i.id); e.dataTransfer.effectAllowed = "move"; },
     dragend: () => { WA.dragging = null; } } };
 }
 
@@ -158,7 +161,7 @@ export function dropTarget(state, items) {
       e.preventDefault(); e.currentTarget.classList.remove("drop");
       // only a drag that began on this page's own card: a drag from another window may carry the same type (Koinos's F8)
       const id = e.dataTransfer.getData("text/x-semantext-item");
-      const mine = WA.dragging !== null && WA.dragging === id;
+      const mine = WA.dragging !== null && WA.dragging === id && Date.now() - (WA.dragAt || 0) <= DRAG_MS;
       WA.dragging = null;
       const i = mine ? (items || []).find((x) => x.id === id) : null;
       if (i) moveTo(i, state);

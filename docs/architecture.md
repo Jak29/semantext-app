@@ -92,9 +92,10 @@ flowchart LR
 - **The hook never blocks.** A broken setup must not stop your work, so the hook's worst case is a one-line note.
 - **An agent asks, and you answer.** The inbox file is append-only, so every request, answer and withdrawal stays on
   record. The checks on who may answer stop accidents, and each answer's record says where it came from.
-- **This machine only.** Semantext makes no network calls of its own, with two opt-in exceptions you start at your
+- **This machine only.** Semantext makes no network calls of its own, with three opt-in exceptions you start at your
   own terminal: `backtest --reader`, which calls the model you name (one off this machine only from your terminal,
-  announced first), and `record topics`, which calls a model on this machine only. The page answers only on loopback.
+  announced first), `record topics`, which calls a model on this machine only, and `model ask`, which calls the one
+  loopback address you set (model.md). The page answers only on loopback.
 
 ## Where to start reading
 

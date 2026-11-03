@@ -872,11 +872,13 @@ def cmd_record(store: Store, args) -> int:
     if isinstance(reader, EndpointReader) and not is_local(reader.url):
         raise Refused(f"your decisions stay on this machine: {_host(reader.url)} is not. Use a model on this machine "
                       f"(ollama:MODEL, or an endpoint at 127.0.0.1)")
+    identity = None
     if isinstance(reader, OllamaReader):
         why = reader.missing()
         if why:
             raise Refused(why)
         reader.resolve_version()
+        identity = _record_identity(store, reader)
     got = view.answer("record", home=store.root)
     if not got or got.get("off"):
         raise Refused("your Record is off: your sources file names no register, and you have answered nothing yet")
@@ -885,7 +887,7 @@ def cmd_record(store: Store, args) -> int:
              if i in by_id and not by_id[i].get("superseded_by")]
     if args.limit:
         loose = loose[: max(0, args.limit)]
-    c = topics.run(store.root, loose, reader, again=args.again)
+    c = topics.run(store.root, loose, reader, again=args.again, identity=identity)
     _out(f"Topics by {reader.name} (version {getattr(reader, 'version', '?')}): {c['named']} named, {c['kept']} kept from "
          f"before, {c['secret_skipped']} left out for a secret, {c['unparsed']} answers that were not a topic, "
          f"{c['failed']} calls that failed. A topic is the model's reading, and the page says so.")
@@ -893,6 +895,89 @@ def cmd_record(store: Store, args) -> int:
         _out(f"Stopped after {topics.STOP_AFTER} calls in a row failed: is the model still running? What was named is "
              "kept; run this again to go on.")
         return 1
+    return 0
+
+
+def _record_identity(store: Store, reader) -> str:
+    """The gap 1.5.10 left (ECOSYSTEM, the ninth point): the runtime's own digest, compared with the one the person
+    named in their model settings when those name this model. Differs: refused, or each topic marked, as the settings
+    say. None named: said, and each topic marked as the runtime's claim."""
+    from . import model
+    raw = store.state().get(model.SETTING)
+    try:
+        conf = model.settings(raw) if raw else None
+    except Refused:
+        conf = None
+    if not conf or model._model_name(conf["model"]) != model._model_name(reader.model) or not conf["digest"]:
+        _out(f"The version of {reader.model} is its runtime's own report: you have named no digest to compare it with "
+             f"(semantext model set --model {reader.model} --digest D). Each topic is marked so.")
+        return "the runtime's claim"
+    got = getattr(reader, "digest", None)
+    if model.whole_digest(got) and model.digest_matches(got, conf["digest"]):
+        return "matches yours"
+    problem = (f"{reader.model} reports {(got or 'no digest')[:19]}{'' if model.whole_digest(got) else ' (not a full digest)'}"
+               f", but your settings expect {conf['digest'][:19]}")
+    if conf["on_mismatch"] == "refuse":
+        raise model.ModelRefused("M-ID", problem + ": nothing is asked. If the model changed, name its new digest")
+    _out(f"Problem: {problem}. Your settings say to flag it: the run goes on, and each topic is marked.")
+    return "differs from yours"
+
+
+def cmd_model(store: Store, args) -> int:
+    """The model point (1.6): your settings for a model on this machine, and asking it. Its answers wait in your
+    inbox as proposals labelled MODEL; nothing is ever done with them unless you act."""
+    from . import model
+    a = args.action
+    if a == "set":
+        _users_act("set the model")
+        cur = dict(store.state().get(model.SETTING) or {})
+        for k, v in (("address", args.address), ("model", args.model_name), ("digest", args.digest),
+                     ("budget_s", args.budget), ("max_tokens", args.tokens), ("on_mismatch", args.on_mismatch),
+                     ("asks_per_hour", args.asks_per_hour)):
+            if v is not None:
+                cur[k] = v
+        if args.budget is not None and float(args.budget).is_integer():
+            cur["budget_s"] = int(args.budget)
+        store.set_model_provider(cur)
+        a = "show"
+    if a == "clear":
+        _users_act("clear the model")
+        store.set_model_provider(None)
+        _out("The model settings are cleared: nothing will be asked until you set them again.")
+        return 0
+    if a == "show":
+        raw = store.state().get(model.SETTING)
+        if not raw:
+            _out("No model is set. Set one: semantext model set --address http://127.0.0.1:PORT --model NAME "
+                 "--digest D")
+            return 0
+        c = model.settings(raw)
+        _out(f"Model: {c['model']} at {c['address']} (the one address it may use)")
+        _out(f"  Expected digest: {c['digest'] or 'none: every call is refused until you name one'}")
+        _out(f"  Budget: {c['budget_s']} s a call, at most {c['max_tokens']} tokens; {c['asks_per_hour']} asks an hour")
+        _out(f"  A digest that differs is {'refused' if c['on_mismatch'] == 'refuse' else 'shown as a problem'}.")
+        return 0
+    if a == "check":
+        if not args.file:
+            raise Refused("name the model's file: semantext model check --file PATH")
+        c = model.settings(store.state().get(model.SETTING))
+        got = model.check_file(args.file, c, args.manifest)
+        _out(f"The manifest {got['manifest_path']} hashes to {got['manifest'][:19]}, the model ID you named, and "
+             f"{args.file} to {got['weights'][:19]}, the weights it names. This checks the files on disk; each call "
+             f"checks what the runtime reports, separately.")
+        return 0
+    words = " ".join(args.words or []).strip()
+    if not words:
+        raise Refused("say what to ask: semantext model ask WORDS")
+    got = model.ask(store, words, by="console")
+    inbox = Inbox(store.root)
+    for rid in got["filed"]:
+        r = inbox.get(rid)
+        _out(f"[#{rid}] {r['title']}: it waits in your inbox as a proposal, never a rule or an answer.")
+    for p in got["problems"]:
+        _out(f"  Problem: {p}")
+    if not got["filed"]:
+        _out("The model proposed nothing.")
     return 0
 
 
@@ -1397,6 +1482,23 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--key-env", dest="key_env", help="the environment variable holding an endpoint's key")
     sp.add_argument("--again", action="store_true", help="ask again for every decision, not only the new or changed ones")
     sp.add_argument("--limit", type=int, help="at most this many decisions")
+    sp = add("model", cmd_model, "a model on this machine: set its address, name and expected digest; ask it (you, "
+                                 "at your own console); its answers wait in your inbox as proposals labelled MODEL")
+    sp.add_argument("action", choices=("show", "set", "clear", "ask", "check"))
+    sp.add_argument("words", nargs="*", help="ask: what to ask; the card goes with it")
+    sp.add_argument("--address", help="set: http://127.0.0.1:PORT or http://[::1]:PORT, a runtime you started")
+    sp.add_argument("--model", dest="model_name", help="set: the model's name, as the runtime names it")
+    sp.add_argument("--digest", help="set: the model's ID as `ollama list` shows it (12 hex digits, or the full 64): "
+                                     "its manifest's sha256, which every call compares with the runtime's report")
+    sp.add_argument("--budget", type=float, help=f"set: seconds a call may take (default 60, at most 600)")
+    sp.add_argument("--tokens", type=int, help="set: the token cap of one answer (default 512)")
+    sp.add_argument("--on-mismatch", dest="on_mismatch", choices=("refuse", "flag"),
+                    help="set: a digest that differs from yours is refused (default) or shown as a problem")
+    sp.add_argument("--asks-per-hour", dest="asks_per_hour", type=int, help="set: your own cap (default 20)")
+    sp.add_argument("--file", help="check: the model's weights file, hashed here and compared with the blob its "
+                                   "manifest names")
+    sp.add_argument("--manifest", help="check: the model's manifest (default: Ollama's, by the model's name), hashed "
+                                       "here and compared with the model ID you named")
     add("agents", cmd_agents, "list the AI agents Semantext has seen or you have named, with their sessions")
     sp = add("agent", cmd_agent, "who this shell's agent is; bind a folder to an agent; give an agent a display name")
     sp.add_argument("action", choices=("whoami", "bind", "unbind", "name"))

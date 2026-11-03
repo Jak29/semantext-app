@@ -104,7 +104,7 @@ def _form_fits(r: dict, choice: str) -> str:
     question with no options; a command takes done or won't, and a proposed rule add or no."""
     if choice:
         return ""
-    if r.get("kind") == "decision" and r.get("options"):
+    if r.get("kind") in ("decision", "model") and r.get("options"):
         return f"#{r['id']} has options: answer with its number, such as #{r['id']} 1, and any words after a comma"
     if r.get("kind") == "command":
         return f"#{r['id']} is a command: answer #{r['id']} done or #{r['id']} won't"

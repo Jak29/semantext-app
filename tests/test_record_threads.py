@@ -485,3 +485,53 @@ def test_a_decision_too_long_for_the_model_does_not_stop_the_run(tmp_path):
     es = [entry(f"J-{i}", f"S{i}") for i in range(1, 6)]
     c = topics.run(tmp_path, es, Fake({f"S{i}": Refused("reached its context") for i in range(1, 6)}))
     assert not c["stopped"] and c["failed"] == 5                                           # the reader answered each time
+
+
+# ---------------------------------------------------------------- 1.6: the version is checked against the person's digest
+def _record_with_digest(world, tmp_path, monkeypatch, said_digest, settings_extra=None):
+    """record topics with a runtime that reports `said_digest`; returns (exit code, output, the identity topics got)."""
+    from semantext import model
+    home = tmp_path / "home"
+    assert cli.main(["--home", str(home), "init"]) == 0
+    monkeypatch.setattr(cli, "human_terminal", lambda: None)
+    got = []
+    monkeypatch.setattr(topics, "run", lambda *a, **k: got.append(k.get("identity")) or dict.fromkeys(
+        ("asked", "named", "kept", "secret_skipped", "unparsed", "failed"), 0))
+    monkeypatch.setattr(OllamaReader, "missing", lambda self: None)
+
+    def resolve(self):
+        self.digest = said_digest
+        self.version = said_digest[:19]
+        return self.version
+    monkeypatch.setattr(OllamaReader, "resolve_version", resolve)
+    if settings_extra is not None:
+        from semantext.store import Store
+        Store.open(home).set_model_provider({"address": "http://127.0.0.1:11434", "model": "here",
+                                             "digest": "sha256:" + "a" * 64, **settings_extra})
+    return cli.main(["--home", str(home), "record", "topics", "--reader", "ollama:here"]), got
+
+
+def test_record_topics_compares_the_runtimes_digest_with_yours(world, tmp_path, monkeypatch, capsys):
+    rc, got = _record_with_digest(world, tmp_path, monkeypatch, "sha256:" + "b" * 64, {})
+    out = capsys.readouterr()
+    assert rc != 0 and got == [] and "M-ID" in out.err                                    # must-refuse: differs
+    rc, got = _record_with_digest(world, tmp_path / "2", monkeypatch, "sha256:" + "a" * 64, {})
+    assert rc == 0 and got == ["matches yours"]                                           # must-pass
+
+
+def test_record_topics_flags_a_differing_digest_when_your_settings_say_so(world, tmp_path, monkeypatch, capsys):
+    rc, got = _record_with_digest(world, tmp_path, monkeypatch, "sha256:" + "b" * 64, {"on_mismatch": "flag"})
+    assert rc == 0 and got == ["differs from yours"] and "Problem:" in capsys.readouterr().out
+
+
+def test_record_topics_says_the_version_is_the_runtimes_claim_when_you_named_none(world, tmp_path, monkeypatch,
+                                                                                   capsys):
+    rc, got = _record_with_digest(world, tmp_path, monkeypatch, "sha256:" + "b" * 64, None)
+    assert rc == 0 and got == ["the runtime's claim"] and "runtime's own report" in capsys.readouterr().out
+
+
+def test_a_topic_line_keeps_how_its_version_was_known(tmp_path):
+    es = [entry("J-1", "S1")]
+    topics.run(tmp_path, es, Fake({"S1": '{"topic": "Deploys"}'}), identity="matches yours")
+    line = json.loads((tmp_path / topics.FILE).read_text(encoding="utf-8").splitlines()[0])
+    assert line["identity"] == "matches yours"
