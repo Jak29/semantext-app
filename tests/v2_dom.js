@@ -100,6 +100,7 @@ const byId = new Map();
 const body = new Element("body");
 const document = {
   createElement: (tag) => new Element(tag),
+  createElementNS: (ns, tag) => new Element(tag),   // the Prism mark and figure are SVG: drawn as elements here
   createTextNode: (t) => new Text(t),
   createDocumentFragment: () => new Fragment(),
   createRange: () => ({ selectNodeContents() {} }),

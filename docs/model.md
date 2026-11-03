@@ -54,15 +54,22 @@ its version was known: `matches yours`, `differs from yours`, or `the runtime's 
   folder listing and write made by the call's own thread, or by any thread it starts, is watched and refused outside
   what it was given. No other thread is judged: the page's server, a plug-in, anything else running in the process
   goes on as before. (Some routes are not watched at all; see the limits below.) A copy or a second name of a file it
-  was not given is a read (M-SCOPE), and so is a Windows file call such as `_winapi.CreateFile`.
+  was not given is a read (M-SCOPE), and so is a Windows file call such as `_winapi.CreateFile`. Renaming such a file
+  (`os.rename`, `os.replace`, `shutil.move`) into the call's own place is a read too (M-SCOPE); renaming it anywhere
+  else is a change to your state (M-STATE).
 - **Never sent:** a card or words of yours holding something shaped like a key, a token or a password (the same
-  pattern every reader in Semantext withholds). The call is refused (M-SCOPE) and nothing reaches the runtime: take it
-  out of the rule or the words first. The wider check for long key-like runs applies, in Semantext, only to a reader
-  off this machine; a model here is always on this machine.
+  pattern every reader in Semantext withholds), as written or once folded as a reader takes it: a fullwidth letter, a
+  zero-width space or a soft hyphen inside a key does not hide it. The call is refused (M-SCOPE) and nothing reaches
+  the runtime: take it out of the rule or the words first. *Limit:* a key broken by ordinary spaces is not caught,
+  since joining words would refuse ordinary text. The wider check for long key-like runs applies, in Semantext, only
+  to a reader off this machine, and here it is a check, not a promise: whenever the address is not the literal
+  loopback, the wider check applies too.
 - **Reach:** the one address, directly. No redirect is followed and no proxy is used. A host that is not a literal
   address (a name, or a spelling the resolver reads as an address: `2130706433`, `0x7f.0.0.1`, `0177.0.0.1`,
-  `127.000.000.001`, `localhost.`) is refused at `connect`, `connect_ex`, `sendto` and `bind` before any lookup, since Python
-  resolves a name inside those calls, before it announces anything, and a lookup that fails announces nothing.
+  `127.000.000.001`, `localhost.`) is refused at `connect`, `connect_ex`, `sendto`, `bind` and, where the platform has
+  it, `sendmsg`, before any lookup, since Python resolves a name inside those calls, before it announces anything, and
+  a lookup that fails announces nothing. *Limit:* these are the methods of Python's `socket.socket` class; the base
+  socket type underneath it (`socket.SocketType`, `_socket.socket`) still reaches the resolver unseen.
 - **Start:** no process, no native code (ctypes), and no thread the watch cannot follow.
 - **Answer:** text, at most 4000 bytes, whole. Refused, and never shown cut: an answer over the cap, an answer that
   stops before the runtime says it is done, a tool call (structured, or dressed as text), a line in the shape of

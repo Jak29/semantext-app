@@ -47,7 +47,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import jsonread, provenance
-from .inbox import CONFUSABLES, MODEL_LABEL, SECRET, Inbox, file_lock, human_terminal, typed_answer
+from .inbox import CONFUSABLES, MODEL_LABEL, SECRET, Inbox, file_lock, human_terminal, token_like, typed_answer
 from .reader import OllamaReader
 from .store import Refused, write_atomic
 
@@ -250,9 +250,10 @@ SPAWN = re.compile(r"(?:subprocess|ctypes|pty)\.|_winapi\.CreateProcess|os\.(?:s
 # Windows' own file calls (_winapi.CreateFile, CreateNamedPipe, CreateJunction ...) open or make files: M-SCOPE, not
 # M-SPAWN (Orithises 4.2). Only _winapi.CreateProcess starts a process.
 WINAPI_FILES = "_winapi."
-# A copy, or a second name, of a file: a read of the source, wherever it is put (Orithises 4.2).
-COPIES = ("os.link", "os.symlink", "shutil.copyfile", "shutil.copytree", "shutil.copymode", "shutil.copystat",
-          "shutil.move")
+# A copy, a second name, or a new name, of a file: a read of the source, wherever it is put (Orithises 4.2). os.rename
+# is the audit event of os.rename and os.replace alike: moving a file the call was not given is taking it (her G3).
+COPIES = ("os.link", "os.symlink", "os.rename", "shutil.copyfile", "shutil.copytree", "shutil.copymode",
+          "shutil.copystat", "shutil.move")
 WRITE = ("os.rename", "os.remove", "os.rmdir", "os.mkdir", "os.chmod", "os.chown", "os.utime", "os.link",
          "os.symlink", "os.truncate", "os.chflags", "os.lchmod", "shutil.")
 LIST = ("os.listdir", "os.scandir", "glob.glob", "os.chdir", "winreg.")
@@ -346,7 +347,11 @@ def _judge(w: Watch, event: str, args) -> tuple[str, str] | None:
         paths = [a for a in args if isinstance(a, (str, bytes, os.PathLike))]
         if paths and all(_under(_real(p), w.scratch) for p in paths):
             return None
-        if event in COPIES and paths and not _under(_real(paths[0]), w.scratch):
+        if event in COPIES and paths and not _under(_real(paths[0]), w.scratch) and (
+                event not in ("os.rename", "shutil.move") or (len(paths) > 1 and _under(_real(paths[1]), w.scratch))):
+            # os.rename and os.replace (one audit event) and shutil.move (its own event, raised first: Orithises's
+            # recheck of 5f16368) are a read when they take a file the call was not given into the call's own place;
+            # moved anywhere else, it is a change to the state (M-STATE, PB06). One act, one rule.
             return "M-SCOPE", f"{event}: a copy or a second name of {paths[0]}, a file the call was not given"
         return "M-STATE", f"{event} on {', '.join(map(str, paths)) or 'a file'}"
     if event.startswith(LIST):
@@ -454,9 +459,12 @@ def _net(name):
     def call(self, *a, **k):
         w, late = _owner(threading.current_thread())
         if w is not None:
-            addr = a[-1] if name == "sendto" else (a[0] if a else k.get("address"))
+            if name == "sendmsg":                     # sendmsg(buffers, ancdata, flags, address): no address = connected
+                addr = a[3] if len(a) > 3 else k.get("address")
+            else:
+                addr = a[-1] if name == "sendto" else (a[0] if a else k.get("address"))
             host = addr[0] if isinstance(addr, tuple) and addr else addr
-            if not _literal(host):
+            if not (name == "sendmsg" and addr is None) and not _literal(host):
                 _refuse(w, "M-LATE" if late else "M-HOST", f"socket.{name}",
                         f"a {name} to {str(host)[:80]!r}: not a literal address, refused before any lookup")
         return _originals[name](self, *a, **k)
@@ -464,7 +472,9 @@ def _net(name):
 
 
 def _follow_threads() -> None:
-    for name in ("connect", "connect_ex", "sendto", "bind"):
+    # sendmsg exists only where the platform has it (not on Windows): wrapped where it exists (Orithises G4).
+    for name in ("connect", "connect_ex", "sendto", "bind") + (("sendmsg",) if hasattr(socket.socket, "sendmsg")
+                                                               else ()):
         _originals[name] = getattr(socket.socket, name)
         setattr(socket.socket, name, _net(name))
     import _thread
@@ -544,6 +554,13 @@ def _plain(line: str) -> str:
     return t.translate(CONFUSABLES)
 
 
+def _secret(text: str) -> bool:
+    """Key-shaped text, as written or once folded as a reader takes it (_plain): a fullwidth letter, a zero-width space
+    or a look-alike letter inside a key does not hide it (Orithises G1, re-check of 1747bdb). A key broken by ordinary
+    spaces is not caught: joining words would refuse ordinary text; that limit is stated in docs/model.md."""
+    return bool(SECRET.search(text) or SECRET.search(_plain(text)))
+
+
 def _toolish(x) -> bool:
     if isinstance(x, list):
         return any(_toolish(i) for i in x[:20])
@@ -597,7 +614,7 @@ def check_text(text) -> str:
         raise ModelRefused("M-SIZE", "the answer is empty")
     if BIDI.search(text):
         raise ModelRefused("M-LABEL", "the answer holds a direction override, which can make text read as a label")
-    if SECRET.search(text):
+    if _secret(text):
         raise ModelRefused("M-SCOPE", "the answer holds something shaped like a key, a token or a password")
     if TOOL_TAG.search(text) or _json_anywhere(text):
         raise ModelRefused("M-TOOL", "the answer is a tool call; a model proposes text, never a call")
@@ -683,9 +700,15 @@ def run(provider, card: str, prompt: str, *, conf: dict, scratch=None, files=(),
     """One call: the provider's report of itself and its proposals, under the watch and the budget. Proposals are
     checked here; filing them is ask()'s. With a store, a cut is remembered across processes."""
     # Key-shaped text in the card or the prompt is never sent, as every reader in Semantext withholds it (reader.py,
-    # topics.py; Orithises F3, her G7). token_like, the wider check, applies there only to a reader off this machine;
-    # a model point is always on this machine, so it is not applied here either.
-    if any(isinstance(t, str) and SECRET.search(t) for t in (card, prompt)):
+    # topics.py; Orithises F3, her G7). token_like, the wider check, applies there only to a reader off this machine:
+    # so it applies here too whenever the address is not the literal loopback the model point allows (Orithises G2:
+    # a check, not a comment).
+    try:
+        address(conf.get("address"))
+        off_machine = False
+    except ModelRefused:
+        off_machine = True
+    if any(isinstance(t, str) and (_secret(t) or (off_machine and token_like(t))) for t in (card, prompt)):
         raise ModelRefused("M-SCOPE", "the card or your words hold something shaped like a key, a token or a "
                                       "password, so nothing is sent: take it out of the rule or the words first")
     if not conf.get("digest"):
@@ -910,8 +933,12 @@ def _asks(home: Path, conf: dict, now: float) -> None:
     # ahead of now counts as now, and stays until now is an hour past it (Orithises F2: fails closed).
     kept = [t for t in kept if t > now - 3600]
     if len(kept) >= conf["asks_per_hour"]:
+        # A stamp from a clock that was ahead stays until that time passes; the person is told where it is (G5).
+        ahead = (f" Some asks are stamped later than now (a clock that was set ahead); they count until that time "
+                 f"passes. If the clock is right now, removing {path} yourself clears the count."
+                 if any(t > now for t in kept) else "")
         raise ModelRefused("M-RATE", f"{len(kept)} asks in the last hour, your cap is {conf['asks_per_hour']}: "
-                                     f"ask again later, or raise it with semantext model set --asks-per-hour")
+                                     f"ask again later, or raise it with semantext model set --asks-per-hour.{ahead}")
     write_atomic(path, json.dumps(kept + [now]))
 
 

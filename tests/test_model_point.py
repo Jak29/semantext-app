@@ -205,6 +205,8 @@ class RawTo(Scripted):
                 s.connect_ex((self.host, self.port))
             elif self.how == "bind":
                 s.bind((self.host, self.port))
+            elif self.how == "sendmsg":
+                s.sendmsg([b"x"], [], 0, (self.host, self.port))
             else:
                 s.sendto(b"x", (self.host, self.port))
         finally:
@@ -225,6 +227,22 @@ def test_F1_M_HOST_a_raw_socket_call_to_a_name_is_refused_before_the_resolver(rt
     t0 = time.monotonic()
     refused("M-HOST", run_scripted, RawTo(host, 9, how), conf_for(rt))
     assert time.monotonic() - t0 < 1.0                                                  # no wait in the resolver
+
+
+@pytest.mark.skipif(not hasattr(__import__("socket").socket, "sendmsg"), reason="no sendmsg on this platform")
+def test_G4_M_HOST_sendmsg_to_a_name_is_refused_before_the_resolver(rt):               # must-refuse (G4)
+    refused("M-HOST", run_scripted, RawTo("zzzz-no-such-name.invalid", 9, "sendmsg"), conf_for(rt))
+
+
+def test_F1_partner_connect_ex_to_the_named_literal_passes(rt):                        # must-pass (her gap)
+    assert run_scripted(RawTo("127.0.0.1", rt.port, "connect_ex"), conf_for(rt)).proposals == ["sent"]
+
+
+@pytest.mark.parametrize("how", ["sendto", "bind"])
+def test_F1_H3_a_literal_passes_the_lookup_guard_and_meets_the_audit_hook(rt, how):    # must-refuse, by the hook
+    with pytest.raises(model.ModelRefused) as e:
+        run_scripted(RawTo("127.0.0.1", rt.port, how), conf_for(rt))
+    assert e.value.rule == "M-HOST" and "before any lookup" not in str(e.value)        # the second guard, not the first
 
 
 def test_F1_M_HOST_partner_a_raw_connect_to_the_named_literal_passes(rt):             # must-pass
@@ -282,6 +300,41 @@ def test_F3_M_SCOPE_a_key_in_the_card_is_withheld(rt):                          
     refused("M-SCOPE", model.run, model.OllamaProvider.from_settings(conf), f"- r1: use {made_up_key()}", "p",
             conf=conf)
     assert rt.requests == []
+
+
+def test_F3_a_key_late_in_a_long_prompt_is_withheld(rt):                               # must-refuse (her gap)
+    conf = conf_for(rt)
+    prompt = "group my rules. " * 4000 + f"and {made_up_key()}"
+    refused("M-SCOPE", model.run, model.OllamaProvider.from_settings(conf), "- r1", prompt, conf=conf)
+    assert rt.requests == []
+
+
+@pytest.mark.parametrize("disguise", ["fullwidth", "zero-width", "soft-hyphen"])
+def test_G1_M_SCOPE_a_disguised_key_in_the_card_is_withheld(rt, disguise):             # must-refuse (G1)
+    key = made_up_key()
+    if disguise == "fullwidth":
+        key = "".join(chr(ord(c) + 0xFEE0) if "!" <= c <= "~" else c for c in key)
+    elif disguise == "zero-width":
+        key = key[:3] + "​" + key[3:]
+    else:
+        key = key[:5] + "­" + key[5:]
+    conf = conf_for(rt)
+    refused("M-SCOPE", model.run, model.OllamaProvider.from_settings(conf), f"- r1: use {key}", "p", conf=conf)
+    assert rt.requests == []
+
+
+RUN = "Q7w" + "a1b2c3d4" * 5                                                            # token_like, no list names it
+
+
+def test_G2_M_SCOPE_a_token_run_is_withheld_when_the_address_is_not_this_machine(rt):  # must-refuse (G2)
+    conf = {**conf_for(rt), "address": "http://10.0.0.5:11434"}
+    refused("M-SCOPE", model.run, model.OllamaProvider.from_settings(conf_for(rt)), "- r1", f"see {RUN}", conf=conf)
+    assert rt.requests == []
+
+
+def test_G2_partner_a_token_run_goes_to_the_literal_loopback(rt):                      # must-pass
+    got = model.run(model.OllamaProvider.from_settings(conf_for(rt)), "- r1", f"see {RUN}", conf=conf_for(rt))
+    assert got is not None
 
 
 def test_F3_partner_words_about_keys_are_sent(rt, store):                               # must-pass
@@ -1356,6 +1409,20 @@ def test_F2_M_RATE_a_clock_set_back_counts_stamps_from_the_future(rt, store):
     assert kept == [now + 7200, now + 7200]                                             # and the stamps are kept
     _asks_file(store, [now + 7200])                                                     # partner: one, under the cap
     model._asks(store.root, conf, now)
+    kept = json.loads((store.root / model.ASKS_FILE).read_text(encoding="utf-8"))
+    assert kept == [now + 7200, now]                                                    # what it wrote (her gap)
+
+
+def test_G5_M_RATE_says_where_a_stamp_from_the_future_is_kept(rt, store):
+    conf, now = conf_for(rt, asks_per_hour=2), 2_000_000_000.0
+    _asks_file(store, [now + 7200, now + 7200])
+    with pytest.raises(model.ModelRefused) as e:
+        model._asks(store.root, conf, now)
+    assert "set ahead" in str(e.value) and model.ASKS_FILE in str(e.value)
+    _asks_file(store, [now - 10, now - 10])                                             # no future stamp: not said
+    with pytest.raises(model.ModelRefused) as e:
+        model._asks(store.root, conf, now)
+    assert "set ahead" not in str(e.value)
 
 
 # ---- Orithises F4: only the person sets or clears the model --------------------------------------------------------------
@@ -1391,12 +1458,34 @@ class CopiesIn(Scripted):
         import shutil
         if self.how == "copy":
             shutil.copyfile(self.src, self.dst)
+        elif self.how == "rename":
+            os.rename(self.src, self.dst)
+        elif self.how == "replace":
+            os.replace(self.src, self.dst)
+        elif self.how == "symlink":
+            os.symlink(self.src, self.dst)                  # the audit event fires before the system call
+        elif self.how == "copytree":
+            shutil.copytree(self.src, self.dst)
+        elif self.how == "move":
+            shutil.move(self.src, self.dst)
+        elif self.how == "copystat":
+            shutil.copystat(self.src, self.dst)
         else:
             os.link(self.src, self.dst)
         return ["copied"]
 
 
-@pytest.mark.parametrize("how", ["copy", "link"])
+@pytest.mark.parametrize("how", ["rename", "replace", "move"])
+def test_G3_a_move_of_a_closed_file_elsewhere_is_one_rule_M_STATE(rt, closed_place, tmp_path, how):   # her recheck
+    canary, _ = closed_place
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    elsewhere = tmp_path / "elsewhere.txt"                                              # not the call's own place
+    refused("M-STATE", run_scripted, CopiesIn(canary, elsewhere, how), conf_for(rt), scratch=scratch)
+
+
+@pytest.mark.parametrize("how", ["copy", "link", "rename", "replace",                   # rename, replace: G3
+                                 "symlink", "copytree", "move", "copystat"])             # her gaps
 def test_ids_a_copy_or_second_name_of_a_closed_file_is_a_read_M_SCOPE(rt, closed_place, tmp_path, how):
     canary, _ = closed_place                                                            # must-refuse, by M-SCOPE
     scratch = tmp_path / "scratch"

@@ -1,0 +1,124 @@
+/* Prism: Semantext's identity (I-20261103-133724; the design is PrismBrand and PrismApp on the Claude Design canvas).
+   Night is the default ground and paper the light one; five colours name your five parts, and rose always means you.
+   These tokens are set over style.css's own, so every place takes the identity; the type is Sora and JetBrains Mono
+   where they are installed, and the system's faces otherwise: nothing is fetched from outside this machine. */
+:root {
+  --bg: #0A0A0D; --surface: #131318; --raised: #1B1B22; --line: #24242C; --line-2: #33333D;
+  --text: #F4F3EE; --text-2: #A3A1AA; --text-3: #8A8892;
+  --accent: #F6C453; --accent-ink: #F6C453; --on-accent: #121216; --danger: #FF7A8A;
+  --scrim: rgba(0, 0, 0, .5); --shadow: 0 16px 40px rgba(0, 0, 0, .55);
+  --rules: #B39BFB; --agents: #7CC8F8; --work: #6EE7B7; --record: #F6C453; --waiting: #FF7A8A; --plain: #C9C7CF;
+  --ui: "Sora", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+/* Paper values (Koinos P2, measured): every text colour reaches 4.5:1 on the paper surface, the focus ring 3:1, and the
+   accent button keeps style.css's dark ink on it (6:1). */
+/* style.css sets its dark ground under these two selectors, which outrank a bare :root: night is said again under the
+   same ones, so Prism's ground wins wherever the old dark one would (found on the live page: its ink won). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0A0D; --surface: #131318; --raised: #1B1B22; --line: #24242C; --line-2: #33333D;
+    --text: #F4F3EE; --text-2: #A3A1AA; --text-3: #8A8892;
+    --accent: #F6C453; --accent-ink: #F6C453; --on-accent: #121216; --danger: #FF7A8A;
+    --scrim: rgba(0, 0, 0, .5); --shadow: 0 16px 40px rgba(0, 0, 0, .55);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0A0D; --surface: #131318; --raised: #1B1B22; --line: #24242C; --line-2: #33333D;
+  --text: #F4F3EE; --text-2: #A3A1AA; --text-3: #8A8892;
+  --accent: #F6C453; --accent-ink: #F6C453; --on-accent: #121216; --danger: #FF7A8A;
+  --scrim: rgba(0, 0, 0, .5); --shadow: 0 16px 40px rgba(0, 0, 0, .55);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F7F6F2; --surface: #EFEDE7; --raised: #FFFFFF; --line: #E2E0DA; --line-2: #D3D0C8;
+    --text: #121216; --text-2: #5C5B63; --text-3: #66656D;
+    --accent: #BC8411; --accent-ink: #8A5F0B; --on-accent: #1d1503; --danger: #C5354B;
+    --scrim: rgba(20, 20, 18, .22); --shadow: 0 12px 32px rgba(20, 20, 18, .14);
+    --rules: #7255D0; --agents: #2471A4; --work: #177A59; --record: #8D630D; --waiting: #C5354B; --plain: #5C5B63;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F7F6F2; --surface: #EFEDE7; --raised: #FFFFFF; --line: #E2E0DA; --line-2: #D3D0C8;
+  --text: #121216; --text-2: #5C5B63; --text-3: #66656D;
+  --accent: #BC8411; --accent-ink: #8A5F0B; --on-accent: #1d1503; --danger: #C5354B;
+  --scrim: rgba(20, 20, 18, .22); --shadow: 0 12px 32px rgba(20, 20, 18, .14);
+  --rules: #7255D0; --agents: #2471A4; --work: #177A59; --record: #8D630D; --waiting: #C5354B; --plain: #5C5B63;
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--ui); }
+
+/* the bar: the mark and the word */
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.02em; font-size: 18px;
+  color: var(--text); text-decoration: none; }
+.prism-mark .ink { stroke: var(--text); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.prism-mark .ray-agents, .prism-mark .ray-record, .prism-mark .ray-waiting { fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.prism-mark .ray-agents { stroke: var(--agents); } .prism-mark .ray-record { stroke: var(--record); } .prism-mark .ray-waiting { stroke: var(--waiting); }
+.places .more { position: relative; display: inline-block; }
+.places .more > summary { list-style: none; cursor: pointer; }
+.places .more > summary::-webkit-details-marker { display: none; }
+.places .more > summary.current { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.places .more[open] > .more-list { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: flex;
+  flex-direction: column; min-width: 180px; padding: 6px; gap: 2px; background: var(--raised); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--shadow); }
+.places .more-list a { padding: 8px 10px; border-radius: 8px; }
+
+/* the hero: one message in, its readings out */
+.prism-hero { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; padding: 24px 0 8px; }
+.prism-words { flex: 1 1 400px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.prism-title { margin: 0; font-size: clamp(32px, 4.4vw, 48px); font-weight: 300; letter-spacing: -0.03em; line-height: 1.06;
+  text-wrap: balance; }
+.prism-title strong { font-weight: 600; }
+.prism-form { display: flex; gap: 8px; }
+.prism-input { flex: 1 1 auto; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 15px; color: var(--text); font: inherit; font-size: 16px; }
+.prism-form .btn.primary { background: var(--text); color: var(--bg); border: 0; border-radius: 12px; padding: 0 20px;
+  font-weight: 600; }
+.prism-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.prism-presets .chip { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: 999px;
+  padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.prism-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-3); max-width: 60ch; }
+.prism-art { flex: 1 1 520px; max-width: 760px; min-width: 0; }
+.prism-figure { width: 100%; height: auto; display: block; }
+.prism-figure .beam { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; fill: none;
+  stroke-dasharray: 250; animation: beam .4s ease-out both; }
+.prism-figure .glass { fill: var(--surface); stroke: var(--text); stroke-width: 2; stroke-linejoin: round; }
+.prism-figure .ray-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 240;
+  animation: ray .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(.4s + var(--i) * .12s); }
+.prism-figure .ray circle, .prism-figure .ray text { animation: fade .45s ease both; animation-delay: calc(.85s + var(--i) * .12s); }
+.prism-figure .ray-kind { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; }
+.prism-figure .ray-text { font-family: var(--ui); font-size: 14px; fill: var(--text); }
+.ray.i0 { --i: 0; } .ray.i1 { --i: 1; } .ray.i2 { --i: 2; } .ray.i3 { --i: 3; } .ray.i4 { --i: 4; }
+.ray-rules { --c: var(--rules); } .ray-agents { --c: var(--agents); } .ray-record { --c: var(--record); }
+.ray-waiting { --c: var(--waiting); } .ray-plain { --c: var(--plain); }
+.prism-figure .ray .ray-line { stroke: var(--c); } .prism-figure .ray circle { fill: var(--c); } .prism-figure .ray .ray-kind { fill: var(--c); }
+@keyframes beam { from { stroke-dashoffset: 250; } to { stroke-dashoffset: 0; } }
+@keyframes ray { from { stroke-dashoffset: 240; } to { stroke-dashoffset: 0; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .prism-figure .beam, .prism-figure .ray-line, .prism-figure .ray circle, .prism-figure .ray text { animation: none; }
+}
+
+/* the spectrum: your five parts, each opening its place */
+.prism-spectrum { display: flex; flex-direction: column; margin-top: 28px; }
+.spectrum-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 10px; }
+.spectrum-head .label { margin: 0; }
+.spectrum { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+.band { display: grid; grid-template-columns: minmax(150px, 200px) 56px minmax(0, 1fr) 24px; align-items: center; gap: 18px;
+  padding: 18px 6px; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.band:hover, .band:focus-visible { background: var(--surface); }
+.band-name { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 600; }
+.band .swatch { width: 28px; height: 3px; border-radius: 2px; background: var(--c); }
+.band-count { font-size: 20px; color: var(--text); }
+.band.hot .band-count { color: var(--waiting); }
+.band-line { font-size: 15px; color: var(--text-2); }
+.band-go { color: var(--text-3); font-size: 18px; }
+.band-rules { --c: var(--rules); } .band-agents { --c: var(--agents); } .band-work { --c: var(--work); }
+.band-record { --c: var(--record); } .band-waiting { --c: var(--waiting); }
+@media (max-width: 640px) {
+  .band { grid-template-columns: 1fr auto; gap: 6px 12px; }
+  .band-line { grid-column: 1 / -1; }
+  .band-go { display: none; }
+}

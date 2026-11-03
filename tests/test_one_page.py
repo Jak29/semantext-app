@@ -82,15 +82,27 @@ report(sent);
 
 # ---------------------------------------------------------------- the places, and where a bare address opens
 @needs_node
-@pytest.mark.parametrize("waiting,place", [(2, "waiting"), (0, "today")])
-def test_a_bare_address_opens_on_waiting_only_when_something_waits(waiting, place):
+@pytest.mark.parametrize("waiting", [2, 0])
+def test_a_bare_address_opens_on_prism_the_home(waiting):   # 1.6.2: Prism is the home; its Waiting band carries the count
     got = run("""
 applyFrame({ name: null, word: null, waiting: %d, problems: [], outside: [] });
 location.hash = "";
 route();
-return settled().then(() => report(S.place));
+return settled().then(() => report([S.place,
+  document.getElementById("place").querySelector(".band-waiting").querySelector(".band-count").textContent]));
 """ % waiting)
-    assert got == place
+    assert got == ["prism", str(waiting)]
+
+
+@needs_node
+def test_a_name_it_does_not_know_still_opens_on_waiting():   # must-pass: only the bare address moved
+    got = run("""
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#nowhere";
+route();
+return settled().then(() => report(S.place));
+""")
+    assert got == "waiting"
 
 
 @needs_node
@@ -119,11 +131,13 @@ report([one.textContent, moved.needsYou()]);
     assert got == ["2 decisions are waiting for you", None]
 
 
-def test_the_bar_lists_eleven_places_in_the_agreed_order():
+def test_the_bar_lists_its_places_in_the_agreed_order():   # 1.6.2 (Prism): five in the bar, the rest under More
     html = text("index.html")
-    assert re.findall(r'data-place="([a-z]+)"', html) == ["today", "waiting", "work", "projects", "documents", "diffmap", "map",
-                                                          "record", "rules", "plugins", "settings"]
-    assert html.index('id="tab-record"') < html.index('id="tabs-outside"') < html.index('id="tab-rules"')
+    assert re.findall(r'data-place="([a-z]+)"', html) == ["prism", "waiting", "work", "record", "rules",
+                                                          "today", "projects", "documents", "diffmap", "map", "plugins", "settings"]
+    more = html.index('id="places-more"')
+    assert html.index('id="tab-rules"') < more < html.index('id="tab-today"')            # the five, then More
+    assert more < html.index('id="tabs-outside"') < html.index('id="tab-plugins"')        # a plug-in's place under More
 
 
 # ---------------------------------------------------------------- every moved view draws

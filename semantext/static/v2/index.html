@@ -6,25 +6,31 @@
 <title>Semantext</title>
 <link rel="stylesheet" href="/v2/style.css">
 <link rel="stylesheet" href="/v2/own.css">
+<link rel="stylesheet" href="/v2/prism.css">
 </head>
 <body>
 <a class="skip" href="#main" id="skip">Skip to the content</a>
 <header class="bar">
-  <span class="brand">Semantext</span>
+  <a class="brand" href="#prism" id="brand" aria-label="Semantext, home"><svg class="prism-mark" width="30" height="21" viewBox="0 0 40 28" aria-hidden="true"><path class="ink" d="M2 14H15"/><path class="ink" d="M15 4L25 14L15 24Z"/><path class="ray-agents" d="M25 14L38 5"/><path class="ray-record" d="M25 14L38 14"/><path class="ray-waiting" d="M25 14L38 23"/></svg>semantext</a>
   <nav class="places" aria-label="Places">
-    <a data-place="today" href="#today" id="tab-today">Today</a>
+    <a data-place="prism" href="#prism" id="tab-prism">Home</a>
     <a data-place="waiting" href="#waiting" id="tab-waiting">Waiting <span class="n" id="count-waiting"></span></a>
     <a data-place="work" href="#work" id="tab-work">Work</a>
-    <a data-place="projects" href="#projects" id="tab-projects">Projects</a>
-    <a data-place="documents" href="#documents" id="tab-documents">Documents</a>
-    <a data-place="diffmap" href="#diffmap" id="tab-diffmap">Diffmap</a>
-    <a data-place="map" href="#map" id="tab-map">Map</a>
     <a data-place="record" href="#record" id="tab-record">Record</a>
-    <span class="outside-tabs" id="tabs-outside"></span>
-    <span class="places-gap" aria-hidden="true"></span>
     <a data-place="rules" href="#rules" id="tab-rules">Rules</a>
-    <a data-place="plugins" href="#plugins" id="tab-plugins">Plug-ins</a>
-    <a data-place="settings" href="#settings" id="tab-settings">Settings</a>
+    <details class="more" id="places-more">
+      <summary>More</summary>
+      <div class="more-list">
+        <a data-place="today" href="#today" id="tab-today">Today</a>
+        <a data-place="projects" href="#projects" id="tab-projects">Projects</a>
+        <a data-place="documents" href="#documents" id="tab-documents">Documents</a>
+        <a data-place="diffmap" href="#diffmap" id="tab-diffmap">Diffmap</a>
+        <a data-place="map" href="#map" id="tab-map">Map</a>
+        <span class="outside-tabs" id="tabs-outside"></span>
+        <a data-place="plugins" href="#plugins" id="tab-plugins">Plug-ins</a>
+        <a data-place="settings" href="#settings" id="tab-settings">Settings</a>
+      </div>
+    </details>
   </nav>
   <div class="bar-place" id="bar-place"></div>
   <div class="bar-end">

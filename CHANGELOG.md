@@ -6,6 +6,38 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-03
+
+### Added
+- **Prism: Semantext's identity, and its home.** The page opens on Prism: one message goes in, and what it means comes
+  out as labelled rays (a question, a suggestion, a time word, something that needs your word), drawn in order. Below
+  it, your spectrum: Rules, Agents, Work, Record and Waiting on you, each opening the place that holds it, with
+  Waiting's count in rose (rose always means you). The reading at the top is an illustration of how Semantext reads,
+  and it says so; nothing typed there is sent anywhere.
+- **The Prism look everywhere:** night is the default ground and paper the light one (it follows your system, and the
+  theme setting still wins); five colours name your five parts; the mark (a beam in, three rays out) leads the bar.
+  The type is Sora and JetBrains Mono where they are installed and your system's faces otherwise: nothing is fetched
+  from outside your machine. The paper colours are chosen so every text reaches 4.5:1 and the focus ring 3:1 (from
+  Koinos's attack of the first Prism page, which measured the first ones short). The Waiting band says "…" until
+  its count has been read, and marks a count that could not be refreshed, instead of a false "0".
+
+### Changed
+- **Fewer tabs.** The bar holds Home, Waiting, Work, Record and Rules; Today, Projects, Documents, Diffmap, the map,
+  Plug-ins, Settings and any place a plug-in adds are under More. Every address still works. A bare address opens on
+  Prism (it opened on Waiting, or Today when nothing waited). On a place under More, More shows as where you are.
+
+### Fixed
+- **A disguised key is caught too.** Key-shaped text in the card, your words or the model's answer is now checked as
+  written and once folded as a reader takes it (compatibility forms, invisible format characters, look-alike
+  letters), so a fullwidth letter, a zero-width space or a soft hyphen inside a key does not hide it. A key broken by
+  ordinary spaces is still not caught (stated in docs/model.md). From Orithises's re-check of 1747bdb (G1).
+- **The wider key check is a check, not a comment.** Long key-like runs are withheld whenever the model's address is
+  not the literal loopback (G2).
+- **Renaming or moving a file the call was not given into its own place is a read** (M-SCOPE), like a copy; moved
+  anywhere else it is a change to your state (M-STATE), by `os.rename`, `os.replace` and `shutil.move` alike (G3). `sendmsg` to a name is refused before any lookup where the
+  platform has it (G4). The M-RATE message says where a stamp from a clock that was set ahead is kept (G5). The base
+  socket type's limit is named in docs/model.md.
+
 ## [1.6.0] - 2026-11-03
 
 ### Added
