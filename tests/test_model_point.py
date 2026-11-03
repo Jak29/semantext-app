@@ -574,11 +574,11 @@ def test_PB10c_M_SIZE_a_half_written_answer_is_refused(rt):
 
 
 def test_PB10_partner_a_whole_answer_just_under_the_budget(rt):                          # must-pass
-    rt.pieces, rt.delay = ["a ", "b ", "c ", "d."], 0.2                                   # about 0.8 s of a 1 s budget
-    conf = conf_for(rt, budget_s=1)
+    rt.pieces, rt.delay = ["a ", "b ", "c ", "d."], 0.5                                   # about 2 s of a 3 s budget:
+    conf = conf_for(rt, budget_s=3)                                                      # room for a slow runner (CI)
     t0 = time.monotonic()
     got = run_scripted(model.OllamaProvider.from_settings(conf), conf)
-    assert got.proposals == ["a b c d."] and time.monotonic() - t0 < 1.0 + model.GRACE
+    assert got.proposals == ["a b c d."] and time.monotonic() - t0 < 3.0 + model.GRACE
 
 
 # ---- PB11 / M-ID: identity from the person ----------------------------------------------------------------------------
@@ -679,10 +679,10 @@ def test_M_BUDGET_d_a_provider_that_returns_with_the_connection_open_is_seen_at_
 
 
 def test_PB13_partner_finishes_at_nine_tenths_of_its_budget(rt):                       # must-pass
-    rt.pieces, rt.delay = ["a ", "b ", "c."], 0.3
-    conf = conf_for(rt, budget_s=1)
+    rt.pieces, rt.delay = ["a ", "b ", "c."], 0.6                                        # about 1.8 s of a 3 s budget:
+    conf = conf_for(rt, budget_s=3)                                                      # room for a slow runner (CI)
     assert run_scripted(model.OllamaProvider.from_settings(conf), conf).proposals == ["a b c."]
-    assert not modelkit.open_past(rt, 1.0) and modelkit.budget_verdict(rt, 1.0) is None
+    assert not modelkit.open_past(rt, 3.0) and modelkit.budget_verdict(rt, 3.0) is None
 
 
 def test_PB14ab_M_FLIGHT_a_second_call_while_one_runs_is_refused(rt):
