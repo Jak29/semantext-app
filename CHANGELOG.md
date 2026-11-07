@@ -6,6 +6,37 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-06
+
+### Changed
+- **Waiting opens in place on Home.** The Waiting band is now a button under a heading: it opens below itself and shows
+  the cards that wait for your word, newest first, with their answers, and a link to the whole place (parked and done).
+  Before its cards are read it says "Reading your cards…", never "nothing"; if a read fails, it says so, and keeps the
+  cards last read marked as such. Escape closes it and puts focus back on the band.
+- **Rules opens in place on Home, and shows one rule beside the list.** Your rules, grouped as in Rules (this setup,
+  each agent's own, everywhere), each marked when it is off; pick one and it opens beside the list in your words, with
+  when it applies, where it came from and how many of your corrections test it. The band only reads: switching,
+  editing and adding stay in Rules, one link away. Agents, Work and Record still go to their places (the app design's
+  build step 2). Waiting's band also shows this machine's own inbox, which its count includes; an open band reads
+  again every ten seconds; an Escape a drawer has used does not close the band too.
+
+### Added
+- **The reader: your message read clause by clause.** `semantext read "your message"` now shows each clause with its
+  kind (instruction, keep going, yes, question, option, condition, praise, hold, ask first, yours to do, note), the acts
+  it names and its time words kept as you wrote them, and then what your words advise for each act. `--act` asks about
+  one act, and `--offer` gives the agent's last offer, so a bare "yes" covers only what was offered (and the offered act is shown).
+- **Your words never pass an act that leaves, spends or deletes.** For publishing, pushing, deleting, sending, paying
+  or downloading the reader says at most "your words appear to say go", which fills the ask in for you to confirm in
+  one step; it never says allowed. Anything it cannot place (a condition, a later time, an option, a hold anywhere in
+  the message, part of the message unread) asks. Reading advice can only make a decision stricter, never looser.
+- **The proxy, v0, as a library module** (`semantext.proxy`): Anthropic Messages on loopback, with a strict request
+  gate, one assembler for streamed and whole replies, a decision that holds a turn whose call a gate matches, asks
+  bound to the exact call, replay once answered, and a hash-chained record kept before anything is emitted. Your latest
+  words, read by the reader, can also HOLD a call whose act they hold, question, offer as an option, set a
+  condition on, defer, keep for you, or name without plainly saying go; only your yes on its ask releases it, once. A
+  plain go for now ("Publish it", "Publish it tonight") adds no hold: your space's gates decide that call as before. **Not yet usable on its own:** there is no command to start it and no channel yet for you
+  to answer its asks from the app or the command line, so a held call stays held. Both come next. See docs/proxy.md.
+
 ## [1.6.2] - 2026-11-03
 
 ### Fixed

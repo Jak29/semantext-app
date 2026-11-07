@@ -20,6 +20,7 @@ from .agents import Agents, Identity, clean, key_shaped, since
 from .inbox import (AGENT_MARKERS, HOW_WORDS, Inbox, age, asked_before, describe_answer, human_terminal, mine,
                     register_line)
 from .backtest import backtest as run_backtest
+from . import reading
 from .reader import EndpointReader, OllamaReader, is_local, model_backtest
 from .mine import mine as mine_history, project_transcripts
 from .sender import users_sentence
@@ -277,6 +278,25 @@ def cmd_read(store: Store, args) -> int:
         _out(f"{d['ask']}  [{d['rule']}]")
     if r["touched"]:
         _out("Touches: " + ", ".join(r["touched"]))
+    # The reader, clause by clause, and its advice for each act (advice only: it can make the gate stricter, never
+    # looser). Printed after the lines above, which stay as they were.
+    got = reading.read(" ".join(args.message))
+    if got.readings:
+        _out("Clause by clause:")
+    for x in got.readings:
+        d = x.to_dict()
+        extra = "".join([f" [{', '.join(d['acts'])}]" if d["acts"] else "", f' ("{d["time"]}")' if d["time"] else ""])
+        _out(f"  {d['label']}{extra}: {d['clause']}")
+    if got.clipped:
+        _out(f"  (read up to {reading.MAX_CHARS} characters; the rest was not read)")
+    named = {a for x in got.readings for a in x.acts}
+    if args.offer:                                   # a bare yes answers the offer: its acts are asked about too
+        named |= {a for x in reading.read(args.offer).readings for a in x.acts}
+    acts = args.act or sorted(named, key=list(reading.ACTS).index)
+    for a in acts:
+        adv = reading.advise(got, a, offer=args.offer).to_dict()
+        q = f'  "{adv["quote"]}"' if adv["quote"] else ""
+        _out(f"{a}: {adv['word']} ({adv['rule']}) {adv['why']}{q}")
     return 0
 
 
@@ -1318,6 +1338,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--last", action="store_true", help="undo the last change to the environment")
     sp = add("read", cmd_read, "show how a message is read (nothing is saved)", env=True)
     sp.add_argument("message", nargs="+", help="the message to read")
+    sp.add_argument("--act", action="append", choices=list(reading.ACTS),
+                    help="say what the words advise for this act (repeatable; default: every act the words name)")
+    sp.add_argument("--offer", help="the agent's last offer, which a bare yes binds to")
     add("where", cmd_where, "print the path of an environment's rule file", env=True)
     sp = add("hear", cmd_hear, "keep a message you sent, on this machine", env=True)
     sp.add_argument("text", nargs="+", help="the message to keep")
