@@ -422,6 +422,7 @@ def _best(tool, cmd, runs=2):
     return best, out
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("name", sorted(TIMED))
 def test_a1_a2_time_at_64k_is_under_half_a_second(name):
     """A1 (find -exec siblings sharing one here-document: 38 s at 64 KiB) and A2 (a pipe into a chain of env or sudo:
@@ -984,6 +985,7 @@ SHAPES = {
 }
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("name", sorted(SHAPES))
 @pytest.mark.parametrize("tool", ["Bash", "PowerShell"])
 def test_every_shape_of_64_kib_reads_fast(name, tool):

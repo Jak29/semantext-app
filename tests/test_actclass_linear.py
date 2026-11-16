@@ -464,6 +464,7 @@ def test_e9_no_new_greedy_pattern_nests_an_unbounded_repeat(monkeypatch):
     assert not any(True for _ in _nested_repeats(_sp.parse(r"\w+\s*$", 0)))
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("name", sorted(OLD))
 @needs_possessive
 def test_the_guard_catches_the_old_quadratic_patterns(name):
@@ -750,6 +751,7 @@ def _decide(space, tmp_path, tool, cmd):
     return time.perf_counter() - t0, out
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("name", sorted(SHAPES))
 def test_end_to_end_64k_is_under_half_a_second(name, space, tmp_path):
     """The four HIGH shapes of this round and every shape the round-2b and round-3 attackers timed: through

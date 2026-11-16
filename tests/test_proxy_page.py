@@ -289,12 +289,29 @@ def test_the_list_holds_the_commands_fields_and_nothing_of_the_call(server, worl
     assert "PRIVATE WORDS" not in text and "digest-" not in text and "conv-1" not in text      # not the call, not your words
 
 
+def _minutes_apart(first, second):
+    """The rows whose minutes left differ by more than one minute's turn between two readings taken in this order:
+    the later reading may say the same or one fewer, never more and never two fewer."""
+    return [(a["id"], a["minutes_left"], b["minutes_left"]) for a, b in zip(first, second)
+            if not 0 <= a["minutes_left"] - b["minutes_left"] <= 1]
+
+
 def test_the_list_lists_what_the_command_lists(server, world):
     world.hold(tool="Bash")
     world.hold(tool="Write", n=2)
-    page = [(a["id"], a["agent"], a["tool"], a["why"], a["minutes_left"]) for a in listed(server)[1]["asks"]]
-    cmd = [(a["id"], a["agent"], a["tool"], a["why"], a["minutes_left"]) for a in proxycmd.open_asks(world.home)]
+    page_rows, cmd_rows = listed(server)[1]["asks"], proxycmd.open_asks(world.home)
+    page = [(a["id"], a["agent"], a["tool"], a["why"]) for a in page_rows]
+    cmd = [(a["id"], a["agent"], a["tool"], a["why"]) for a in cmd_rows]
     assert page == cmd and len(page) == 2
+    # The minutes left are worked out from the clock at each reading, and the two readings are a moment apart. Until
+    # 1.8.1 this test asked for the same number, and failed when a minute turned between them (60 and 59, on two
+    # hosted Windows runners). The page's reading comes first, so the command's may say one minute fewer.
+    assert _minutes_apart(page_rows, cmd_rows) == []
+    # must pass: the same rows with the minute turned once between the readings
+    assert _minutes_apart(page_rows, [dict(r, minutes_left=r["minutes_left"] - 1) for r in page_rows]) == []
+    # must refuse: two minutes apart, and a later reading that says more
+    later = [dict(r, minutes_left=r["minutes_left"] - 2) for r in page_rows]
+    assert _minutes_apart(page_rows, later) != [] and _minutes_apart(later, page_rows) != []
 
 
 def test_a_tool_the_agent_may_not_call_is_said_so(server, world):

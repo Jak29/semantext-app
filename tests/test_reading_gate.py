@@ -117,6 +117,7 @@ def test_person_words_skip_tool_results_and_find_the_offer():
 
 
 # ---- Koinos's attack on the reader's wiring (run: ~13,000 cases) ----
+@pytest.mark.timing
 def test_classifier_is_linear_on_hostile_commands():
     import time
     for cmd in ["git " * 16_000, "curl " * 16_000 + "-X POST", "git push " * 8_000, "a; " * 20_000,

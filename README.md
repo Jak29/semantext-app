@@ -43,9 +43,10 @@ greedy copy the tests load (SECURITY.md). A
 Python 3.11 that has the feature and fails either of two known checks of it (CPython 3.11.0 to 3.11.4 do; Debian 12
 ships 3.11.2) is treated as 3.10 is.
 
-> **Status: version 1.8.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
-> connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
-> inside those tools.
+> **Status: version 1.8.1.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. Six tests
+> whose time bounds its slower runners miss are reported there, not required; the whole suite, with them, is run on
+> the project's own machine before a release. The connections for Codex, freebuff and local models are tested for the
+> files they write, and have not yet been tried inside those tools.
 
 ## Next steps
 

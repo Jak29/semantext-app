@@ -6,6 +6,32 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-11-16
+
+No change to what Semantext does, and no test's time bound changed. 1.8.0 was tagged and not released: its tests did
+not pass on GitHub's runners, for reasons that are in the CI file and in the tests and none in the product. 1.8.1 is
+1.8.0 with those put right.
+
+### Fixed
+- **A CI job has 60 minutes, not 25.** The suite grew with 1.8.0 to about 22 minutes on a hosted Linux runner, and
+  the hosted Windows runners were stopped at 25 minutes between 68% and 97% of the way, so no Windows job ended.
+- **Six tests whose time bounds a hosted runner misses are reported on CI, not required.** A time bound holds on the
+  machine it was measured on. In GitHub's two runs of 1.8.0, jobs of the same system and the same Python met these
+  bounds on one runner and missed them on another: 0.501 to 0.751 s against 0.5 s, 1.09 to 1.30 s against 1 s, and
+  two ratios (9.2 against 9; 7.4 where a control asks for 8). The six carry the `timing` mark and are listed, with
+  what was measured, in `tests/test_ci_runs_every_test.py`. That test refuses the mark on any other test and on any
+  test the security floor names, as far as a file's text shows a mark, and it pins the workflow's triggers and test
+  jobs word for word beside the laws they must keep: the two steps, the systems and Pythons, and the ways named
+  there that a run could be made not to count. What changes only when pytest runs, such as a plug-in that alters
+  what is collected, is beyond a reader of text. The one behaviour these six also checked (words that hold every
+  act still hold a call behind a 1 MiB message) now has a test of its own, which CI requires. CI runs every other
+  test on Linux, Windows and macOS, where each must pass, and these six in a step of their own on every system,
+  where a miss is reported. `python -m pytest` still runs every test; the whole suite, these six among them, is
+  run on the project's own machine before a release.
+- **One test no longer fails when a minute turns.** It compared the minutes left on a held call in the page's list
+  and in the command's, read a moment apart, and asked for the same number; on two hosted Windows runners it read
+  60 and 59. It now allows the later reading to say one minute fewer, and refuses two.
+
 ## [1.8.0] - 2026-11-16
 
 ### Added

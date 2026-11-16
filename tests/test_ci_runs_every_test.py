@@ -104,3 +104,263 @@ def test_in_ci_nothing_is_skipped_for_want_of_a_package():
         except ImportError as e:
             missing[mod] = f"{len(files)} test file(s) would skip themselves ({', '.join(files[:4])}...): {e}"
     assert missing == {}, "in CI every test must run; install the `test` extra"
+
+
+# ---- the tests CI reports and does not require (1.8.1) ----
+# A time bound holds on the machine it was measured on. 1.8.0 required every test on every system, and on GitHub's
+# runners six test functions missed bounds the project's own machine meets, by a little and not every time: jobs of
+# the same system and Python met them on one runner and missed them on another. These six, and no others, carry the
+# `timing` mark. CI runs them in a step of their own on every system, where a miss is reported and does not fail the
+# run, and requires every other test everywhere. `python -m pytest` runs them with the rest; the whole suite is run on
+# the project's own machine before a release.
+# The mark is a release from CI's requirement, so the list is pinned here, and so is the workflow's shape: the steps,
+# the systems and Pythons, and the ways a run could be made not to count. A test that asserts behaviour beside a time
+# bound is NOT a candidate for the mark (most tests with a time bound are of that kind, and CI requires them):
+# separate the two first, as test_normal_linear.py does for the one behaviour assertion these six held.
+# How far the checks reach: they read the text of the workflow, of pyproject.toml and of the test files. A mark given
+# by a decorator (under any name it is imported as), by `pytest.mark.timing` in a module's pytestmark or in a
+# parameter's marks is seen. One made when pytest runs is not (a hook or a plug-in that adds it or changes what is
+# collected, a name built by getattr, an alias inside pytestmark), and no reader of text could see it.
+import hashlib  # noqa: E402
+
+REPORTED = {    # test: what GitHub's runners measured for 1.8.0 (two runs of one commit, 16 November 2026)
+    "test_actclass_linear.py::test_end_to_end_64k_is_under_half_a_second":
+        "0.60 to 0.74 s against 0.5 s (Linux, macOS, Windows)",
+    "test_actclass_linear.py::test_the_guard_catches_the_old_quadratic_patterns":
+        "a control that must be slow: 7.4 times slower where it asks for 8 (macOS)",
+    "test_actclass_tail.py::test_a1_a2_time_at_64k_is_under_half_a_second":
+        "a ratio of 9.2 against 9 (Linux, Windows)",
+    "test_actclass_tail.py::test_every_shape_of_64_kib_reads_fast":
+        "0.501 to 0.751 s against 0.5 s on four shapes (Linux, macOS, Windows)",
+    "test_normal_linear.py::test_the_proxys_reading_of_a_1_mib_message_is_linear_and_under_a_second":
+        "1.09 to 1.30 s against 1 s (Linux, Windows)",
+    "test_reading_gate.py::test_classifier_is_linear_on_hostile_commands":
+        "0.51 to 0.58 s against 0.5 s (macOS, Windows)",
+}
+NOT_TIMED = 'python -m pytest -q -m "not timing"'
+TIMED = "python -m pytest -q -m timing"
+# Each job's systems and Pythons, as its strategy block must stand: a cell taken out is a release from CI too.
+STRATEGY = {
+    "test": (
+        "    strategy:\n"
+        "      fail-fast: false\n"
+        "      matrix:\n"
+        "        os: [ubuntu-latest]\n"
+        '        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]\n'
+        "        include:\n"
+        "          - os: windows-latest\n"
+        '            python-version: "3.10"\n'
+        "          - os: windows-latest\n"
+        '            python-version: "3.14"\n'),
+    "test-full": (
+        "    strategy:\n"
+        "      fail-fast: false\n"
+        "      matrix:\n"
+        "        os: [windows-latest, macos-latest]\n"
+        '        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]\n'
+        "        exclude:\n"
+        "          - os: windows-latest\n"
+        '            python-version: "3.10"\n'
+        "          - os: windows-latest\n"
+        '            python-version: "3.14"\n'),
+}
+# The one condition a job may carry: the rest of the matrix waits for a tag or a run by hand on a private repository.
+JOB_IF = {"test": None,
+          "test-full": "${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' || "
+                       "startsWith(github.ref, 'refs/tags/') }}"}
+
+
+# The workflow from its triggers to the end of the two test jobs, word for word, as a hash: any change to that part,
+# however small, fails here until this line is changed with it. That is its use: read the laws below, check that the
+# change keeps them, then pin the new text. The laws catch what they name; the hash catches what nobody named (a step
+# added before the tests, another kind of runner, a narrower trigger).
+PINNED = "95a360c4a051899ed60ab70409951c8f92fcc290d518d9979492152a62b23ee7"
+
+
+def pinned_part(workflow: str) -> str:
+    """The part of the workflow that decides what CI requires: from `on:` to the end of the test jobs."""
+    return workflow[workflow.index("\non:\n") + 1:workflow.index("\n  package:\n") + 1]
+
+
+def pytest_runs(job: str) -> list:
+    """Each `python -m pytest ...` command of a job's text, with the `if:` of its step ('' when the step has none) and
+    whether a failure of the step would not fail the job (any `continue-on-error` but a plain false)."""
+    out = []
+    for step in re.split(r"(?m)^      - ", job)[1:]:
+        run = re.search(r"(?m)^\s*run: (python -m pytest[^\n]*)$", step)
+        if run:
+            cond = re.search(r"(?m)^\s*if: ([^\n]*)$", step)
+            soft = bool(re.search(r"(?m)^\s*continue-on-error:(?!\s*false\s*$)", step))
+            out.append((run.group(1).strip(), cond.group(1).strip() if cond else "", soft))
+    return out
+
+
+def reported_tests_in_ci(workflow: str, pyproject: str = "") -> list:
+    """What is wrong with how the workflow runs the tests; [] when nothing is. The law, for every job that runs pytest:
+    one run of every test but the reported ones, with no condition and required (so every system runs them and a
+    failure fails the run); one run of the reported tests whose failure does not fail the run and which still runs
+    when the step before it failed; nothing else that runs pytest; the job itself required, on the systems and Pythons
+    pinned above, under no condition but the pinned one. And nothing named here that changes what pytest selects from
+    outside the command: no PYTEST_ variable in the workflow, no addopts and no second pytest table in pyproject."""
+    wrong = []
+    jobs = pytest_jobs(workflow)
+    if sorted(jobs) != sorted(STRATEGY):
+        wrong.append(f"the jobs that run pytest are {sorted(jobs)}, not {sorted(STRATEGY)}")
+    for name, text in sorted(jobs.items()):
+        head = text.split("\n    steps:\n", 1)[0] + "\n"
+        if re.search(r"(?m)^\s*continue-on-error:", head):
+            wrong.append(f"{name}: the whole job would not fail the run")
+        cond = re.search(r"(?m)^    if: ([^\n]*)$", head)
+        if (cond.group(1).strip() if cond else None) != JOB_IF.get(name):
+            wrong.append(f"{name}: the job's condition is not the pinned one")
+        block = re.search(r"(?ms)^    strategy:\n.*?(?=^    [a-z]|\Z)", head)
+        if (block.group(0) if block else None) != STRATEGY.get(name):
+            wrong.append(f"{name}: its systems and Pythons are not the pinned ones")
+        runs = pytest_runs(text)
+        if runs.count((NOT_TIMED, "", False)) != 1:
+            wrong.append(f"{name}: not exactly one unconditional, required run of every test but the reported ones")
+        if len([r for r in runs if r[0] == TIMED]) != 1:
+            wrong.append(f"{name}: the reported tests are run {len([r for r in runs if r[0] == TIMED])} times, not once")
+        for cmd, when, soft in runs:
+            if cmd == NOT_TIMED:
+                if soft or when:
+                    wrong.append(f"{name}: the tests that must pass are conditional or would not fail the run")
+            elif cmd == TIMED:
+                if not soft:
+                    wrong.append(f"{name}: a hosted runner's clock would decide the run")
+                if "!cancelled()" not in when:
+                    wrong.append(f"{name}: the reported tests would not run after a failure of the required ones")
+    for line in workflow.splitlines():                  # anywhere in the file, in any job, in any form
+        ln = line.strip()
+        if "pytest" in ln and not ln.startswith(("#", "name:", "- name:")) and ln not in (f"run: {NOT_TIMED}", f"run: {TIMED}"):
+            wrong.append(f"{ln!r} runs pytest in a way that is neither the required run nor the reported one")
+    for var in sorted(set(re.findall(r"\bPYTEST_[A-Z_]+", workflow))):
+        wrong.append(f"{var} changes what pytest does from outside the command")
+    table = pyproject.split("[tool.pytest.ini_options]", 1)[1].split("\n[", 1)[0] if "[tool.pytest.ini_options]" in pyproject else ""
+    if re.search(r"(?m)^\s*addopts\s*=", table):
+        wrong.append("pyproject's addopts changes what pytest selects from outside the command")
+    if re.search(r"(?m)^\[tool\.pytest\]\s*$", pyproject):
+        wrong.append("pyproject has a second pytest table, whose settings this test does not read")
+    return wrong
+
+
+def _is_the_mark(d) -> bool:
+    """Whether a decorator is the timing mark as the text gives it: an attribute named timing at the end of any chain
+    (pytest.mark.timing, or an alias such as mk.timing), or the bare name, called or not."""
+    if isinstance(d, ast.Call):
+        d = d.func
+    return (isinstance(d, ast.Attribute) and d.attr == "timing") or (isinstance(d, ast.Name) and d.id == "timing")
+
+
+def marked_tests(sources: dict) -> set:
+    """Every test that carries the timing mark as far as the text shows, as 'file::name': a decorated function, method
+    or class. A mark given another way that the text shows (a module's pytestmark, a parameter's marks) is returned as
+    'file::?'. sources is {file name: its text}."""
+    found = set()
+    for name, text in sorted(sources.items()):
+        plain = 0                                # the decorators that spell it mark.timing, to set against the text
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):        # a file kept broken on purpose (a fixture): its text is still read
+            if "mark.timing" in text:
+                found.add(f"{name}::?")
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if any(_is_the_mark(d) for d in node.decorator_list):
+                    found.add(f"{name}::{node.name}")
+                plain += sum("mark.timing" in ast.unparse(d) for d in node.decorator_list)
+        if text.count("mark.timing") != plain:   # the words stand somewhere that is not a decorator
+            found.add(f"{name}::?")
+    return found
+
+
+def floor_tests(page: str) -> set:
+    """The tests docs/security-floor.md names, as 'file::name'."""
+    return {f"{f}::{t}" for f, t in re.findall(r"`tests/(test_[a-z0-9_]+\.py)::(test_[A-Za-z0-9_]+)", page)}
+
+
+def _every_python_file() -> dict:
+    """Every Python file a mark could be given in: the tests folder with its subfolders (conftest.py among them) and a
+    conftest.py at the root. This file is left out, because its own text plants marks below; its own tests are checked
+    apart, by their decorators."""
+    files = {p.relative_to(ROOT / "tests").as_posix(): p for p in sorted((ROOT / "tests").rglob("*.py")) if p.name != Path(__file__).name}
+    if (ROOT / "conftest.py").is_file():
+        files["../conftest.py"] = ROOT / "conftest.py"
+    return {name: p.read_text(encoding="utf-8-sig", errors="replace") for name, p in files.items()}
+
+
+def test_ci_requires_every_test_but_the_listed_ones_and_reports_those():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert reported_tests_in_ci(workflow, pyproject) == []
+    assert hashlib.sha256(pinned_part(workflow).encode("utf-8")).hexdigest() == PINNED, \
+        "the workflow's triggers or test jobs changed: check the change against the laws in this file, then pin the new text"
+    assert not [f for f in ("pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg") if (ROOT / f).exists()], \
+        "a second place for pytest's settings, which this test does not read"
+    assert re.search(r'(?m)^markers = \["timing: ', pyproject)
+    # must refuse: 1.8.0's shape, every test in one required step, which a slower runner's clock decided
+    old = "\njobs:\n  test:\n    steps:\n      - name: Run the tests\n        run: python -m pytest -q\n"
+    assert reported_tests_in_ci(old) != []
+
+    def broken(change, words, pyproject=pyproject):
+        return any(words in w for w in reported_tests_in_ci(change, pyproject))
+
+    # must refuse: the reported step required, or not run after a failure, or gone; the required step reported only
+    assert broken(workflow.replace("        continue-on-error: true\n", ""), "clock would decide")
+    assert broken(workflow.replace("        if: ${{ !cancelled() }}\n", ""), "would not run after a failure")
+    assert broken(workflow.replace(f"        run: {TIMED}\n", f"        run: {NOT_TIMED}\n"), "run 0 times")
+    for soft in ("true", "${{ true }}", "${{ matrix.os == 'windows-latest' }}"):
+        assert broken(workflow.replace(f"        run: {NOT_TIMED}\n", f"        continue-on-error: {soft}\n        run: {NOT_TIMED}\n"),
+                      "would not fail the run")
+    # must refuse: the whole job made not to count, a system taken out, a condition put on a job
+    assert broken(workflow.replace("    timeout-minutes: 60\n", "    timeout-minutes: 60\n    continue-on-error: true\n"),
+                  "whole job would not fail")
+    assert broken(workflow.replace("        os: [windows-latest, macos-latest]\n", "        os: [macos-latest]\n"), "not the pinned ones")
+    assert broken(workflow.replace('          - os: windows-latest\n            python-version: "3.14"\n', "", 1), "not the pinned ones")
+    assert broken(workflow.replace("    runs-on: ${{ matrix.os }}\n", "    runs-on: ${{ matrix.os }}\n    if: ${{ false }}\n", 1),
+                  "condition is not the pinned one")
+    # must refuse: pytest run another way, and a selection changed from outside the command
+    assert broken(workflow.replace(f"        run: {TIMED}\n", f"        run: {TIMED}\n      - run: pytest -q -k fast\n", 1), "neither the required run")
+    assert broken(workflow.replace("    timeout-minutes: 60\n", "    timeout-minutes: 60\n    env:\n      PYTEST_ADDOPTS: -m nothing\n", 1),
+                  "PYTEST_ADDOPTS")
+    assert broken(workflow.replace("    timeout-minutes: 60\n", "    timeout-minutes: 60\n    env:\n      PYTEST_PLUGINS: other\n", 1),
+                  "PYTEST_PLUGINS")
+    assert broken(workflow, "addopts", pyproject.replace('testpaths = ["tests"]\n', 'testpaths = ["tests"]\naddopts = "-m nothing"\n'))
+    assert broken(workflow, "second pytest table", pyproject + '\n[tool.pytest]\naddopts = ["-m", "nothing"]\n')
+    # must refuse, by the hash, what no law names: a narrower trigger, a step put before the tests, another runner
+    for change in (workflow.replace("  pull_request:\n", "", 1),
+                   workflow.replace("      - uses: actions/setup-python@v6\n",
+                                    "      - run: git rm -q tests/test_x.py\n      - uses: actions/setup-python@v6\n", 1),
+                   workflow.replace("    runs-on: ${{ matrix.os }}\n", "    runs-on: self-hosted\n", 1)):
+        assert change != workflow and hashlib.sha256(pinned_part(change).encode("utf-8")).hexdigest() != PINNED
+    # each planted change above did change the text it was planted in
+    assert "        continue-on-error: true\n" in workflow and "        if: ${{ !cancelled() }}\n" in workflow
+    assert workflow.count("    timeout-minutes: 60\n") == 2 and "        os: [windows-latest, macos-latest]\n" in workflow
+    assert workflow.count("    runs-on: ${{ matrix.os }}\n") == 2 and 'testpaths = ["tests"]\n' in pyproject
+
+
+def test_only_the_listed_tests_are_reported_and_none_of_them_is_a_floor_test():
+    sources = _every_python_file()
+    marked = marked_tests(sources)
+    assert marked == set(REPORTED), (sorted(marked - set(REPORTED)), sorted(set(REPORTED) - marked))
+    own = ast.parse(Path(__file__).read_text(encoding="utf-8-sig"))
+    assert not [n.name for n in ast.walk(own) if isinstance(n, (ast.FunctionDef, ast.ClassDef))
+                and any(_is_the_mark(d) for d in n.decorator_list)]
+    floor = floor_tests((ROOT / "docs" / "security-floor.md").read_text(encoding="utf-8"))
+    assert len(floor) > 100                                              # the scan reads the page
+    assert marked & floor == set(), sorted(marked & floor)
+    # must refuse: a mark on a test that is not listed, in each way the text can give it
+    assert marked_tests({"test_x.py": "import pytest\n\n\n@pytest.mark.timing\ndef test_new():\n    pass\n"}) == {"test_x.py::test_new"}
+    assert marked_tests({"test_y.py": "import pytest\npytestmark = pytest.mark.timing\n\n\ndef test_new():\n    pass\n"}) == {"test_y.py::?"}
+    assert marked_tests({"test_z.py": "import pytest\nP = [pytest.param(1, marks=pytest.mark.timing)]\n"}) == {"test_z.py::?"}
+    assert marked_tests({"conftest.py": "import pytest\n\n\nclass TestA:\n    @pytest.mark.timing\n    def test_m(self):\n        pass\n"}) \
+        == {"conftest.py::test_m"}
+    assert marked_tests({"test_a.py": "from pytest import mark as mk\n\n\n@mk.timing\ndef test_new():\n    pass\n"}) == {"test_a.py::test_new"}
+    assert marked_tests({"test_b.py": "import pytest\n\n\n@pytest.mark.timing()\ndef test_new():\n    pass\n"}) == {"test_b.py::test_new"}
+    assert marked_tests({"test_c.py": "def test_new(:\n    pytest.mark.timing\n"}) == {"test_c.py::?"}     # not Python: its text is still read
+    # must refuse: a mark on a test the floor names (planted on the real file)
+    name = sorted(floor)[0]
+    file, test = name.split("::")
+    planted = sources[file].replace(f"def {test}(", f"@pytest.mark.timing\ndef {test}(", 1)
+    assert planted != sources[file] and name in marked_tests({file: planted}) & floor

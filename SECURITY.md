@@ -634,7 +634,9 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   outside the helper; and the reader reads the agent's offer once per reading, but on the text as NFKC widens it, so a
   message or an offer of a character that widens a lot (U+FDFA becomes 18 characters) takes about a second each at
   20,000 characters: measured on this project's machine, a reading of 20,000 U+FDFA as the offer took 0.8 to 0.9 s,
-  and with the message the same as well, 1.9 to 2.0 s, on Python 3.11 and 3.14.
+  and with the message the same as well, 1.9 to 2.0 s, on Python 3.11 and 3.14. A slower machine takes longer: the
+  proxy's reading of a message of U+FDFA took 1.09 to 1.29 s on GitHub's hosted Linux runners and 1.10 to 1.30 s on
+  its Windows ones.
 - **Keys in what the reader shows.** What the feed and the reader show is checked for the shape of a key, a token or a
   password, and a value with that shape is withheld, never rewritten. The check is made on the text as it stands and
   again with every non-ASCII character that is not white space read as a hyphen, so a key spelled with a look-alike

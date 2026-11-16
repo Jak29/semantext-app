@@ -755,6 +755,16 @@ def _proxy_turn(space, tmp_path, gen, n, lead):
     return time.perf_counter() - t0, out
 
 
+@pytest.mark.parametrize("name", sorted(SHAPES))
+def test_words_that_hold_every_act_hold_the_call_behind_a_1_mib_message(name, space, tmp_path):
+    """What the timed test below also saw, kept apart from its clock (1.8.1) so that it is required wherever the suite
+    runs: the newest user message is words that hold every act and then 1 MiB of the shape; the proxy keeps 64 KiB of
+    it (proxy.MAX_WORDS), the reader 20,000 characters of that (reading.MAX_CHARS), and the opaque call is held."""
+    _, out = _proxy_turn(space, tmp_path, SHAPES[name], K * K, WORDS)
+    assert out.held, name
+
+
+@pytest.mark.timing
 @pytest.mark.parametrize("lead", [WORDS, "Thanks."], ids=["words-that-hold", "words-that-hold-nothing"])
 @pytest.mark.parametrize("name", sorted(SHAPES))
 def test_the_proxys_reading_of_a_1_mib_message_is_linear_and_under_a_second(name, lead, space, tmp_path):
@@ -773,8 +783,7 @@ def test_the_proxys_reading_of_a_1_mib_message_is_linear_and_under_a_second(name
     t256, t1m, out = measure(2)
     if not (t1m < 1.0 and t1m < 6 * t256 + 0.05):      # a slow pair is measured again before it counts
         t256, t1m, out = measure(3)
-    if lead == WORDS:
-        assert out.held, name                           # words that hold every act hold the opaque call
+    # that words which hold every act hold the opaque call is asserted, with no clock, by the test above
     assert t1m < 1.0 and t1m < 6 * t256 + 0.05, (name, t256, t1m)
 
 

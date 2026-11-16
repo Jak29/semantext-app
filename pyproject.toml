@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "semantext"
-version = "1.8.0"
+version = "1.8.1"
 description = "Keep your standing rules for how an AI assistant reads you, and hand them to it with every prompt."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,3 +53,9 @@ semantext = ["static/v2/*", "data/profiles/*/SEMANTICS.yaml", "data/suggestions/
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `timing` marks the few tests whose time bound a hosted CI runner has missed while the project's own machine meets
+# it. They are listed, with what was measured, in tests/test_ci_runs_every_test.py, which refuses the mark on any
+# other test. CI runs every other test on every system, where each must pass, and these in a step of their own,
+# where a miss is reported and does not fail the run. `python -m pytest` runs every test, these among them, and the
+# whole suite is run on the project's own machine before a release.
+markers = ["timing: a time bound a hosted CI runner has missed (CI reports it; the whole suite runs it before a release)"]

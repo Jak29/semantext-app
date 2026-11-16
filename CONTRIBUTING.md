@@ -12,9 +12,12 @@ pip install -e ".[test]"
 python -m pytest
 ```
 
-You need Python 3.10 or newer. The tests take about a minute and a half. CI runs them on Linux, Windows and macOS, for
-Python 3.10 to 3.14; while the repository is private, a push runs Linux and two Windows versions, and the rest waits
-for a tag or a run by hand (see the comment at the top of `.github/workflows/ci.yml`).
+You need Python 3.10 or newer. The whole suite takes about 22 minutes on one of GitHub's Linux runners. CI runs it on
+Linux, Windows and macOS, for Python 3.10 to 3.14; while the repository is private, a push runs Linux and two Windows
+versions, and the rest waits for a tag or a run by hand (see the comment at the top of `.github/workflows/ci.yml`).
+Six tests whose time bounds a hosted runner misses carry the `timing` mark: CI reports them and does not require
+them, and `python -m pytest` runs them with the rest. `tests/test_ci_runs_every_test.py` lists them and refuses the
+mark on any other test.
 
 ## How the tests are written
 
