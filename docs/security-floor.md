@@ -31,7 +31,15 @@ passed, and whether each fails without its guard is not measured. Items 25 to 30
 
 1. **The gate reader imports on Python 3.10: every regex in the package compiles there.**
    Why: one quantifier 3.10 does not know stopped the gate reader importing at all, on a supported Python.
+   The act classifier (the actclass module) is the one module allowed to write its patterns with possessive repeats
+   (3.11 syntax). It compiles them through a shim that, below 3.11 (and on a 3.11 that fails either of two known checks
+   of possessive repeats, as CPython 3.11.0 to 3.11.4 do), drops the extra `+`; what the shim makes of each
+   must compile on 3.10 and mean the same with greedy repeats. The greedy patterns give the same answers but are not
+   linear, so there the classifier reads a command of at most 2 KiB (`MAX_COMMAND_310`), not 64 KiB, and a longer one
+   counts as every material act. These were measured on the greedy copy the tests load, not on a real Python 3.10.
    - `tests/test_provenance_round3.py::test_f1_no_pattern_in_the_package_needs_python_3_11`
+   - `tests/test_actclass_linear.py::test_e9_the_shim_leaves_no_pattern_that_3_10_cannot_parse`
+   - `tests/test_actclass_linear.py::test_e9_on_python_3_10_a_smaller_backstop_bounds_the_greedy_patterns`
 
 2. **A forged or replayed act of the person's is unverified, and is never applied.**
    Why: the person's word is the one authority an agent cannot mint; an act with no span, evidence that is not the

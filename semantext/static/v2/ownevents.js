@@ -4,7 +4,7 @@ import { $, S, back, h, fill, act, api, ago, clock, copyBtn, enc, envTitle, fmt,
 import { Sky, closePop } from "./ownsky.js";
 import { Space } from "./ownspace.js";
 import { historyRows, recentRows } from "./owntoday.js";
-import { loadIdeas, ruleLists, testFlow } from "./ownrules.js";
+import { loadIdeas, ruleLists, testFlow, tryMessage } from "./ownrules.js";
 import { refreshLayers } from "./ownagents.js";
 import { closeMenu, openEditor, openMenu, openNew, suggest } from "./ownsettings.js";
 
@@ -127,11 +127,7 @@ document.addEventListener("submit", async (ev) => {
   if (f.id === "testForm") {
     const message = f.elements.message.value.trim();
     if (!message) return toast("Type a message to try");
-    try {
-      const r = await api("/api/explain", { message, words: f.elements.words.value || null, agent: f.elements.agent.value });
-      S.test = fromTest(r, message, false);
-      fill("testFlow", testFlow());
-    } catch (e) { toast(e.message); }
+    await tryMessage(message, f.elements.words.value, f.elements.agent.value, f.elements.offer.value.trim());
   }
 });
 if (typeof matchMedia === "function") matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { Sky.kick(); Space.kick(); });

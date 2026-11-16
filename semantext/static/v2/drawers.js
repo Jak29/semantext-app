@@ -2,7 +2,7 @@
 import { $, h } from "./dom.js";
 import { newestFirst, plural, when } from "./words.js";
 import { docHref } from "./parts.js";
-import { DRAWER_ROUTE, load, S } from "./app.js";
+import { DRAWER_ROUTE, keep, load, S } from "./app.js";
 import { renderProblems } from "./frame.js";
 import { goCard } from "./waiting.js";
 import { basisWords, docNode, stateWords, worktreeDetail, wtName } from "./projects.js";
@@ -46,7 +46,8 @@ export function renderDrawer(fresh) {
   if (!data) { $("drawer-title").textContent = "Reading…"; body.replaceChildren(); return; }
   const parts = (DRAW[kind] || (() => ["", []]))(data, arg);
   $("drawer-title").textContent = parts[0];
-  body.replaceChildren(...parts[1]);
+  // A read that lands while the drawer is open draws again; a selection in the drawer's words is kept through it.
+  if (fresh) body.replaceChildren(...parts[1]); else keep(() => body.replaceChildren(...parts[1]), body);   // a draw that reads the same leaves the drawn nodes (keep)
   if (!fresh) body.scrollTop = y;
 }
 

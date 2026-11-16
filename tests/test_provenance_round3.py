@@ -1,11 +1,16 @@
 """Whose words, against the confirmed findings of the round 3 review of the store writes (994f103): each test names its
 finding and fails on 994f103. store_provenance/F1 is guarded twice: the wrapper pattern is linear without possessive
-repeats, and no pattern in the package may use a possessive repeat or an atomic group, which Python 3.10 (the floor in
-pyproject) cannot compile.
+repeats, and no pattern in the package may reach Python 3.10 (the floor in pyproject) with a possessive repeat or an
+atomic group, which 3.10 cannot compile. Since the act classifier's fix round 4, one module (actclass.py) WRITES
+possessive repeats, to be linear by construction from 3.11, and compiles every pattern through its own shim, which gives
+the extra `+` up below 3.11. So the law is: a pattern that needs 3.11 as written may stand only in a module on the
+SHIMMED list, and what that module's shim makes of it must be a pattern 3.10 can compile that means the same thing with
+greedy repeats (the two parsed patterns are compared, so a shim that ate a `+` inside a character class is caught).
 """
 from __future__ import annotations
 
 import ast
+import importlib
 import re
 import time
 from pathlib import Path
@@ -47,24 +52,77 @@ def patterns():
                 yield f.relative_to(PACKAGE), n.lineno, n.args[0].value
 
 
+SHIMMED = {"actclass.py"}    # the modules that may write 3.11 syntax, each through its own shim; a new one is added on purpose
+
+
+def _needs_311(p) -> list:
+    """What in a pattern, as written, Python 3.10 cannot compile."""
+    try:
+        hits = _newer_than_310(sre.parse(p))
+    except re.error as e:        # on 3.10 a possessive repeat is a syntax error here
+        hits = [str(e)]
+    text = p if isinstance(p, str) else p.decode("latin-1")
+    return hits + [t for t in ("(?>",) if t in text]
+
+
+def _shim(rel):
+    """The pattern a module's own shim uses to give up possessive repeats below 3.11, or None when the module compiles
+    with the re module itself. A shimmed module binds the name `re` to an object of its own and holds _DEPOSSESS."""
+    parts = list(Path(rel).with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    mod = importlib.import_module(".".join(["semantext", *parts]))
+    own, dep = getattr(mod, "re", None), getattr(mod, "_DEPOSSESS", None)
+    return dep if own is not None and own is not re and dep is not None else None
+
+
+def _shape(x, greedy=False):
+    """A parsed pattern as nested tuples of names and numbers; with greedy, every possessive repeat reads as a greedy one."""
+    if isinstance(x, (sre.SubPattern, list, tuple)):
+        return tuple(_shape(i, greedy) for i in x)
+    s = str(x)
+    return "MAX_REPEAT" if greedy and s == "POSSESSIVE_REPEAT" else s
+
+
+def _problems(p, dep) -> list:
+    """What is wrong with one pattern for Python 3.10: nothing when 3.10 can compile it as written, or when the module's
+    shim (dep, its de-possessing pattern) makes of it a pattern 3.10 can compile that means the same with greedy repeats."""
+    hits = _needs_311(p)
+    if not hits:
+        return []
+    if dep is None or not isinstance(p, str):
+        return [f"needs Python 3.11 as written ({hits}) and is compiled through no shim"]
+    q = dep.sub(r"\1", p)
+    left = _needs_311(q)
+    if left:
+        return [f"still needs Python 3.11 after the shim ({left})"]
+    if hasattr(re, "NOFLAG") and _shape(sre.parse(q)) != _shape(sre.parse(p), greedy=True):   # 3.10 cannot parse p to compare
+        return ["the shim changes what the pattern means, beyond making its repeats greedy"]
+    return []
+
+
 # ---------------------------------------------------------------- store_provenance/F1: possessive repeats
 def test_f1_no_pattern_in_the_package_needs_python_3_11():
     found = list(patterns())
     assert len(found) > 50 and any(str(f) == "provenance.py" for f, _, _ in found)   # the scan sees the package
     bad = []
     for f, line, p in found:
-        try:
-            hits = _newer_than_310(sre.parse(p))
-        except re.error as e:        # on 3.10 a possessive repeat is a syntax error here
-            hits = [str(e)]
-        text = p if isinstance(p, str) else p.decode("latin-1")
-        hits += [t for t in ("(?>",) if t in text]
-        if hits:
-            bad.append(f"{f}:{line} {hits}")
+        if _needs_311(p):
+            dep = _shim(f) if f.as_posix() in SHIMMED else None
+            bad += [f"{f}:{line} {x}" for x in _problems(p, dep)]
     assert bad == []
-    # must refuse: the scan does see a possessive repeat and an atomic group
     if hasattr(re, "NOFLAG"):        # 3.11 and later can parse them
+        # must refuse: the scan does see a possessive repeat and an atomic group
         assert _newer_than_310(sre.parse(r"a++")) and _newer_than_310(sre.parse(r"(?>a)"))
+        dep = _shim(Path("actclass.py"))
+        assert dep is not None                      # the shim is there to be asked
+        assert _shim(Path("provenance.py")) is None  # and a module that compiles with re itself has none
+        assert _problems(r"a+b", None) == []        # nothing 3.10 cannot compile: no shim needed
+        assert _problems(r"a++b", dep) == []        # through the shim, 3.10 is given a+b, which means the same, greedy
+        assert _problems(r"a++b", None)             # must refuse: 3.11 syntax with no shim
+        assert _problems(rb"a++b", dep)             # must refuse: a bytes pattern (the shim is for str)
+        assert _problems(r"(?>a)b", dep)            # must refuse: an atomic group, which the shim does not give up
+        assert _problems(r"[*+]x++", dep)           # must refuse: the shim would take the + out of the class
 
 
 TAILS = {"plain": ("a", 1_000_000), "equals": ("a=", 500_000), "quoted": (' x="1"', 170_000),

@@ -33,6 +33,7 @@ MAX_RULE = 400        # the same limit as a rule taught at the user's own termin
 # How an asker's name was known (agents.py), in the words the user reads.
 HOW_WORDS = {"bound": "bound by you", "claimed": "claimed", "observed": "seen", "fallback": "unnamed"}
 NOTES_BYTES = 3_000   # the inbox's share of the hook's output, so the card always keeps most of the room
+NOTE_TITLE = 160      # characters of a request's title in the hook's note (a title the inbox files is at most MAX_TITLE)
 ASKER = "ai"          # who is asking when an agent does not say: `ask --from`, `answers` and the hook all default to it
 MODEL_LABEL = "MODEL"  # the kernel's word on a model's proposal (model.py), never the provider's text
 MODEL_CHOICES = ["Noted", "Set aside"]
@@ -63,7 +64,8 @@ def _reads_as(text) -> str:
     """Text as it reads: compatibility forms folded (a fullwidth letter or space), invisible format characters gone,
     lookalike letters mapped to Latin, leading white space and punctuation dropped. Spaces between words are kept."""
     import unicodedata
-    t = unicodedata.normalize("NFKC", str(text or ""))
+    from . import normal
+    t = normal.nfkc(str(text or ""))   # linear: unicodedata's was quadratic (actclass r4 attack, finding 3)
     t = "".join(c for c in t if unicodedata.category(c) != "Cf").translate(_LOOKALIKE)
     return re.sub(r"^[\W_]+", "", t)
 
@@ -110,7 +112,16 @@ SECRET = re.compile(
     r"AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|ya29\.[0-9A-Za-z_-]{20,}|"                     # AWS, Google
     r"xox[baprs]-[A-Za-z0-9-]{10,}|hooks\.slack\.com/services/[A-Za-z0-9/_-]{20,}|"          # Slack
     r"hf_[A-Za-z0-9]{30,}|npm_[A-Za-z0-9]{30,}|"                                             # Hugging Face, npm
-    r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|"                          # a JSON web token
+    # A JSON web token. Linear (R10): the first segment ran to the end of its run of token characters and then needed a
+    # dot, so every "eyJ" in one long run (eyJaeyJaeyJa...) scanned to the end of it again, quadratic (20,000 characters
+    # took 9.9 s, with the GIL held; the folded text of feed.scrub made a non-ASCII run the same). Every "eyJ" of a run
+    # meets the same dot, and the first has the longest segment, so only the first "eyJ" of a run needs trying: the arm
+    # begins at the start of a run (not after a token character), reads on to the first "eyJ" in a lookahead, which is
+    # atomic (a group captured there is never given up), and goes on from it. What it finds is the same JWTs, and the
+    # match begins at its run (a token character before the "eyJ" is part of it, as the cut-out of a key wants).
+    # The literal "eyJ[...]{8,}\.[...]{8,}\." stays whole in this text: proxy._bounded finds it to bound it.
+    r"(?<![A-Za-z0-9_-])(?=(?P<jwt_lead>[A-Za-z0-9_-]*?)eyJ)(?P=jwt_lead)"
+    r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|"
     r"-----BEGIN [A-Z0-9 ]+-----|"                                                           # a PEM key
     # user:password@ in a URL. The scheme is bounded (Koinos X1): unbounded, a long run of letters made this arm retry
     # from every start, quadratic (80,000 letters took 32 s, and re holds the GIL). Bounded, it is linear, and a scheme
@@ -468,6 +479,15 @@ class Inbox:
         """Every open request, or, given an asker (an Identity, or a name), only that asker's own (see mine())."""
         return [r for r in self.requests().values() if r["status"] == "open" and (who is None or mine(r, who))]
 
+    def waiting_requests(self, who=None) -> list[dict]:
+        """The open requests the user has not set aside: the ones that wait for their word now."""
+        return [r for r in self.open_requests(who) if not r["parked"]]
+
+    def parked_requests(self, who=None) -> list[dict]:
+        """The open requests the user set aside. They are still open (the asker holds them, and an answer still counts),
+        but they are not waiting, and they are never listed as if they were."""
+        return [r for r in self.open_requests(who) if r["parked"]]
+
     def unread_answers(self, who=None) -> list[dict]:
         return [r for r in self.requests().values()
                 if r["status"] == "answered" and not r["read"] and (who is None or mine(r, who))]
@@ -622,8 +642,21 @@ def register_line(r: dict) -> str:
     if r["status"] == "closed":
         return f"#{r['id']} {r['title']}: withdrawn {age((r.get('closed') or {}).get('at') or r['at'])} ago"
     if r["status"] == "open":
+        if r.get("parked"):
+            return f"#{r['id']} {r['title']}: set aside (parked) by the user; not answered, and not waiting on them now"
         return f"#{r['id']} {r['title']}: still waiting for the user's answer"
     return f"{describe_answer(r)} ({age(r['answer']['at'])} ago{', typed in chat' if r['answer'].get('via') == 'chat' else ''})"
+
+
+def still_open(inbox: Inbox, who) -> str:
+    """What an asker is told is still open when it has no new answer: the requests that wait for the user's word, and,
+    apart, the ones the user set aside. A parked request is never listed as waiting."""
+    waiting, parked = inbox.waiting_requests(who), inbox.parked_requests(who)
+    out = (" Still waiting: " + ", ".join(f"#{r['id']}" for r in waiting)) if waiting else ""
+    if parked:
+        out += (". " if waiting else " ") + "Parked by the user (set aside, not answered): " + ", ".join(
+            f"#{r['id']}" for r in parked)
+    return out
 
 
 def asked_before(inbox: Inbox, r: dict) -> str:
@@ -650,22 +683,37 @@ def card_notes(inbox: Inbox, who=ASKER, limit: int = NOTES_BYTES) -> str:
     Whole notes only, never a cut answer, and within `limit` bytes; what does not fit is counted, with the command
     that shows it."""
     sections = []
-    answers = inbox.unread_answers(who)
+    # One reading of the file for all three lists, and a line is made only for the few that can be shown: a long inbox
+    # (thousands of requests) costs one fold and CARD_LINES lines, and the rest are counted in the "more" line.
+    own = [r for r in inbox.requests().values() if who is None or mine(r, who)]
+    answers = [r for r in own if r["status"] == "answered" and not r["read"]]
+    waiting = [r for r in own if r["status"] == "open" and not r["parked"]]
+    parked = [r for r in own if r["status"] == "open" and r["parked"]]
+
+    def title(r) -> str:   # a very long title (a hand-made line) is cut, so it cannot hide the lines after it
+        t = " ".join(str(r["title"]).split())
+        return t if len(t) <= NOTE_TITLE else t[:NOTE_TITLE - 1] + "…"
+
     if answers:
         sections.append(("## The user's answers (act on these, then run `semantext answers` to mark them read)",
-                         [f"- {describe_answer(r)}" for r in answers], "semantext answers"))
-    waiting = inbox.open_requests(who)
+                         answers, lambda r: f"- {describe_answer(r)}", "semantext answers"))
     if waiting:
         sections.append((f"## Waiting for the user's answer ({len(waiting)}): do not act on these yet (they can answer "
                          f"by sending #<number> and their choice as a message of its own)",
-                         [f"- #{r['id']} {r['title']} (asked {age(r['at'])} ago)" for r in waiting], "semantext inbox"))
+                         waiting, lambda r: f"- #{r['id']} {title(r)} (asked {age(r['at'])} ago)", "semantext inbox"))
+    if parked:   # not "waiting": the user set these aside, and has not answered them
+        sections.append((f"## Set aside by the user ({len(parked)}): parked, not answered. Do not act on these, and do not "
+                         f"ask them again; the user brings them back when they want them",
+                         parked, lambda r: f"- #{r['id']} {title(r)} (parked" + (f" {a} ago)" if (a := age(r["parked_at"])) else ")"),
+                         "semantext inbox"))
     size = lambda s: len(s.encode("utf-8")) + 1   # noqa: E731 (one newline per line)
     lines = []
-    for header, items, command in sections:
+    for header, items, line, command in sections:
         room = limit // len(sections) - size(header) - 64   # 64: room kept for the "more" line
         lines.append(header)
         shown = 0
-        for item in items[:CARD_LINES]:
+        for r in items[:CARD_LINES]:
+            item = line(r)
             if size(item) > room:
                 break
             lines.append(item)

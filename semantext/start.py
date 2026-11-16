@@ -46,9 +46,11 @@ def screen(store, who, since: str | None = None) -> tuple[str, bool]:
     inbox = Inbox(store.root)
 
     def answers() -> list[str]:
-        new, waiting = inbox.unread_answers(who), inbox.open_requests(who)
+        new, waiting, parked = inbox.unread_answers(who), inbox.waiting_requests(who), inbox.parked_requests(who)
         rows = _rows(new, lambda r: f"#{r['id']} answered: {' '.join(shown(r['title']).split())}", "semantext answers")
         rows += _rows(waiting, lambda r: f"#{r['id']} still waiting: {' '.join(shown(r['title']).split())}", "semantext inbox")
+        rows += _rows(parked, lambda r: f"#{r['id']} parked by the user (set aside, not answered): "
+                                        f"{' '.join(shown(r['title']).split())}", "semantext inbox")
         return rows + (["  read the answers in full with: semantext answers"] if new else [])
     part("YOUR REQUESTS", answers)
 

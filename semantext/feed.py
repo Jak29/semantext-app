@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -48,10 +49,55 @@ def stamp() -> str:
     return datetime.now().astimezone().isoformat(timespec="microseconds")
 
 
+# A key spelled with a character that is not the ASCII hyphen but stands in its place (sk, U+2011, then the rest) was
+# echoed, because the key shapes name the ASCII hyphen. For the key-shape test only, such a character is read as "-"
+# (R2, R8): every Unicode dash punctuation character (general category Pd), the minus signs, and, since a look-alike is
+# whatever the attacker finds that looks like one (U+02D7, U+2043, U+2796, U+30FC, a box-drawing line, the ideograph
+# U+4E00 ... were found), every other character outside ASCII that is not white space.
+MINUS_SIGNS = frozenset("−⁻₋﹣－")
+
+
+def _hyphenlike(ch: str) -> bool:
+    return ch in MINUS_SIGNS or unicodedata.category(ch) == "Pd" or (ord(ch) > 127 and not ch.isspace())
+
+
+def _folded(text: str) -> str:
+    return "".join("-" if _hyphenlike(ch) else ch for ch in text)
+
+
+def _keyed(text: str) -> bool:
+    return bool(SECRET.search(text)) or token_like(text)
+
+
 def scrub(value):
-    """The value, with every string shaped like a key, a token or a password replaced by WITHHELD."""
+    """The value, with every string shaped like a key, a token or a password replaced by WITHHELD. The test is made on
+    the string as it stands and again with every non-ASCII character that is not white space read as a hyphen (_folded:
+    the dash punctuation, the minus signs and the look-alikes), so a key spelled with one is withheld too; what is kept
+    is the string as it stood, never the folded one: a value is withheld or left, not rewritten (ordinary text with those
+    characters is left as it is, unless it has the shape of a key once they are hyphens: a false alarm costs one
+    withheld value). Limits, stated: a character that is ASCII and not a hyphen is not folded (a key spelled with an
+    underscore for its hyphen is not seen); white space is not folded (a key broken by a space is not seen); and the
+    reader's clauses reach this after normalisation, which changes characters before the scrub sees them (the reader
+    therefore scrubs the clause as written too, reading.Reading.shown, R11).
+    The width of the false alarm, stated exactly (R8 noise, R16): the folded text is withheld when ANY key shape
+    matches it (inbox.SECRET) or when it holds a token-shaped run, and the fold makes every non-ASCII non-space
+    character a hyphen, so a run of such characters is a run of hyphens. Two rules predict what ordinary text does, and
+    together they predict every case measured (311, of which 242 the first version of this note did not predict):
+    (1) the OpenAI arm, "sk-" and 16 or more of [A-Za-z0-9_-]: the letters "sk" in any case (task, disk, risk, desk,
+    ask, mask ...) followed at once by a non-ASCII character or a hyphen and then by 16 or more further characters that
+    are each an ASCII letter, digit, "_" or "-", or non-ASCII and not white space. No digit is needed: "このtaskは明日まで
+    に終わらせてください。" is withheld. The two sibling arms that name a hyphen work the same way with their own lead and
+    length: "glpat" and 20 such characters, "xox" with one of b a p r s and 10. Limit, stated (close-1): the other SECRET
+    arms that accept a hyphen do the same and are not predicted by these two rules: "AIza" (in any case: "Aiza", "Faiza"
+    inside a word), "hooks.slack.com/services/" and "ya29." followed by non-ASCII text (140 generated strings, all
+    withheld, the cheap direction). (2) The token run: 32 or more characters
+    that are each an ASCII letter, digit or one of + / = _ -, or non-ASCII and not white space, holding at least one
+    ASCII letter and one ASCII digit ("issue123" inside a Japanese sentence). In both, white space and ASCII
+    punctuation other than _ and - break the run, and a CJK full stop is not ASCII, so it does not. Nothing is released
+    or echoed; a false alarm costs one withheld value. The scan is linear: one pass of SECRET (R10) and one of
+    TOKEN_RUN over the string and over its folded twin."""
     if isinstance(value, str):
-        return WITHHELD if SECRET.search(value) or token_like(value) else value
+        return WITHHELD if _keyed(value) or (not value.isascii() and _keyed(_folded(value))) else value
     if isinstance(value, list):
         return [scrub(v) for v in value]
     if isinstance(value, dict):

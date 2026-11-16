@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "semantext"
-version = "1.7.0"
+version = "1.8.0"
 description = "Keep your standing rules for how an AI assistant reads you, and hand them to it with every prompt."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,7 +32,10 @@ classifiers = [
 dependencies = ["PyYAML>=6"]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+# What the tests need beyond the package. The proxy's tests drive it with the Anthropic SDK as their client, and skip
+# themselves where it is not installed; CI installs this extra, so that they run there (tests/test_ci_runs_every_test.py).
+# tomli is the TOML reader for Python 3.10, which has none of its own.
+test = ["pytest>=7", "anthropic>=0.114", "tomli>=2; python_version < '3.11'"]
 
 [project.scripts]
 semantext = "semantext.cli:main"

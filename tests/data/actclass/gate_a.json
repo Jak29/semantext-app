@@ -1,0 +1,1386 @@
+[
+{
+"cmd": "git push",
+"want": "push"
+},
+{
+"cmd": "git push origin main",
+"want": "push"
+},
+{
+"cmd": "git push -f",
+"want": "push"
+},
+{
+"cmd": "git push --force-with-lease",
+"want": "push"
+},
+{
+"cmd": "git push origin HEAD:refs/heads/x",
+"want": "push"
+},
+{
+"cmd": "git -c a=b push",
+"want": "push"
+},
+{
+"cmd": "git --no-pager push",
+"want": "push"
+},
+{
+"cmd": "git -C . push",
+"want": "push"
+},
+{
+"cmd": "GIT_SSH_COMMAND=x git push",
+"want": "push"
+},
+{
+"cmd": "git.exe push",
+"want": "push"
+},
+{
+"cmd": "& git push",
+"want": "push"
+},
+{
+"cmd": "git push",
+"want": "push"
+},
+{
+"cmd": "git push\torigin",
+"want": "push"
+},
+{
+"cmd": "git\npush",
+"want": "push"
+},
+{
+"cmd": "/usr/bin/git push",
+"want": "push"
+},
+{
+"cmd": "c:\\git\\git.exe push",
+"want": "push"
+},
+{
+"cmd": "env git push",
+"want": "push"
+},
+{
+"cmd": "sudo git push",
+"want": "push"
+},
+{
+"cmd": "sh -c 'git push'",
+"want": "push"
+},
+{
+"cmd": "bash -c \"git push\"",
+"want": "push"
+},
+{
+"cmd": "git ps",
+"want": "push"
+},
+{
+"cmd": "$g='git'; & $g push",
+"want": "push"
+},
+{
+"cmd": "git send-pack origin",
+"want": "push"
+},
+{
+"cmd": "git svn dcommit",
+"want": "push"
+},
+{
+"cmd": "hub push",
+"want": "push"
+},
+{
+"cmd": "gh repo sync",
+"want": "push"
+},
+{
+"cmd": "git commit -am x && git push",
+"want": "push"
+},
+{
+"cmd": "gh pr merge 3",
+"want": "publish"
+},
+{
+"cmd": "gh pr merge 3 --squash",
+"want": "publish"
+},
+{
+"cmd": "rm file",
+"want": "delete"
+},
+{
+"cmd": "rm -rf /",
+"want": "delete"
+},
+{
+"cmd": "rm -fr x",
+"want": "delete"
+},
+{
+"cmd": "/bin/rm x",
+"want": "delete"
+},
+{
+"cmd": "sudo rm x",
+"want": "delete"
+},
+{
+"cmd": "\\rm x",
+"want": "delete"
+},
+{
+"cmd": "command rm x",
+"want": "delete"
+},
+{
+"cmd": "find . -delete",
+"want": "delete"
+},
+{
+"cmd": "find . -name x -exec rm {} +",
+"want": "delete"
+},
+{
+"cmd": "xargs rm",
+"want": "delete"
+},
+{
+"cmd": "rm\tx",
+"want": "delete"
+},
+{
+"cmd": "del x",
+"want": "delete"
+},
+{
+"cmd": "del /q /f x",
+"want": "delete"
+},
+{
+"cmd": "rd /s /q x",
+"want": "delete"
+},
+{
+"cmd": "rmdir /s x",
+"want": "delete"
+},
+{
+"cmd": "erase x",
+"want": "delete"
+},
+{
+"cmd": "Remove-Item x",
+"want": "delete"
+},
+{
+"cmd": "remove-item -Force x",
+"want": "delete"
+},
+{
+"cmd": "ri x",
+"want": "delete"
+},
+{
+"cmd": "Get-ChildItem | Remove-Item",
+"want": "delete"
+},
+{
+"cmd": "[System.IO.File]::Delete('x')",
+"want": "delete"
+},
+{
+"cmd": "[IO.Directory]::Delete('x',$true)",
+"want": "delete"
+},
+{
+"cmd": "python -c \"import os;os.remove('x')\"",
+"want": "delete"
+},
+{
+"cmd": "python -c \"import shutil;shutil.rmtree('x')\"",
+"want": "delete"
+},
+{
+"cmd": "python -c \"import os;os.unlink('x')\"",
+"want": "delete"
+},
+{
+"cmd": "python -c \"import pathlib;pathlib.Path('x').unlink()\"",
+"want": "delete"
+},
+{
+"cmd": "node -e \"fs.rmSync('x')\"",
+"want": "delete"
+},
+{
+"cmd": "Set-Content x ''",
+"want": "delete"
+},
+{
+"cmd": "Clear-Content x",
+"want": "delete"
+},
+{
+"cmd": "> x",
+"want": "delete"
+},
+{
+"cmd": "mv x /dev/null",
+"want": "delete"
+},
+{
+"cmd": "git branch -d x",
+"want": "delete"
+},
+{
+"cmd": "git branch -D x",
+"want": "delete"
+},
+{
+"cmd": "git push origin :x",
+"want": "delete"
+},
+{
+"cmd": "git push -d origin x",
+"want": "delete"
+},
+{
+"cmd": "git stash drop",
+"want": "delete"
+},
+{
+"cmd": "git stash clear",
+"want": "delete"
+},
+{
+"cmd": "git checkout -- .",
+"want": "delete"
+},
+{
+"cmd": "git restore .",
+"want": "delete"
+},
+{
+"cmd": "git reset --hard",
+"want": "delete"
+},
+{
+"cmd": "git clean -fdx",
+"want": "delete"
+},
+{
+"cmd": "git worktree remove x",
+"want": "delete"
+},
+{
+"cmd": "docker rm x",
+"want": "delete"
+},
+{
+"cmd": "docker system prune -f",
+"want": "delete"
+},
+{
+"cmd": "podman rm -f x",
+"want": "delete"
+},
+{
+"cmd": "kubectl delete pod x",
+"want": "delete"
+},
+{
+"cmd": "aws s3 rm s3://b --recursive",
+"want": "delete"
+},
+{
+"cmd": "az group delete -n x",
+"want": "delete"
+},
+{
+"cmd": "gcloud compute instances delete x",
+"want": "delete"
+},
+{
+"cmd": "DROP TABLE x",
+"want": "delete"
+},
+{
+"cmd": "psql -c 'drop table x'",
+"want": "delete"
+},
+{
+"cmd": "redis-cli flushall",
+"want": "delete"
+},
+{
+"cmd": "shred x",
+"want": "delete"
+},
+{
+"cmd": "truncate -s0 x",
+"want": "delete"
+},
+{
+"cmd": "rimraf x",
+"want": "delete"
+},
+{
+"cmd": "npx rimraf x",
+"want": "delete"
+},
+{
+"cmd": "cmd /c del x",
+"want": "delete"
+},
+{
+"cmd": "cmd.exe /c rd /s x",
+"want": "delete"
+},
+{
+"cmd": "rm.exe x",
+"want": "delete"
+},
+{
+"cmd": "Remove-Item.exe x",
+"want": "delete"
+},
+{
+"cmd": "rm\u200b x",
+"want": "delete"
+},
+{
+"cmd": "r\u200bm x",
+"want": "delete"
+},
+{
+"cmd": "\uff52\uff4d x",
+"want": "delete"
+},
+{
+"cmd": "npm publish",
+"want": "publish"
+},
+{
+"cmd": "npm publish --access public",
+"want": "publish"
+},
+{
+"cmd": "npm.cmd publish",
+"want": "publish"
+},
+{
+"cmd": "npx np",
+"want": "publish"
+},
+{
+"cmd": "yarn npm publish",
+"want": "publish"
+},
+{
+"cmd": "pnpm -r publish",
+"want": "publish"
+},
+{
+"cmd": "pnpm --filter x publish",
+"want": "publish"
+},
+{
+"cmd": "npm -w x publish",
+"want": "publish"
+},
+{
+"cmd": "npm --prefix x publish",
+"want": "publish"
+},
+{
+"cmd": "twine upload dist/*",
+"want": "publish"
+},
+{
+"cmd": "python -m twine upload dist/*",
+"want": "publish"
+},
+{
+"cmd": "python -m build && twine upload",
+"want": "publish"
+},
+{
+"cmd": "flit publish",
+"want": "publish"
+},
+{
+"cmd": "uv publish",
+"want": "publish"
+},
+{
+"cmd": "hatch publish",
+"want": "publish"
+},
+{
+"cmd": "cargo publish",
+"want": "publish"
+},
+{
+"cmd": "gh release create v1",
+"want": "publish"
+},
+{
+"cmd": "gh release upload v1 x",
+"want": "publish"
+},
+{
+"cmd": "gh pr create",
+"want": "publish"
+},
+{
+"cmd": "gh repo create x",
+"want": "publish"
+},
+{
+"cmd": "gh repo edit --visibility public",
+"want": "publish"
+},
+{
+"cmd": "gh gist create x",
+"want": "publish"
+},
+{
+"cmd": "gh workflow run x",
+"want": "publish"
+},
+{
+"cmd": "gh api -X POST repos/o/r/issues",
+"want": "send"
+},
+{
+"cmd": "gh api repos/o/r/issues -f title=x",
+"want": "send"
+},
+{
+"cmd": "gh issue create",
+"want": "send"
+},
+{
+"cmd": "gh pr comment 1 -b x",
+"want": "send"
+},
+{
+"cmd": "gh pr review 1 --approve",
+"want": "send"
+},
+{
+"cmd": "gh pr merge",
+"want": "publish"
+},
+{
+"cmd": "vercel --prod",
+"want": "publish"
+},
+{
+"cmd": "vercel deploy",
+"want": "publish"
+},
+{
+"cmd": "netlify deploy --prod",
+"want": "publish"
+},
+{
+"cmd": "firebase deploy",
+"want": "publish"
+},
+{
+"cmd": "fly deploy",
+"want": "publish"
+},
+{
+"cmd": "heroku push",
+"want": "publish"
+},
+{
+"cmd": "git push heroku main",
+"want": "push"
+},
+{
+"cmd": "wrangler deploy",
+"want": "publish"
+},
+{
+"cmd": "wrangler publish",
+"want": "publish"
+},
+{
+"cmd": "az webapp up",
+"want": "publish"
+},
+{
+"cmd": "az deployment group create",
+"want": "publish"
+},
+{
+"cmd": "az functionapp deploy",
+"want": "publish"
+},
+{
+"cmd": "az containerapp up",
+"want": "publish"
+},
+{
+"cmd": "aws s3 cp x s3://b/",
+"want": "publish"
+},
+{
+"cmd": "aws s3 sync . s3://b",
+"want": "publish"
+},
+{
+"cmd": "aws lambda update-function-code",
+"want": "publish"
+},
+{
+"cmd": "aws cloudformation deploy",
+"want": "publish"
+},
+{
+"cmd": "aws deploy create-deployment",
+"want": "publish"
+},
+{
+"cmd": "sam deploy",
+"want": "publish"
+},
+{
+"cmd": "cdk deploy",
+"want": "publish"
+},
+{
+"cmd": "gcloud app deploy",
+"want": "publish"
+},
+{
+"cmd": "gcloud run deploy",
+"want": "publish"
+},
+{
+"cmd": "gcloud functions deploy x",
+"want": "publish"
+},
+{
+"cmd": "gsutil cp x gs://b",
+"want": "publish"
+},
+{
+"cmd": "kubectl apply -f x",
+"want": "publish"
+},
+{
+"cmd": "helm install x",
+"want": "publish"
+},
+{
+"cmd": "helm upgrade x",
+"want": "publish"
+},
+{
+"cmd": "terraform apply",
+"want": "publish"
+},
+{
+"cmd": "terraform apply -auto-approve",
+"want": "publish"
+},
+{
+"cmd": "pulumi up",
+"want": "publish"
+},
+{
+"cmd": "docker push x",
+"want": "push"
+},
+{
+"cmd": "podman push x",
+"want": "push"
+},
+{
+"cmd": "docker compose push",
+"want": "push"
+},
+{
+"cmd": "docker buildx build --push .",
+"want": "push"
+},
+{
+"cmd": "scp x host:/y",
+"want": "send"
+},
+{
+"cmd": "rsync -av x host:/y",
+"want": "send"
+},
+{
+"cmd": "sftp host",
+"want": "send"
+},
+{
+"cmd": "ftp host",
+"want": "send"
+},
+{
+"cmd": "scp host:/y x",
+"want": "download"
+},
+{
+"cmd": "rsync host:/y .",
+"want": "download"
+},
+{
+"cmd": "ssh host 'rm x'",
+"want": "delete"
+},
+{
+"cmd": "curl -X POST u",
+"want": "send"
+},
+{
+"cmd": "curl -XPOST u",
+"want": "send"
+},
+{
+"cmd": "curl --request POST u",
+"want": "send"
+},
+{
+"cmd": "curl -d a u",
+"want": "send"
+},
+{
+"cmd": "curl --data a u",
+"want": "send"
+},
+{
+"cmd": "curl --data-binary @f u",
+"want": "send"
+},
+{
+"cmd": "curl --data-raw a u",
+"want": "send"
+},
+{
+"cmd": "curl --data-urlencode a u",
+"want": "send"
+},
+{
+"cmd": "curl -F a=b u",
+"want": "send"
+},
+{
+"cmd": "curl --form a=b u",
+"want": "send"
+},
+{
+"cmd": "curl --json '{}' u",
+"want": "send"
+},
+{
+"cmd": "curl -T f u",
+"want": "send"
+},
+{
+"cmd": "curl --upload-file f u",
+"want": "send"
+},
+{
+"cmd": "curl -X PUT u",
+"want": "send"
+},
+{
+"cmd": "curl -X DELETE u",
+"want": "send"
+},
+{
+"cmd": "curl -sSL -X POST u",
+"want": "send"
+},
+{
+"cmd": "curl -s -d x u",
+"want": "send"
+},
+{
+"cmd": "curl -sd x u",
+"want": "send"
+},
+{
+"cmd": "curl.exe -X POST u",
+"want": "send"
+},
+{
+"cmd": "curl u -d x",
+"want": "send"
+},
+{
+"cmd": "wget --post-data=a u",
+"want": "send"
+},
+{
+"cmd": "wget --post-file=f u",
+"want": "send"
+},
+{
+"cmd": "http POST u",
+"want": "send"
+},
+{
+"cmd": "http post u",
+"want": "send"
+},
+{
+"cmd": "https POST u",
+"want": "send"
+},
+{
+"cmd": "xh post u",
+"want": "send"
+},
+{
+"cmd": "iwr u -Method Post",
+"want": "send"
+},
+{
+"cmd": "iwr -Uri u -Method POST -Body x",
+"want": "send"
+},
+{
+"cmd": "Invoke-RestMethod -Method Post -Uri u",
+"want": "send"
+},
+{
+"cmd": "irm u -Method put",
+"want": "send"
+},
+{
+"cmd": "Invoke-WebRequest u -Method:Post",
+"want": "send"
+},
+{
+"cmd": "Invoke-RestMethod -Uri u -Body $b",
+"want": "send"
+},
+{
+"cmd": "(New-Object Net.WebClient).UploadString('u','x')",
+"want": "send"
+},
+{
+"cmd": "python -c \"import requests;requests.post('u')\"",
+"want": "send"
+},
+{
+"cmd": "python -c \"import urllib.request as r;r.urlopen('u',data=b'x')\"",
+"want": "send"
+},
+{
+"cmd": "node -e \"fetch('u',{method:'POST'})\"",
+"want": "send"
+},
+{
+"cmd": "nc host 80",
+"want": "send"
+},
+{
+"cmd": "sendmail x",
+"want": "send"
+},
+{
+"cmd": "mail -s x a@b",
+"want": "send"
+},
+{
+"cmd": "mailx -s x a@b",
+"want": "send"
+},
+{
+"cmd": "msmtp a@b",
+"want": "send"
+},
+{
+"cmd": "mutt -s x a@b",
+"want": "send"
+},
+{
+"cmd": "Send-MailMessage",
+"want": "send"
+},
+{
+"cmd": "slack-cli send",
+"want": "send"
+},
+{
+"cmd": "twilio api:core:messages:create",
+"want": "send"
+},
+{
+"cmd": "aws sns publish",
+"want": "send"
+},
+{
+"cmd": "aws ses send-email",
+"want": "send"
+},
+{
+"cmd": "gcloud pubsub topics publish",
+"want": "send"
+},
+{
+"cmd": "telegram-send x",
+"want": "send"
+},
+{
+"cmd": "pip install x",
+"want": "download"
+},
+{
+"cmd": "pip3 install x",
+"want": "download"
+},
+{
+"cmd": "python -m pip install x",
+"want": "download"
+},
+{
+"cmd": "py -m pip install x",
+"want": "download"
+},
+{
+"cmd": "pip.exe install x",
+"want": "download"
+},
+{
+"cmd": "pipx install x",
+"want": "download"
+},
+{
+"cmd": "pip download x",
+"want": "download"
+},
+{
+"cmd": "uv add x",
+"want": "download"
+},
+{
+"cmd": "uv pip install x",
+"want": "download"
+},
+{
+"cmd": "uv sync",
+"want": "download"
+},
+{
+"cmd": "uv run x",
+"want": "download"
+},
+{
+"cmd": "poetry add x",
+"want": "download"
+},
+{
+"cmd": "poetry install",
+"want": "download"
+},
+{
+"cmd": "conda install x",
+"want": "download"
+},
+{
+"cmd": "mamba install x",
+"want": "download"
+},
+{
+"cmd": "npm install",
+"want": "download"
+},
+{
+"cmd": "npm i",
+"want": "download"
+},
+{
+"cmd": "npm ci",
+"want": "download"
+},
+{
+"cmd": "npm add x",
+"want": "download"
+},
+{
+"cmd": "npm install -g x",
+"want": "download"
+},
+{
+"cmd": "npm --prefix x install",
+"want": "download"
+},
+{
+"cmd": "pnpm install",
+"want": "download"
+},
+{
+"cmd": "pnpm i",
+"want": "download"
+},
+{
+"cmd": "yarn",
+"want": "download"
+},
+{
+"cmd": "yarn install",
+"want": "download"
+},
+{
+"cmd": "yarn add x",
+"want": "download"
+},
+{
+"cmd": "bun install",
+"want": "download"
+},
+{
+"cmd": "bun add x",
+"want": "download"
+},
+{
+"cmd": "bunx x",
+"want": "download"
+},
+{
+"cmd": "pnpm dlx x",
+"want": "download"
+},
+{
+"cmd": "npx x",
+"want": "download"
+},
+{
+"cmd": "npm exec x",
+"want": "download"
+},
+{
+"cmd": "cargo install x",
+"want": "download"
+},
+{
+"cmd": "cargo add x",
+"want": "download"
+},
+{
+"cmd": "cargo build",
+"want": "download"
+},
+{
+"cmd": "go get x",
+"want": "download"
+},
+{
+"cmd": "go install x@latest",
+"want": "download"
+},
+{
+"cmd": "go mod download",
+"want": "download"
+},
+{
+"cmd": "gem install x",
+"want": "download"
+},
+{
+"cmd": "bundle install",
+"want": "download"
+},
+{
+"cmd": "composer require x",
+"want": "download"
+},
+{
+"cmd": "composer install",
+"want": "download"
+},
+{
+"cmd": "apt install x",
+"want": "download"
+},
+{
+"cmd": "apt-get install x",
+"want": "download"
+},
+{
+"cmd": "sudo apt install x",
+"want": "download"
+},
+{
+"cmd": "apt-get update",
+"want": "download"
+},
+{
+"cmd": "dnf install x",
+"want": "download"
+},
+{
+"cmd": "yum install x",
+"want": "download"
+},
+{
+"cmd": "pacman -S x",
+"want": "download"
+},
+{
+"cmd": "zypper install x",
+"want": "download"
+},
+{
+"cmd": "apk add x",
+"want": "download"
+},
+{
+"cmd": "brew install x",
+"want": "download"
+},
+{
+"cmd": "winget install x",
+"want": "download"
+},
+{
+"cmd": "choco install x",
+"want": "download"
+},
+{
+"cmd": "scoop install x",
+"want": "download"
+},
+{
+"cmd": "Install-Module x",
+"want": "download"
+},
+{
+"cmd": "Install-Package x",
+"want": "download"
+},
+{
+"cmd": "Install-PSResource x",
+"want": "download"
+},
+{
+"cmd": "dotnet add package x",
+"want": "download"
+},
+{
+"cmd": "dotnet restore",
+"want": "download"
+},
+{
+"cmd": "nuget install x",
+"want": "download"
+},
+{
+"cmd": "mvn install",
+"want": "download"
+},
+{
+"cmd": "gradle build",
+"want": "download"
+},
+{
+"cmd": "docker pull x",
+"want": "download"
+},
+{
+"cmd": "podman pull x",
+"want": "download"
+},
+{
+"cmd": "docker run x",
+"want": "download"
+},
+{
+"cmd": "git clone u",
+"want": "download"
+},
+{
+"cmd": "git fetch",
+"want": "download"
+},
+{
+"cmd": "git pull",
+"want": "download"
+},
+{
+"cmd": "git submodule update --init",
+"want": "download"
+},
+{
+"cmd": "hf download x",
+"want": "download"
+},
+{
+"cmd": "huggingface-cli download x",
+"want": "download"
+},
+{
+"cmd": "ollama pull x",
+"want": "download"
+},
+{
+"cmd": "kaggle datasets download x",
+"want": "download"
+},
+{
+"cmd": "curl -O u",
+"want": "download"
+},
+{
+"cmd": "curl -o f u",
+"want": "download"
+},
+{
+"cmd": "curl u > f",
+"want": "download"
+},
+{
+"cmd": "curl u | sh",
+"want": "download"
+},
+{
+"cmd": "curl -L u -o f",
+"want": "download"
+},
+{
+"cmd": "curl --output f u",
+"want": "download"
+},
+{
+"cmd": "curl --remote-name u",
+"want": "download"
+},
+{
+"cmd": "curl -OL u",
+"want": "download"
+},
+{
+"cmd": "curl -sSLO u",
+"want": "download"
+},
+{
+"cmd": "wget u",
+"want": "download"
+},
+{
+"cmd": "aria2c u",
+"want": "download"
+},
+{
+"cmd": "iwr u -OutFile f",
+"want": "download"
+},
+{
+"cmd": "Invoke-WebRequest u -OutFile f",
+"want": "download"
+},
+{
+"cmd": "irm u | iex",
+"want": "download"
+},
+{
+"cmd": "Start-BitsTransfer u f",
+"want": "download"
+},
+{
+"cmd": "certutil -urlcache -f u f",
+"want": "download"
+},
+{
+"cmd": "bitsadmin /transfer j u f",
+"want": "download"
+},
+{
+"cmd": "Invoke-WebRequest -Uri u",
+"want": "download"
+},
+{
+"cmd": "(New-Object Net.WebClient).DownloadFile('u','f')",
+"want": "download"
+},
+{
+"cmd": "python -c \"import urllib.request as r;r.urlretrieve('u','f')\"",
+"want": "download"
+},
+{
+"cmd": "pip install -r requirements.txt",
+"want": "download"
+},
+{
+"cmd": "stripe charges create",
+"want": "pay"
+},
+{
+"cmd": "stripe payment_intents create",
+"want": "pay"
+},
+{
+"cmd": "stripe refunds create",
+"want": "pay"
+},
+{
+"cmd": "stripe transfers create",
+"want": "pay"
+},
+{
+"cmd": "stripe payouts create",
+"want": "pay"
+},
+{
+"cmd": "stripe charges create --amount 1",
+"want": "pay"
+},
+{
+"cmd": "stripe  charges  create",
+"want": "pay"
+},
+{
+"cmd": "stripe prices create",
+"want": "pay"
+},
+{
+"cmd": "paypal-cli pay",
+"want": "pay"
+},
+{
+"cmd": "curl https://api.stripe.com/v1/charges -u sk:",
+"want": "pay"
+},
+{
+"cmd": "ls",
+"want": "none"
+},
+{
+"cmd": "git status",
+"want": "none"
+},
+{
+"cmd": "git diff",
+"want": "none"
+},
+{
+"cmd": "git add .",
+"want": "none"
+},
+{
+"cmd": "git commit -m x",
+"want": "none"
+},
+{
+"cmd": "python x.py",
+"want": "none"
+},
+{
+"cmd": "node x.js",
+"want": "none"
+},
+{
+"cmd": "npm test",
+"want": "none"
+},
+{
+"cmd": "npm run build",
+"want": "none"
+},
+{
+"cmd": "pytest",
+"want": "none"
+},
+{
+"cmd": "echo hello",
+"want": "none"
+},
+{
+"cmd": "cat x",
+"want": "none"
+},
+{
+"cmd": "curl u",
+"want": "none"
+},
+{
+"cmd": "curl -s u",
+"want": "none"
+},
+{
+"cmd": "curl -I u",
+"want": "none"
+},
+{
+"cmd": "grep push x",
+"want": "none"
+},
+{
+"cmd": "echo git push",
+"want": "none"
+},
+{
+"cmd": "git log --grep=push",
+"want": "none"
+},
+{
+"cmd": "git config push.default x",
+"want": "none"
+},
+{
+"cmd": "man git-push",
+"want": "none"
+},
+{
+"cmd": "grep -r 'rm ' .",
+"want": "none"
+},
+{
+"cmd": "echo 'gh pr create' > notes.txt",
+"want": "none"
+},
+{
+"cmd": "git commit -m 'fix push bug'",
+"want": "none"
+},
+{
+"cmd": "cd rm-dir",
+"want": "none"
+},
+{
+"cmd": "cat install.md",
+"want": "none"
+},
+{
+"cmd": "pip list",
+"want": "none"
+},
+{
+"cmd": "npm ls",
+"want": "none"
+},
+{
+"cmd": "git branch",
+"want": "none"
+},
+{
+"cmd": "git branch -a",
+"want": "none"
+},
+{
+"cmd": "git remote add o u",
+"want": "none"
+}
+]

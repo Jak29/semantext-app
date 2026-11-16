@@ -1,6 +1,6 @@
 """The Semantext proxy, v0: Anthropic Messages, on loopback (PROXY-DESIGN r4).
 
-    serve(space_dir, home, card, port)       (1.7.0: a library call; no `semantext proxy serve` command yet)
+    semantext proxy serve --space FOLDER [--port N]      (the person's own act at their console; see proxycmd.py)
 
 A client points its base URL at http://127.0.0.1:N and names its agent in the header `x-semantext-agent`. Each request:
 
@@ -109,16 +109,28 @@ def node_key(home: Path) -> bytes:
     return p.read_bytes()
 
 
-def conversation_key(key: bytes, body: dict, session: str | None) -> str:
-    """A keyed hash of the system prefix, the first user message and the client's session header (J6, T11)."""
+def conversation_key(key: bytes, body: dict, session: str | None, agent: str | None = None) -> str:
+    """A keyed hash of the system prefix, the first user message, the client's session header and the agent that
+    named itself (J6, T11). The agent is part of it: two agents that send the same chat are two conversations, so one
+    agent's kept turn is neither replayed to the other nor dropped by the other's request (found by A08). It only
+    groups: two chats of one agent that start alike share it. What ties a yes to ONE chat is the history chain
+    (decide.Chain), which covers the whole system, the tools and every message. The two parts it reads are taken
+    without their cache markers (decide.plain_block), as the chain takes them: a client moves a marker onto the newest
+    message, and a first message that carries one in one request and not in the next is still the same chat; without
+    this the key changed with the marker and a yes was never found again (C6)."""
     first = next((m for m in body.get("messages", []) if isinstance(m, dict) and m.get("role") == "user"), None)
-    sysp = body.get("system")
+    sysp = decide.plain_system(body.get("system"))      # a string is one text block (C8), markers dropped (C7)
     sys0 = sysp[0] if isinstance(sysp, list) and sysp else sysp
-    data = canon.dumps([sys0 if sys0 is not None else "", first or "", session or ""]).encode()
+    first = decide._plain(first) if first is not None else None
+    data = canon.dumps([sys0 if sys0 is not None else "", first or "", session or ""]
+                       + ([agent] if agent else [])).encode()
     return hmac.new(key, data, hashlib.sha256).hexdigest()
 
 
-REMINDER_TAG = re.compile(r"<\s*(/?)\s*system-reminder\b[^<>]{0,200}>", re.I)
+# The white space before and after the slash is written so that the two runs never share one: `<\s*(/?)\s*` tried
+# every split of the spaces after a "<" that opens no tag (the square of the run: 8 s for "<" and 32 KiB of spaces,
+# measured, on every request that carried the message; the same in 1.7.0). The tags it finds are the same.
+REMINDER_TAG = re.compile(r"<(?:\s*(/))?\s*system-reminder\b[^<>]{0,200}>", re.I)
 MAX_WORDS = 64 * 1024            # the person's words kept: the first and last halves, after reminders are cut
 MAX_RAW = 4 * 1024 * 1024        # text read from one message before cutting (the newest blocks first)
 MAX_TURNS = 10_000               # messages looked back through for the person's words
@@ -139,6 +151,163 @@ def _cut_reminders(t: str) -> str:
     if depth == 0:
         out.append(t[i:])
     return " ".join(out)
+
+
+def _cut_closed_reminders(t: str) -> str:
+    """_cut_reminders, but the text after a reminder tag that is never closed is KEPT (a tag the person pasted in front
+    of their words must not swallow them). Only for words read to ADD holds (hold_only_words)."""
+    out, i, depth, opened = [], 0, 0, 0
+    for m in REMINDER_TAG.finditer(t):
+        if depth == 0:
+            out.append(t[i:m.start()])
+            opened = m.end()
+        depth = depth - 1 if m.group(1) else depth + 1
+        if depth < 0:
+            depth = 0
+        i = m.end()
+    out.append(t[i:] if depth == 0 else t[opened:])
+    return " ".join(out)
+
+
+# What the client itself writes around words that reach it while a tool runs. Measured on Claude Code's own requests
+# (November 2026, 33 of 33 in one long session): the line "The user sent a new message while you were working:", then
+# the person's words, then one paragraph on how the client surfaces them; another session's message arrives behind the
+# same kind of lead. These sentences are not the person's, and they name an act ("sent", "messages the user sends"):
+# read with the words, every such message held `send`, and held it again over a yes.
+CLIENT_LEADS = ("The user sent a new message while you were working:",
+                "Another Claude session sent a message while you were working:")
+CLIENT_TAIL = ("This is how Claude Code surfaces messages the user sends mid-turn",
+               "Address the message above as you continue this turn.")
+MAX_CLIENT_TAIL = 400
+CLIENT_TAG = re.compile(r"<(?:\s*/)?\s*cross-session-message\b[^<>]{0,300}>")   # around another session's message
+_EDGE = " \t\r\n\ufeff\u200b\u200c\u200d\u2060"    # what may stand around a client's line: white space, a BOM, zero-width marks
+_LEADS_N = tuple(s.casefold() for s in CLIENT_LEADS)
+_TAIL_N = tuple(s.casefold() for s in CLIENT_TAIL)
+# The client's own record renders words typed while a tool ran INSIDE a reminder tag (the 33 requests measured carry
+# them bare). Sent that way the section would be cut whole and the words never read. So an opening tag that stands
+# directly before the lead is dropped first: the section then reads as typed words, and its closing tag is a stray
+# closer, which the cut skips. One run of white space after the "<", a bounded tag, a bounded gap: one pass.
+TYPED_WRAP = re.compile(r"<\s*system-reminder\b[^<>]{0,200}>\s{0,8}"
+                        r"(?=the user sent a new message while you were working:)", re.I)
+
+
+def _unwrap_typed(t: str) -> str:
+    return TYPED_WRAP.sub("\n", t) if "<" in t else t
+
+
+def _cut_client_notes(t: str) -> str:
+    """t without the client's own lines around words typed while a tool ran: a lead only as a whole line, the closing
+    paragraph only as one line of at most MAX_CLIENT_TAIL characters that begins and ends as the client writes it (both
+    in any case, with white space, a byte-order mark or zero-width marks around them), and the tag around another
+    session's message (its name holds the word "message", which the reader takes for a send). The words between them
+    stay as they are. Only for text read to ADD holds (hold_only_words). Limit: another client's wording, or a later
+    wording of this one, is not known here and is read with the words (it can cost an ask)."""
+    low = t.casefold()
+    if _TAIL_N[0] not in low and "cross-session-message" not in t and not any(lead in low for lead in _LEADS_N):
+        return t
+    keep = []
+    for line in t.split("\n"):
+        s = line.strip(_EDGE).casefold()
+        tail = len(s) <= MAX_CLIENT_TAIL and s.startswith(_TAIL_N[0]) and s.endswith(_TAIL_N[1])
+        if not (tail or s in _LEADS_N):
+            keep.append(line)
+    return CLIENT_TAG.sub(" ", "\n".join(keep))
+
+
+MAX_HOLD_ONLY = 16               # texts read for holds only, of each of the two kinds (hold_only_words)
+MAX_HOLD_SCAN = 2000             # user messages looked back through for them
+MAX_TYPED_TAIL = 256             # of a message with more than MAX_BLOCKS blocks: the last blocks looked at, for typed words
+
+
+def _is_typed(t: str) -> bool:
+    """Whether a text block is what the person typed while a tool ran: it BEGINS with the client's lead for that
+    (measured: 33 of 33 such blocks), in any case, after white space, a byte-order mark or zero-width marks, and after
+    any closed reminder section the client put at the block's head."""
+    head = t[:400].lstrip(_EDGE)
+    if head.startswith("<"):                          # a tag first: cut the closed reminders, then look
+        head = _cut_closed_reminders(t if len(t) <= MAX_RAW else t[:MAX_RAW]).lstrip(_EDGE)[:400]
+    return head.casefold().startswith(_LEADS_N[0])
+
+
+def _beside_a_result(m) -> tuple:
+    """(typed, other): the text of a user message that carries a tool result, for the hold-only reading. Each text
+    block is taken on its own. A block that begins with the client's lead is what the person typed: every such block is
+    read (the newest MAX_HOLD_ONLY of the message, each kept to MAX_WORDS), whatever stands before or after it in the
+    message: a note in an earlier block made the whole message other text, and megabytes in a later block hid it. The
+    remaining blocks are the other text, read as _raw reads a message: the newest first, up to MAX_RAW. A message with
+    more than MAX_BLOCKS blocks is looked at only in its last MAX_TYPED_TAIL blocks, and only for typed words."""
+    c = m.get("content") if isinstance(m, dict) else None
+    if not isinstance(c, list):
+        return "", ""
+    many = len(c) > MAX_BLOCKS
+    typed, rest = [], []
+    for b in (c[-MAX_TYPED_TAIL:] if many else c):
+        if isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str):
+            t = _unwrap_typed(b["text"])
+            (typed if _is_typed(t) else rest).append(t)
+    half = MAX_RAW // 2
+    mine = "\n".join(
+        _keep(_cut_client_notes(_cut_closed_reminders(t if len(t) <= MAX_RAW else t[:half] + "\n" + t[-half:])))
+        for t in reversed(typed[-MAX_HOLD_ONLY:]))    # the newest block first, as the messages are
+    if many:
+        return mine, ""
+    parts, size = [], 0
+    for t in reversed(rest):                          # the other blocks: the newest first, up to MAX_RAW
+        parts.append(t)
+        size += len(t)
+        if size >= MAX_RAW:
+            break
+    return mine, _keep(_cut_client_notes(_cut_closed_reminders("\n".join(reversed(parts)))))
+
+
+def hold_only_words(body: dict) -> list:
+    """Text read ONLY to add holds, never as a go, a yes or an answer: [(text, index of its message)].
+    The person's words (person_words) skip a user message that carries a tool result, and cut a reminder tag that is
+    never closed to the end; but a client sends words typed while a tool runs beside its result, and a person may paste
+    such a tag before "do not delete anything". So: the text blocks of each user message that carries a tool result,
+    after the person's own words, and the person's own message read with an unclosed tag kept. Text there may be the
+    client's own or another session's (a tool's output is never read): it can cost a hold, the cheap direction; nothing
+    here releases. The client's own lines around typed words are cut first (_cut_client_notes).
+
+    ORDER AND CAPS. What the person typed comes FIRST: each text block that begins with the client's lead for words
+    typed while a tool ran (_is_typed; measured: 33 of 33 blocks), taken block by block (_beside_a_result), and the
+    person's own message read with an unclosed tag kept; newest first, up to MAX_HOLD_ONLY messages. Then the other
+    texts (the client's notes, another session's message), newest first, each distinct text once, up to MAX_HOLD_ONLY.
+    The decision reads them joined in this order and the reader reads the first 20,000 characters or 400 clauses, so a
+    note or another session's message, however long or however many, does not push the typed words out of the reading
+    (sixteen notes after a "don't push yet" did; so did a note in the same message, and 4 MiB in a later block of it).
+    Limits: only that one client's lead is known, and only at the start of a block, so from another client, or where
+    something stands before the lead in its block, the words are of the second kind, where a newer long text can crowd
+    an older one out; of the person's own typing, the newest MAX_HOLD_ONLY typed messages are read, up to the reader's
+    clip, and of one block over MAX_WORDS its two ends; a message with more than MAX_BLOCKS blocks is looked at only in
+    its last MAX_TYPED_TAIL blocks and only for typed words; words inside a closed reminder pair are cut with it."""
+    raw = body.get("messages") if isinstance(body, dict) else None
+    msgs = raw if isinstance(raw, list) else []
+    lo = max(0, len(msgs) - MAX_TURNS)
+    typed, other, seen, scanned = [], [], set(), 0
+    for i in range(len(msgs) - 1, lo - 1, -1):
+        m = msgs[i]
+        if not (isinstance(m, dict) and m.get("role") == "user"):
+            continue
+        scanned += 1
+        if scanned > MAX_HOLD_SCAN or (len(typed) >= MAX_HOLD_ONLY and len(other) >= MAX_HOLD_ONLY):
+            break
+        if _carries_tool_result(m):
+            mine, rest = _beside_a_result(m)
+            if mine.strip() and len(typed) < MAX_HOLD_ONLY:
+                typed.append((mine, i))               # what the person typed while a tool ran
+            if rest.strip() and rest not in seen and len(other) < MAX_HOLD_ONLY:
+                seen.add(rest)
+                other.append((rest, i))
+            continue
+        r = _raw(m)                                   # the person's own message: only what the cuts below add
+        own = _keep(_cut_reminders(r))                # (an unclosed tag kept; typed words the client wrapped in one)
+        text = _keep(_cut_client_notes(_cut_closed_reminders(_unwrap_typed(r))))
+        if text.strip() and text != own and len(typed) < MAX_HOLD_ONLY:
+            typed.append((text, i))
+        if own.strip():
+            break                                     # older messages are not newer than the person's own words
+    return typed + other
 
 
 def _keep(t: str) -> str:
@@ -185,6 +354,12 @@ def person_words(body: dict) -> tuple:
     the agent's text just before them (the offer a bare yes answers). (None, None) when there are none within the last
     MAX_TURNS messages. The decision reads them only to ADD holds (reading.held_by_words), so text that is not really
     the person's can cost an ask, never release a call."""
+    return person_words_at(body)[:2]
+
+
+def person_words_at(body: dict) -> tuple:
+    """person_words and the index of the message the words are in (None with no words): the decision holds a call
+    against an earlier yes only for words written after the ask was made (decide.decide, `words_at`)."""
     raw = body.get("messages") if isinstance(body, dict) else None
     msgs = raw if isinstance(raw, list) else []
     lo = max(0, len(msgs) - MAX_TURNS)
@@ -197,8 +372,8 @@ def person_words(body: dict) -> tuple:
             if words.strip():
                 prev = next((msgs[j] for j in range(i - 1, lo - 1, -1)
                              if isinstance(msgs[j], dict) and msgs[j].get("role") == "assistant"), None)
-                return words, (_texts(prev) or None) if prev else None
-    return None, None
+                return words, (_texts(prev) or None) if prev else None, i
+    return None, None, None
 
 SCAN_WINDOW, SCAN_OVERLAP = 96 * 1024, 20 * 1024
 
@@ -208,7 +383,9 @@ def _bounded(pattern: str) -> re.Pattern:
     shorter than the overlap, or a key crossing a window's edge lies in no window. Each part that must be reached whole
     is capped (a URL's user and password at 4 KiB each, a JWT's first two segments at 8 KiB each, a PEM label at 128,
     the spaces around "password =" or "password is" at 256), so the longest match is about 16.5 KiB, under the 20 KiB
-    overlap. Every replacement must apply, or the proxy does not start."""
+    overlap. Every replacement must apply, or the proxy does not start. Limit, stated (R14): the JWT arm of this pattern
+    begins at the start of its run of token characters (inbox.SECRET, R10), so a JWT glued after a run that opens with
+    "eyJ" and has its first dot more than 8 KiB on is not matched by it; _secret finds that JWT with _glued_jwt."""
     swaps = [(r"://[^\s/:@]+:[^\s/@]+@", r"://[^\s/:@]{1,4096}:[^\s/@]{1,4096}@"),
              (r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.", r"eyJ[A-Za-z0-9_-]{8,8192}\.[A-Za-z0-9_-]{8,8192}\."),
              (r"-----BEGIN [A-Z0-9 ]+-----", r"-----BEGIN [A-Z0-9 ]{1,128}-----"),
@@ -224,17 +401,42 @@ def _bounded(pattern: str) -> re.Pattern:
 SECRET_BOUNDED = _bounded(SECRET.pattern)
 
 
+# A JSON web token for the windowed scan, found from its DOT (R14). inbox.SECRET's JWT arm begins at the start of its run
+# of token characters (R10, to be linear), so inside SECRET_BOUNDED a run that begins with "eyJ" and has its dot more
+# than 8 KiB on set the first segment's length from that first "eyJ", and a JWT glued after the run was missed at every
+# offset (99f9116 found it from its own "eyJ"). Here each run of 11 or more token characters that ends in a dot is taken
+# once (a run begins after a character that is not one, so the pass is linear), the 8,195 characters before the dot are
+# searched for an "eyJ" that leaves a first segment of 8 to 8,192 characters (the longest 99f9116 allowed), and the two
+# segments after the dot are tried once. That is the bound of 99f9116 exactly, for every "eyJ" at once.
+_TOKEN = r"[A-Za-z0-9_-]"
+_JWT_RUN = re.compile(r"(?<!" + _TOKEN + r")" + _TOKEN + r"{11,}\.", re.I)
+_JWT_EYJ = re.compile(r"eyJ", re.I)
+_JWT_REST = re.compile(_TOKEN + r"{8,8192}\." + _TOKEN + r"{8,}", re.I)
+
+
+def _glued_jwt(window: str) -> bool:
+    for m in _JWT_RUN.finditer(window):
+        dot = m.end() - 1
+        if _JWT_EYJ.search(window, max(m.start(), dot - 8195), dot - 8) and _JWT_REST.match(window, m.end()):
+            return True
+    return False
+
+
 def _secret(text: str) -> bool:
     """The key-shape check over the whole text (Koinos's margin after X1: one search holds the GIL, and a 4 MiB held
     input once stopped every thread for about 2 s). Up to one window it is inbox.SECRET itself. Longer, it runs
-    SECRET_BOUNDED in overlapping windows, giving the other threads the GIL between them: every match of the bounded
-    pattern is shorter than the overlap, so a key is found at any offset, across any edge. Stated limit (PROXY-DESIGN
-    5d): in an input longer than one window, a part longer than its bound (a URL user or password over 4 KiB, a JWT
-    segment over 8 KiB, more than 256 spaces around "password =") is not found; none is a usable credential."""
+    SECRET_BOUNDED, and the JWT pass _glued_jwt, in overlapping windows, giving the other threads the GIL between them:
+    every match of the bounded pattern is shorter than the overlap, so a key is found at any offset, across any edge.
+    Stated limit (PROXY-DESIGN 5d): in an input longer than one window, a part longer than its bound (a URL user or
+    password over 4 KiB, a JWT segment over 8 KiB, more than 256 spaces around "password =") is not found; none is a
+    usable credential. The JWT's bound is exactly 99f9116's: its first segment, which is the token characters between
+    its own "eyJ" and its first dot, is at most 8,192 long, and so is the second. Characters glued before the "eyJ" do
+    not count (R14), however many: a JWT after 100,000 token characters is found. No wider bound remains for the JWT;
+    SECRET_BOUNDED's own JWT arm is kept for the single search's sake and is subsumed here."""
     if len(text) <= SCAN_WINDOW:
         return bool(SECRET.search(text))
     for start in range(0, len(text), SCAN_WINDOW - SCAN_OVERLAP):
-        if SECRET_BOUNDED.search(text, start, start + SCAN_WINDOW):
+        if SECRET_BOUNDED.search(text, start, start + SCAN_WINDOW) or _glued_jwt(text[start:start + SCAN_WINDOW]):
             return True
         time.sleep(0)                      # give the other threads the GIL between windows
     return False
@@ -423,7 +625,16 @@ class Handler(BaseHTTPRequestHandler):
             check = gate_request.check(body, space, agent)
             model_id = next(m for m in space.blocks[agent].get("models", [])
                             if space.blocks[m]["model"] == body.get("model"))
-            conv = conversation_key(self.proxy.key, body, self.headers.get("x-claude-code-session-id"))
+            conv = conversation_key(self.proxy.key, body, self.headers.get("x-claude-code-session-id"), agent)
+            # The history as digests: an ask is tied to the messages it was asked after, so a chat that shares the key
+            # (no session header, an alike start) is still another conversation (decide.Chain, Asks.bound).
+            # With no session header the chain covers the whole system and the tools too (C6): another project's system
+            # block or another tools list is another chat, whatever the conversation key (system[0] and the first
+            # message) says. With one (C8) the session and the history are the chat: Claude Code's tools list and
+            # system change inside one session, and a yes must still find its call.
+            self.chain = (decide.Chain(self.proxy.key, body.get("messages"), body.get("system"), body.get("tools"),
+                                       self.headers.get("x-claude-code-session-id"))
+                          if route == "messages" else None)
             self.proxy.record.append("request", {"agent": agent, "model": model_id, "route": route,
                                                  "space": space.digest, "unknown": len(check.unknown),
                                                  "vendor_recorded": len(check.recorded)})   # R2: how many, never the client's names
@@ -447,7 +658,7 @@ class Handler(BaseHTTPRequestHandler):
     def _replay(self, space, agent, model_id, body, conv) -> bool:
         now = time.monotonic()
         s = decide.replay_due(self.proxy.stash, self.proxy.asks, conv, body.get("model"), self.path.partition("?")[0],
-                              body.get("messages", []), now)
+                              body.get("messages", []), now, chain=self.chain)
         if s is None:
             return False
         # Koinos U3c: a kept call whose tool this request no longer declares cannot run; no replay, and the yes stays
@@ -461,12 +672,31 @@ class Handler(BaseHTTPRequestHandler):
         # U3: the whole decision runs again on the stashed calls, with the person's answers live: a gated call is
         # released (and its answer spent) by its yes; anything held now (a tool no longer declared, a new gate, a
         # changed space) refuses the replay. Answers the decision did not need are spent too: the turn is the unit.
-        self.proxy.stash.drop(conv)
+        self.proxy.stash.drop(s.key)
+        # The same call twice in one kept turn shares one ask, and one yes releases one call: the turn cannot be sent
+        # whole. Said as it is, before the decision runs (it would open a fresh ask for the second call). The yes is
+        # not spent: the call made again goes through once on it.
+        acts = [(c.get("name"), canon.d_act(c.get("input"))) for c in s.calls]
+        if len(set(acts)) != len(acts):
+            raise Refused("X-REL", "the kept turn makes the same call twice and one yes releases one call; "
+                                   "nothing was sent, and the call made again goes through once")
         words, offer = person_words(body)
-        out = decide.decide(space, "space", agent, model_id, msg, conv, self.proxy.asks, now, words=words, offer=offer)
+        at = person_words_at(body)[2] if words else None
+        out = decide.decide(space, "space", agent, model_id, msg, conv, self.proxy.asks, now, words=words, offer=offer,
+                            chain=self.chain, words_at=at, hold_only=hold_only_words(body))
+        if out.held and out.over_yes:
+            # The person's newest message, written after the held turn, holds a call they had said yes to: their
+            # newest words win. Nothing is sent on and nothing is spent; the kept turn is let go (it cannot be the
+            # turn before a later message once the chat goes on), and the request goes on to the model as any other.
+            # The yes stands: the same call made again goes through once when the newest words no longer hold it.
+            return False
         if out.held:
             raise Refused("X-REL", "the answered call would be held now; the space or its gates changed")
-        left = [a for a in s.asks if self.proxy.asks.status(a, now) == "yes"]
+        # C9 (Orithises, the left-spend window): EVERY ask of the kept turn the re-decision did not spend is spent here,
+        # through Asks.spend, which takes each only while it is a live yes whose chain's last word is yes, under the lock,
+        # all or none. It was spent only for the asks a fresh reading still showed as "yes": an ask revoked, spent or
+        # unproved between replay_due and that reading dropped out of `left`, and the whole kept turn went out.
+        left = [a for a in dict.fromkeys(s.asks) if a not in out.released]
         if left and not self.proxy.asks.spend(left, now):
             raise Refused("X-REL", "the answer was spent, revoked or expired")
         for c in s.calls:
@@ -602,8 +832,9 @@ class Handler(BaseHTTPRequestHandler):
         thinking = any(b.get("type") in ("thinking", "redacted_thinking") for b in msg.get("content", []))
         kept = not thinking and decide.keepable(msg, _secret)       # known before the held text is written (U2a)
         words, offer = person_words(body)
+        at = person_words_at(body)[2] if words else None
         out = decide.decide(space, "space", agent, model_id, msg, conv, self.proxy.asks, now, kept=kept, words=words,
-                            offer=offer)
+                            offer=offer, chain=self.chain, words_at=at, hold_only=hold_only_words(body))
         for c in out.calls:                                   # T8: recorded before anything is emitted
             name = space.blocks[c.tool]["name"] if c.tool else undeclared(self.proxy.key, c.name)
             self.proxy.record.append("call", {"tool": name, "decision": "held" if out.held else "pass",
@@ -611,7 +842,8 @@ class Handler(BaseHTTPRequestHandler):
         if out.held:
             self.proxy.record.append("held", {"asks": out.asks})
             if kept:                                          # one predicate for the words and the stash (U2a)
-                decide.stash_turn(self.proxy.stash, conv, body.get("model"), out, msg, thinking, _secret)
+                decide.stash_turn(self.proxy.stash, conv, body.get("model"), out, msg, thinking, _secret,
+                                chain=self.chain)
         self.proxy.record.append("turn", {"stop_reason": safe(out.stop_reason or ""), "held": out.held})
         if not stream:
             whole = dict(msg)
@@ -668,6 +900,14 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     """At most MAX_CONNECTIONS connections at once, counted at accept: one past it is closed unread (P7)."""
     daemon_threads = True
+    # One listener per port (Koinos, attack on the serve command): with address reuse on, Windows let a second proxy
+    # bind the same port and serve beside the first. Off, and exclusive where the platform offers it.
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -714,13 +954,17 @@ class Server(ThreadingHTTPServer):
             self._open.release()
 
 
-def serve(space_dir, home, card: str, port: int, expected_digest=None, ready=None):
-    """Run the proxy on 127.0.0.1:port until stopped. `ready` (a threading.Event) is set once it listens."""
+def serve(space_dir, home, card: str, port: int, expected_digest=None, ready=None, on_run=None):
+    """Run the proxy on 127.0.0.1:port until stopped. `ready` (a threading.Event) is set once it listens; `on_run`
+    is called with the run id once the proxy exists and before it listens (the command names the run with it, so the
+    person's answering command answers this run's asks)."""
     home = Path(home)
     home.mkdir(parents=True, exist_ok=True)
     proxy = Proxy(space_dir, home, card, expected_digest)
     handler = type("H", (Handler,), {"proxy": proxy, "port": port})
-    server = Server(("127.0.0.1", port), handler)
+    server = Server(("127.0.0.1", port), handler)    # raises if the port is taken: nothing is named before this
+    if on_run is not None:
+        on_run(proxy.asks.run)                          # only a proxy that holds its port names the run
     server.daemon_threads = True
     if ready is not None:
         ready.server = server

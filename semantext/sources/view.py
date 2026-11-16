@@ -334,7 +334,7 @@ class _Sources:
         c = self.got["waiting"]
         return {"name": self.cfg.get("name"), "word": word_of(self.cfg.get("name")), "group": self.cfg.get("group"),
                 "checked": _now(), "config": str(self.path),
-                "waiting": sum(x.get("state") == "waiting" for x in c.get("cards") or []) + sum(v["state"] == "waiting" for v in self.machine_inbox()),
+                "waiting": self.waiting_total(),
                 "seats": [s.get("seat") for s in c.get("seats") or []], "off": _off(self.got, self.reg),
                 "problems": self.problems + self.bad_settings + self._machine_problems + _held(), "gaming": self.gaming(), "compute": self.compute(),
                 "inbox_app": self.cfg.get("inbox_app") is True,   # links into an inbox app only where the person says they have one
@@ -345,6 +345,8 @@ class _Sources:
         cards. It has no other page to wait on. Empty with no setup, where it IS the cards."""
         if self._machine is None:
             self._machine = []
+            self._machine_counts = {"waiting": 0, "parked": 0}   # of the whole inbox, not of the cards drawn
+            self._machine_more = {"waiting": 0, "parked": 0}     # waiting and parked requests not drawn (the cap)
             home = self.cfg.get("_home")
             if home and not self.got["waiting"].get("own_inbox"):
                 from .own_inbox import load as own   # here: only the page reads it, never the card hook
@@ -352,6 +354,9 @@ class _Sources:
                     got = own(home)
                     cards = got.get("cards") or []
                     self._machine_problems = list(got.get("problems") or [])
+                    by = (got.get("counts") or {}).get("by_state") or {}
+                    self._machine_counts = {k: by.get(k, 0) for k in ("waiting", "parked")}
+                    self._machine_more = {k: (got.get("more") or {}).get(k, 0) for k in ("waiting", "parked")}
                 except Exception as e:  # noqa: BLE001  this part costs only itself, said: unreadable is never shown as empty
                     cards = []
                     self._machine_problems = [problem(Path(home) / "inbox.jsonl", None, "file", f"this machine's own inbox could not be read ({type(e).__name__})")]
@@ -360,6 +365,19 @@ class _Sources:
                 self._machine = [{**joiner.view(c), "key": "machine/" + str(c.get("seat")) + "/" + str(c.get("id")), "file": None}
                                  for c in cards if c.get("state") in ("waiting", "parked")]
         return self._machine
+
+    def machine_totals(self) -> tuple[dict, dict]:
+        """(waiting and parked in this machine's whole own inbox, and how many of them are not among the cards drawn)."""
+        self.machine_inbox()
+        return self._machine_counts, self._machine_more
+
+    def waiting_total(self) -> int:
+        """What waits for the person's word: the whole own inbox when it is the cards (not only the cards drawn), or the
+        setup's waiting cards and the whole machine's own inbox beside them."""
+        c = self.got["waiting"]
+        if c.get("own_inbox"):
+            return ((c.get("counts") or {}).get("by_state") or {}).get("waiting", 0)
+        return sum(x.get("state") == "waiting" for x in c.get("cards") or []) + self.machine_totals()[0]["waiting"]
 
     def outside(self) -> list[dict]:
         """The places the person turned on, after the built-ins in the bar: each with its title, the package it came
@@ -452,6 +470,7 @@ class _Cards:
                                      "at", "state", "parked_at", "asks", "asks_basis", "acts", "acts_basis", "line")},
             "options": [o for o in c.get("options") or [] if isinstance(o, str)],
             "number": c.get("number"), "choices": c.get("choices") or [], "own_inbox": bool(c.get("own_inbox")),
+            "cut": c.get("cut") or [],   # the fields of an own-inbox card drawn cut (a very long text)
             "flags": c.get("flags") or [], "rule": bool(c.get("rule")), "recommend": c.get("recommend"), "answered_before": c.get("answered_before"),
             # a model's proposal: the kernel's label and the person's settings, from your own inbox only (own_inbox)
             "label": c.get("label") if c.get("own_inbox") and c.get("label") == "MODEL" else None,
@@ -657,8 +676,12 @@ def waiting_place(src: _Sources) -> dict:
     by_state = Counter(v["state"] for v in views)
     rec = src.got["record"]
     states = list(dict.fromkeys(("waiting", "parked", "closed", "run", *by_state)))
-    return {"off": bool(c.get("off")), "missing": c.get("missing") or [], "cards": views, "machine_inbox": src.machine_inbox(),
-            "counts": {"cards": len(views), "by_state": {s: by_state.get(s, 0) for s in states}},
+    more = c.get("more") or {}   # your own inbox, when it is the cards: the requests of each kind not drawn (the cap)
+    machine = src.machine_inbox()
+    return {"off": bool(c.get("off")), "missing": c.get("missing") or [], "cards": views, "machine_inbox": machine,
+            "more": more, "machine_more": src.machine_totals()[1], "cap": c.get("cap"),
+            "counts": {"cards": len(views) + sum(more.values()),
+                       "by_state": {s: by_state.get(s, 0) + more.get(s, 0) for s in states}},
             "seats": [s.get("seat") for s in c.get("seats") or []],
             "projects": [{"id": p.get("id"), "name": p.get("name")} for p in src.projects_list()],
             "record": {"off": bool(rec.get("off")),
@@ -708,6 +731,7 @@ def projects_place(src: _Sources) -> dict:
     return {"off": bool(src.got["places"].get("off")), "own": bool(src.got["places"].get("own")), "gates_off": bool(g.get("off")),
             "read": g.get("read"), "read_note": g.get("read_note"), "read_at": g.get("read_at"),
             "not_tested": gates.NOT_TESTED, "armed_words": gates.ARMED_WORDS, "projects": rows,
+            "more": src.got["places"].get("projects_more", 0),   # names in a hand-made list the cap left undrawn
             "cards": {v["key"]: v for v in views if v["key"] in placed},
             "documents": [_doc(d, homes.get(d.get("id"))) for d in src.got["places"].get("documents") or []],
             "total": len(views), "assigned": len(placed), "unassigned": len(views) - len(placed),
@@ -1238,9 +1262,28 @@ def _answer(name: str, home=None, world=None) -> dict | None:
 
 
 # ---- the status line ------------------------------------------------------------------------------------------
+def _machine_waiting(cfg: dict, c: dict) -> tuple[list[dict], int, bool]:
+    """(the waiting requests of this machine's own inbox that are drawn, how many wait in all, whether it could not be
+    read). With a setup named they are not among its cards, and the page counts them in its frame (machine_inbox); the
+    status line counts them too, or it would say less than the page does. Empty when the cards ARE the own inbox (no
+    setup), where they are already counted."""
+    home = cfg.get("_home")
+    if not home or c.get("own_inbox"):
+        return [], 0, False
+    try:
+        from .own_inbox import load as own   # here: only the page and this line read it, never the card hook
+        got = own(home)
+    except Exception:  # noqa: BLE001  said on the line, never taken for an empty inbox
+        return [], 0, True
+    total = ((got.get("counts") or {}).get("by_state") or {}).get("waiting", 0)   # all of them, not the cards drawn
+    return [x for x in got.get("cards") or [] if x.get("state") == "waiting"], total, False
+
+
 def status_line(home=None, width: int = 80) -> str:
     """One line for a status bar: "2 waiting · newest: <agent> <id> <title>", cut to the width, or "nothing waiting
-    · N decisions in force". Only the cards and the register are read. On any trouble, "Semantext: unavailable"."""
+    · N decisions in force". Only the cards, this machine's own inbox and the register are read. The count is the
+    page's: what waits in the setup's cards plus what waits in this machine's own inbox, when a setup is named. On any
+    trouble, "Semantext: unavailable"; an own inbox that cannot be read is said, never counted as empty."""
     try:
         width = max(40, int(width))
     except (TypeError, ValueError):
@@ -1251,23 +1294,30 @@ def status_line(home=None, width: int = 80) -> str:
             return UNAVAILABLE
         c = cards.load(cfg)
         if c.get("off") or not (c.get("seats") or c.get("own_inbox")):
-            return UNAVAILABLE
+            return UNAVAILABLE   # a setup whose Waiting is off (or cannot be used) is said so, as it always was
+        machine, machine_total, unread = _machine_waiting(cfg, c)
         group = None if c.get("own_inbox") else cfg.get("group")
         allowed = {s.get("seat") for s in c["seats"] if group in (s.get("groups") or [])} if group else None
-        waiting = [x for x in c.get("cards") or [] if x.get("state") == "waiting"
-                   and (allowed is None or x.get("seat") in allowed)]
+        drawn = [x for x in c.get("cards") or [] if x.get("state") == "waiting"
+                 and (allowed is None or x.get("seat") in allowed)]
+        # the count is of everything that waits; the newest is found among the cards drawn (a long own inbox draws a cap)
+        count = (((c.get("counts") or {}).get("by_state") or {}).get("waiting", len(drawn)) if c.get("own_inbox")
+                 else len(drawn)) + machine_total
+        waiting = drawn + machine
+        said = " · own inbox unreadable" if unread else ""
         if waiting:
             top = newest_first(waiting)[0]
             title = " ".join(str(top.get("title") or "").split())
-            line = f"{len(waiting)} waiting · newest: {top.get('seat')} {top.get('id')} {title}".rstrip()
+            line = f"{count} waiting · newest: {top.get('seat')} {top.get('id')} {title}".rstrip()
             line = "".join(ch for ch in line if ch.isprintable())   # no escape code from a request reaches a terminal
-            return line if len(line) <= width else line[:width - 1].rstrip() + "…"   # the title is cut to fit
+            room = width - len(said)   # what is said about an unreadable inbox is never the part that is cut
+            return (line if len(line) <= room else line[:room - 1].rstrip() + "…") + said   # the title is cut to fit
         r = record.load(cfg)
         if r.get("off"):
-            return "nothing waiting"
+            return "nothing waiting" + said
         by = (r.get("counts") or {}).get("by_status") or {}
         if r.get("own"):
-            return f"nothing waiting · {_n(by.get('answered', 0), 'answer')} kept"
-        return f"nothing waiting · {_n(by.get('in force', 0), 'decision')} in force"
+            return f"nothing waiting · {_n(r.get('own_answered', by.get('answered', 0)), 'answer')} kept" + said
+        return f"nothing waiting · {_n(by.get('in force', 0), 'decision')} in force" + said
     except Exception:  # noqa: BLE001  a status bar line never fails
         return UNAVAILABLE

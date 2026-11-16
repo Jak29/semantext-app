@@ -47,6 +47,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import jsonread, provenance
+from . import normal
 from .inbox import CONFUSABLES, MODEL_LABEL, SECRET, Inbox, file_lock, human_terminal, token_like, typed_answer
 from .reader import OllamaReader
 from .store import Refused, write_atomic
@@ -550,7 +551,8 @@ ACT_LINE = re.compile(r"^\s*enable\s+model\b", re.I)
 def _plain(line: str) -> str:
     """A line as a reader would take it: compatibility forms folded (NFKC), invisible format characters gone, and other
     scripts' letters that look Latin folded to the Latin letter (inbox.CONFUSABLES, a small fixed table)."""
-    t = "".join(c for c in unicodedata.normalize("NFKC", line) if unicodedata.category(c) != "Cf")
+    # normal.nfkc: linear; unicodedata.normalize was quadratic on marks and U+FDFA (actclass r4 attack, finding 3)
+    t = "".join(c for c in normal.nfkc(line) if unicodedata.category(c) != "Cf")
     return t.translate(CONFUSABLES)
 
 

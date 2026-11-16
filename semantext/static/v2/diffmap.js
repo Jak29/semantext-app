@@ -5,7 +5,7 @@ import { plural, when } from "./words.js";
 import { crumbs, header } from "./parts.js";
 import { fill, S } from "./app.js";
 import { chip } from "./cards.js";
-import { readDocument, copyText } from "./documents.js";
+import { D, boxNodes, copyText, leaveBox, readDocument } from "./documents.js";
 import { renderMarkdown } from "./markdown.js";
 
 export const M = { text: new Map(), pending: new Set() };
@@ -61,16 +61,26 @@ function partNode(p) {
     p.files.length ? h("ol", null, p.files.map((f) => h("li", null, h("code", null, f)))) : h("p", { class: "meta" }, "No files listed."));
 }
 
+const COMMAND_LABEL = "The diffmap command, selected to copy";   // the box holds a shell command, not MASTER.md
+
 function commandNode(s, note) {
   if (!s.command) return h("p", { class: "meta" }, "No command to open it: " + s.no_command + ".");
   const copy = h("button", { type: "button", "data-k": "copy:" + s.folder + ":" + s.file }, "Copy the command");
   const tools = h("div", { class: "doc-tools" }, h("code", { class: "command" }, s.command), copy);
-  copy.addEventListener("click", () => copyText(copy, s.command, tools));
+  // The box shown when the clipboard is refused stays through the page's draws like the documents copy box (D12): it is
+  // drawn again here while D.box is this spec's and holds this command, and is dropped when the command has changed.
+  const id = "diffmap:" + s.folder + "/" + s.file;
+  copy.addEventListener("click", () => copyText(copy, s.command, tools, id, COMMAND_LABEL));
+  if (D.box && D.box.id === id) {
+    if (D.box.text === s.command) tools.append(...boxNodes(COMMAND_LABEL));
+    else D.box = null;
+  }
   return h("div", null, tools, note ? h("p", { class: "meta" }, note) : null,
     h("p", { class: "meta" }, "Run it yourself to open this change in the viewer. This page runs nothing. The command is built from diffmap_command in your sources file, which an agent can edit: read it before you run it."));
 }
 
 export function render(data, el) {
+  leaveBox();   // a box for another spec, or for a document, goes when this one is drawn
   if (!data) { el.replaceChildren(header("Diffmap", S.err ? "The page could not read your specs: " + S.err : "Reading your files…")); return; }
   if (data.off) { el.replaceChildren(header("Diffmap", "Diffmap is off: your sources file names no seats file.", S.frame ? "Your sources file: " + S.frame.config : null)); return; }
   const specs = data.specs || [];

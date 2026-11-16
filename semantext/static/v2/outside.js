@@ -58,7 +58,7 @@ export function drawOutside(place, data, el) {
   if (!modules.has(place.name)) modules.set(place.name, Promise.resolve().then(() => importer.load(moduleUrl(place.name))));
   last = modules.get(place.name).then((mod) => {
     if (!mod || typeof mod.render !== "function") throw new Error("it offers no render(data, el)");
-    mod.render(body, frame, HELPERS);
+    return mod.render(body, frame, HELPERS);   // its promise, if it returns one (an async render): keep() waits for it, and a throw or a rejection is a problem line (D25)
   }).catch((e) => problemLine(frame, String((e && e.message) || e)));
   return last;
 }

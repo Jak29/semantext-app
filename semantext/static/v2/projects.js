@@ -59,7 +59,10 @@ export function render(data, el) {
         on: { click: (ev) => openDrawer("docs", { project: p.id }, ev.currentTarget) } }, plural(p.documents.length, "document"))
         : h("span", { class: "none", title: "No documents" }, "–"))));
   }
-  place.replaceChildren(head, table);
+  // A huge hand-made list of names draws its last 200 (the first mention of each name decides its place); the rest are
+  // counted here, never dropped. Say "the last 200 in your list", not "the newest": the list has no dates (attack 22b).
+  place.replaceChildren(...[head, table, data.more ? h("p", { class: "shelf-note", "data-more": "projects" },
+    plural(data.more, "more project name") + " in your list of projects not drawn here: the last 200 in your list are shown. All of them are in your projects.json.") : null].filter(Boolean));
 }
 
 export function worktreeDetail(t) {

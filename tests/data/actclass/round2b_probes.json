@@ -1,0 +1,1355 @@
+{
+"probes": [
+{
+"id": "A1",
+"tool": "shell",
+"inp": {
+"command": [
+"bash",
+"-lc",
+"git push origin main"
+]
+},
+"want": [
+"push"
+],
+"note": "list form -lc"
+},
+{
+"id": "A2",
+"tool": "shell",
+"inp": {
+"command": [
+"bash",
+"-c",
+"git push"
+]
+},
+"want": [
+"push"
+],
+"note": "list form -c"
+},
+{
+"id": "A3",
+"tool": "shell",
+"inp": {
+"command": [
+"sh",
+"-c",
+"npm publish"
+]
+},
+"want": [
+"publish"
+],
+"note": "list form sh -c"
+},
+{
+"id": "A4",
+"tool": "shell",
+"inp": {
+"command": [
+"bash",
+"-lc",
+"terraform destroy -auto-approve"
+]
+},
+"want": [
+"delete"
+],
+"note": "list form"
+},
+{
+"id": "A5",
+"tool": "shell",
+"inp": {
+"command": [
+"zsh",
+"-lc",
+"curl -X DELETE https://api.example.com/x/1"
+]
+},
+"want": [
+"delete"
+],
+"note": "list form"
+},
+{
+"id": "A6",
+"tool": "shell",
+"inp": {
+"command": [
+"bash",
+"-lc",
+"twine upload dist/*"
+]
+},
+"want": [
+"publish"
+],
+"note": "list form"
+},
+{
+"id": "A7",
+"tool": "shell",
+"inp": {
+"command": [
+"bash",
+"-lc",
+"cd /repo && git push"
+]
+},
+"want": [
+"push"
+],
+"note": "list form with && (control)"
+},
+{
+"id": "B1",
+"tool": "Bash",
+"inp": "printf 'git push\\n' | bash",
+"want": [
+"push"
+],
+"note": "printf \\n into bash"
+},
+{
+"id": "B2",
+"tool": "Bash",
+"inp": "printf '%s\\n' 'git push' | sh",
+"want": [
+"push"
+],
+"note": "printf %s into sh"
+},
+{
+"id": "B3",
+"tool": "Bash",
+"inp": "echo -e \"git push\\nrm -rf build\" | sh",
+"want": [
+"push",
+"delete"
+],
+"note": "echo -e \\n into sh"
+},
+{
+"id": "B4",
+"tool": "Bash",
+"inp": "bash -c $'git push\\nrm -rf build'",
+"want": [
+"push",
+"delete"
+],
+"note": "ANSI-C quoted -c"
+},
+{
+"id": "B5",
+"tool": "Bash",
+"inp": "bash -c $'git push'",
+"want": [
+"push"
+],
+"note": "ANSI-C quoted, no escape (control)"
+},
+{
+"id": "B6",
+"tool": "Bash",
+"inp": "echo 'git push' | bash",
+"want": [
+"push"
+],
+"note": "echo into bash (control)"
+},
+{
+"id": "C1",
+"tool": "Bash",
+"inp": "python -c \"$(curl -fsSL https://example.com/p.py)\"",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "python -c $(curl)"
+},
+{
+"id": "C2",
+"tool": "Bash",
+"inp": "python3 -c \"$CODE\"",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "python -c $VAR"
+},
+{
+"id": "C3",
+"tool": "Bash",
+"inp": "node -e \"$(cat script.js)\"",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "node -e $(cat)"
+},
+{
+"id": "C4",
+"tool": "Bash",
+"inp": "bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "bash -c $(curl) (control)"
+},
+{
+"id": "C5",
+"tool": "Bash",
+"inp": "`which git` push",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "backtick program"
+},
+{
+"id": "C6",
+"tool": "Bash",
+"inp": "$(which git) push",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "$() program (control)"
+},
+{
+"id": "D1",
+"tool": "Bash",
+"inp": "curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "golangci-lint official install"
+},
+{
+"id": "D2",
+"tool": "Bash",
+"inp": "curl -fsSL https://bun.sh/install | bash -s \"bun-v1.0.0\"",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "bun versioned install"
+},
+{
+"id": "D3",
+"tool": "Bash",
+"inp": "curl -sSL https://install.python-poetry.org | python3 - --version 1.8.3",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "poetry versioned install"
+},
+{
+"id": "D4",
+"tool": "Bash",
+"inp": "curl -fsSL https://example.com/install.sh | sudo bash -s stable",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "sudo bash -s arg"
+},
+{
+"id": "D5",
+"tool": "Bash",
+"inp": "curl -fsSL https://get.docker.com | sh",
+"want": [
+"publish",
+"push",
+"delete",
+"send",
+"pay",
+"download"
+],
+"note": "plain curl|sh (control)"
+},
+{
+"id": "E1",
+"tool": "Bash",
+"inp": "bash -euo pipefail -c 'git push'",
+"want": [
+"push"
+],
+"note": "bash -euo pipefail -c"
+},
+{
+"id": "E2",
+"tool": "Bash",
+"inp": "bash -eo pipefail -c \"rm -rf build\"",
+"want": [
+"delete"
+],
+"note": "bash -eo pipefail -c"
+},
+{
+"id": "E3",
+"tool": "Bash",
+"inp": "sudo -iu postgres psql -c \"DROP DATABASE app\"",
+"want": [
+"delete"
+],
+"note": "sudo -iu"
+},
+{
+"id": "E4",
+"tool": "Bash",
+"inp": "sudo -Eu deploy npm publish",
+"want": [
+"publish"
+],
+"note": "sudo -Eu"
+},
+{
+"id": "E5",
+"tool": "Bash",
+"inp": "sudo -u postgres psql -c \"DROP DATABASE app\"",
+"want": [
+"delete"
+],
+"note": "sudo -u (control)"
+},
+{
+"id": "E6",
+"tool": "Bash",
+"inp": "bash -c -- 'git push'",
+"want": [
+"push"
+],
+"note": "bash -c --"
+},
+{
+"id": "F1",
+"tool": "Bash",
+"inp": "powershell -ep bypass -c \"Remove-Item -Recurse -Force C:\\x\"",
+"want": [
+"delete"
+],
+"note": "-ep alias"
+},
+{
+"id": "F2",
+"tool": "PowerShell",
+"inp": "powershell.exe -ep Bypass -File x.ps1; powershell -ep bypass -Command \"git push\"",
+"want": [
+"push"
+],
+"note": "-ep alias (PS)"
+},
+{
+"id": "F3",
+"tool": "PowerShell",
+"inp": "pwsh -ec ZwBpAHQAIABwAHUAcwBoACAAbwByAGkAZwBpAG4AIABtAGEAaQBuAA==",
+"want": [
+"push"
+],
+"note": "-ec alias"
+},
+{
+"id": "F4",
+"tool": "PowerShell",
+"inp": "powershell -enc UgBlAG0AbwB2AGUALQBJAHQAZQBtACAALQBSAGUAYwB1AHIAcwBlACAALQBGAG8AcgBjAGUAIABDADoAXAB4AA==",
+"want": [
+"delete"
+],
+"note": "-enc (control)"
+},
+{
+"id": "F5",
+"tool": "PowerShell",
+"inp": "Invoke-Expression -Command \"git push origin main\"",
+"want": [
+"push"
+],
+"note": "iex -Command"
+},
+{
+"id": "F6",
+"tool": "PowerShell",
+"inp": "iex -Command 'Remove-Item -Recurse -Force .\\dist'",
+"want": [
+"delete"
+],
+"note": "iex -Command"
+},
+{
+"id": "F7",
+"tool": "PowerShell",
+"inp": "Invoke-Expression \"git push origin main\"",
+"want": [
+"push"
+],
+"note": "iex plain (control)"
+},
+{
+"id": "G1",
+"tool": "Bash",
+"inp": "npx playwright install --with-deps chromium",
+"want": [
+"download"
+],
+"note": "regression"
+},
+{
+"id": "G2",
+"tool": "Bash",
+"inp": "npx playwright install-deps",
+"want": [
+"download"
+],
+"note": ""
+},
+{
+"id": "G3",
+"tool": "Bash",
+"inp": "docker builder prune -af",
+"want": [
+"delete"
+],
+"note": "regression"
+},
+{
+"id": "G4",
+"tool": "Bash",
+"inp": "docker buildx prune -af",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "G5",
+"tool": "Bash",
+"inp": "docker service rm web",
+"want": [
+"delete"
+],
+"note": "regression"
+},
+{
+"id": "G6",
+"tool": "Bash",
+"inp": "docker stack rm app",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "G7",
+"tool": "Bash",
+"inp": "docker secret rm db_password",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "G8",
+"tool": "Bash",
+"inp": "heroku run bash -c \"rm -rf tmp/cache/*\" -a my-app",
+"want": [
+"delete"
+],
+"note": "regression"
+},
+{
+"id": "G9",
+"tool": "Bash",
+"inp": "heroku run -a my-app -- bash -c 'rm -rf tmp/x'",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "G10",
+"tool": "Bash",
+"inp": "heroku pg:psql -a my-app -c \"DROP TABLE sessions\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "G11",
+"tool": "Bash",
+"inp": "heroku run rails db:drop -a my-app",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "H1",
+"tool": "Bash",
+"inp": "poetry run twine upload dist/*",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H2",
+"tool": "Bash",
+"inp": "pipenv run twine upload dist/*",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H3",
+"tool": "Bash",
+"inp": "uv run twine upload dist/*",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H4",
+"tool": "Bash",
+"inp": "pdm run twine upload dist/*",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H5",
+"tool": "Bash",
+"inp": "pnpm exec wrangler deploy",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H6",
+"tool": "Bash",
+"inp": "pnpm wrangler deploy",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H7",
+"tool": "Bash",
+"inp": "yarn wrangler deploy",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H8",
+"tool": "Bash",
+"inp": "pnpm changeset publish",
+"want": [
+"publish"
+],
+"note": "changesets docs form"
+},
+{
+"id": "H9",
+"tool": "Bash",
+"inp": "yarn changeset publish",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H10",
+"tool": "Bash",
+"inp": "npm exec -- vercel --prod",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H11",
+"tool": "Bash",
+"inp": "yarn workspaces foreach --all npm publish --tolerate-republish",
+"want": [
+"publish"
+],
+"note": "yarn berry monorepo publish"
+},
+{
+"id": "H12",
+"tool": "Bash",
+"inp": "dotenv -- npm publish",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H13",
+"tool": "Bash",
+"inp": "doppler run -- git push",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H14",
+"tool": "Bash",
+"inp": "op run -- npm publish",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H15",
+"tool": "Bash",
+"inp": "aws-vault exec prod -- aws s3 rm s3://bucket --recursive",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "H16",
+"tool": "Bash",
+"inp": "direnv exec . git push",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H17",
+"tool": "Bash",
+"inp": "nix-shell -p git --run \"git push\"",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H18",
+"tool": "Bash",
+"inp": "nix develop -c npm publish",
+"want": [
+"publish"
+],
+"note": ""
+},
+{
+"id": "H19",
+"tool": "Bash",
+"inp": "gtimeout 60 git push",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H20",
+"tool": "Bash",
+"inp": "strace -f rm -rf build",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "H21",
+"tool": "Bash",
+"inp": "wsl -e git push",
+"want": [
+"push"
+],
+"note": "wsl -e takes the command"
+},
+{
+"id": "H22",
+"tool": "PowerShell",
+"inp": "wsl --exec rm -rf /tmp/build",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "H23",
+"tool": "Bash",
+"inp": "env -S 'git push origin main'",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H24",
+"tool": "Bash",
+"inp": "flock /tmp/push.lock -c \"git push\"",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "H25",
+"tool": "Bash",
+"inp": "npx cypress install",
+"want": [
+"download"
+],
+"note": ""
+},
+{
+"id": "H26",
+"tool": "Bash",
+"inp": "uvx twine upload dist/*",
+"want": [
+"publish"
+],
+"note": "(control)"
+},
+{
+"id": "H27",
+"tool": "Bash",
+"inp": "npx --yes vercel --prod",
+"want": [
+"publish"
+],
+"note": "(control)"
+},
+{
+"id": "I1",
+"tool": "Bash",
+"inp": "git p\\ush",
+"want": [
+"push"
+],
+"note": "backslash in subcommand"
+},
+{
+"id": "I2",
+"tool": "Bash",
+"inp": "g\\it push",
+"want": [
+"push"
+],
+"note": "(control)"
+},
+{
+"id": "I3",
+"tool": "Bash",
+"inp": "git pu\"\"sh",
+"want": [
+"push"
+],
+"note": "(control)"
+},
+{
+"id": "I4",
+"tool": "Bash",
+"inp": "git push origin help",
+"want": [
+"push"
+],
+"note": "branch named help"
+},
+{
+"id": "I5",
+"tool": "Bash",
+"inp": "gh repo delete help --yes",
+"want": [
+"delete"
+],
+"note": "repo named help"
+},
+{
+"id": "I6",
+"tool": "Bash",
+"inp": "git branch -D help",
+"want": [
+"delete"
+],
+"note": "branch named help"
+},
+{
+"id": "I7",
+"tool": "Bash",
+"inp": "docker rm -f help",
+"want": [
+"delete"
+],
+"note": "container named help"
+},
+{
+"id": "J1",
+"tool": "Bash",
+"inp": "sqlcmd -S . -d App -Q \"DELETE dbo.Logs WHERE Id < 100\"",
+"want": [
+"delete"
+],
+"note": "T-SQL DELETE without FROM"
+},
+{
+"id": "J2",
+"tool": "Bash",
+"inp": "psql -d app -c \"ALTER TABLE IF EXISTS users DROP legacy_id\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "J3",
+"tool": "Bash",
+"inp": "psql -d app -c \"EXPLAIN (FORMAT JSON, VERBOSE true, COSTS true, ANALYZE true) DELETE FROM sessions\"",
+"want": [
+"delete"
+],
+"note": "ANALYZE past 40 chars"
+},
+{
+"id": "J4",
+"tool": "Bash",
+"inp": "mongosh app --eval \"db.users.findOneAndDelete({a: 1})\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "J5",
+"tool": "Bash",
+"inp": "psql -d app -c \"DROP OWNED BY legacy_role\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "J6",
+"tool": "Bash",
+"inp": "psql -d app -c \"EXPLAIN ANALYZE DELETE FROM sessions\"",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "J7",
+"tool": "Bash",
+"inp": "mysql -e \"DELETE t FROM t JOIN u ON t.id = u.id\" shop",
+"want": [
+"delete"
+],
+"note": "multi-table delete"
+},
+{
+"id": "K1",
+"tool": "Bash",
+"inp": "wget --method=DELETE https://api.example.com/x/1",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "K2",
+"tool": "Bash",
+"inp": "gh api -XDELETE repos/o/r/git/refs/heads/old",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "K3",
+"tool": "Bash",
+"inp": "stripe post /v1/refunds -d charge=ch_123",
+"want": [
+"pay"
+],
+"note": "stripe CLI raw request"
+},
+{
+"id": "K4",
+"tool": "Bash",
+"inp": "stripe post /v1/payment_intents -d amount=500 -d currency=usd -d confirm=true",
+"want": [
+"pay"
+],
+"note": ""
+},
+{
+"id": "K5",
+"tool": "Bash",
+"inp": "stripe delete /v1/customers/cus_123",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "K6",
+"tool": "Bash",
+"inp": "gcloud compute scp local.txt vm-1:~/ --zone us-central1-a",
+"want": [
+"send"
+],
+"note": "flag after operands"
+},
+{
+"id": "K7",
+"tool": "Bash",
+"inp": "gcloud compute scp --zone us-central1-a local.txt vm-1:~/",
+"want": [
+"send"
+],
+"note": "(control)"
+},
+{
+"id": "K8",
+"tool": "Bash",
+"inp": "ssh web1 -t 'sudo rm -rf /var/cache/app'",
+"want": [
+"delete"
+],
+"note": "option after host"
+},
+{
+"id": "K9",
+"tool": "Bash",
+"inp": "ssh -t web1 'sudo rm -rf /var/cache/app'",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "K10",
+"tool": "Bash",
+"inp": "stripe invoices send in_123",
+"want": [
+"send"
+],
+"note": ""
+},
+{
+"id": "K11",
+"tool": "Bash",
+"inp": "curl -sS -X POST https://api.stripe.com/v1/refunds -u \"$SK:\" -d charge=ch_1",
+"want": [
+"pay"
+],
+"note": "(control)"
+},
+{
+"id": "L1",
+"tool": "cmd",
+"inp": "if exist build rmdir /s /q build",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "L2",
+"tool": "PowerShell",
+"inp": "cmd /c \"if exist dist rd /s /q dist\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "L3",
+"tool": "cmd",
+"inp": "start \"\" git push",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "L4",
+"tool": "cmd",
+"inp": "if exist build (rmdir /s /q build)",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "M1",
+"tool": "PowerShell",
+"inp": "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(\"C:\\x\", 'OnlyErrorDialogs', 'SendToRecycleBin')",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "M2",
+"tool": "PowerShell",
+"inp": "[System.IO.Directory]::Delete(\"C:\\x\", $true)",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "M3",
+"tool": "PowerShell",
+"inp": "$client = [System.Net.Http.HttpClient]::new(); $client.PostAsync($u, $content).Result",
+"want": [
+"send"
+],
+"note": ""
+},
+{
+"id": "M4",
+"tool": "PowerShell",
+"inp": "(Get-Item C:\\x\\a.txt).Delete()",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "M5",
+"tool": "PowerShell",
+"inp": "[System.IO.File]::Delete('C:\\a.txt')",
+"want": [
+"delete"
+],
+"note": "(control)"
+},
+{
+"id": "N1",
+"tool": "Bash",
+"inp": "docker exec -i db psql -U app <<'SQL'\nDROP TABLE x;\nSQL",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "N2",
+"tool": "Bash",
+"inp": "kubectl exec -i pg-0 -- psql -U app <<'SQL'\nTRUNCATE events;\nSQL",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "N3",
+"tool": "Bash",
+"inp": "ssh db1 psql -d app <<'SQL'\nDROP TABLE x;\nSQL",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "O1",
+"tool": "PowerShell",
+"inp": "@'\nRemove-Item -Recurse -Force C:\\x\n'@ | Invoke-Expression",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "O2",
+"tool": "PowerShell",
+"inp": "Invoke-Expression @'\nRemove-Item -Recurse -Force C:\\x\n'@",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "O3",
+"tool": "PowerShell",
+"inp": "$s = @'\ngit push\n'@\nInvoke-Expression $s",
+"want": [
+"push"
+],
+"note": "(opaque expected)"
+},
+{
+"id": "Q1",
+"tool": "Bash",
+"inp": "git clone -n https://github.com/org/repo.git",
+"want": [
+"download"
+],
+"note": "-n is --no-checkout"
+},
+{
+"id": "Q2",
+"tool": "Bash",
+"inp": "git restore -s HEAD~1 src/",
+"want": [
+"delete"
+],
+"note": "-s is --source"
+},
+{
+"id": "Q3",
+"tool": "Bash",
+"inp": "tmux new-session -d -s w 'rm -rf build'",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "Q4",
+"tool": "Bash",
+"inp": "script -q -c \"git push\" /dev/null",
+"want": [
+"push"
+],
+"note": ""
+},
+{
+"id": "Q5",
+"tool": "Bash",
+"inp": "ansible all -m shell -a \"rm -rf /tmp/x\"",
+"want": [
+"delete"
+],
+"note": ""
+},
+{
+"id": "Q6",
+"tool": "PowerShell",
+"inp": "$wc = New-Object System.Net.WebClient; $wc.UploadFile('ftp://ftp.example.com/a.zip', 'a.zip')",
+"want": [
+"send"
+],
+"note": "(control)"
+},
+{
+"id": "Q7",
+"tool": "Bash",
+"inp": "git -C \"$REPO_DIR\" push",
+"want": [
+"push"
+],
+"note": "(control from report)"
+},
+{
+"id": "Q8",
+"tool": "Bash",
+"inp": "bash -c 'git push' --help",
+"want": [
+"push"
+],
+"note": "contrived: --help is $0"
+},
+{
+"id": "Q9",
+"tool": "Bash",
+"inp": "find /data -type f -delete -name --dry-run",
+"want": [
+"delete"
+],
+"note": "contrived: dry flag as a value"
+},
+{
+"id": "Q10",
+"tool": "Bash",
+"inp": "docker exec web sh -c 'rm -rf /app/cache' --help",
+"want": [
+"delete"
+],
+"note": "contrived"
+}
+],
+"benign": [
+{
+"id": "Z1",
+"tool": "PowerShell",
+"inp": "Get-ChildItem | Where-Object { $_.Length -gt 1MB }"
+},
+{
+"id": "Z2",
+"tool": "PowerShell",
+"inp": "$env:PATH -split ';'"
+},
+{
+"id": "Z3",
+"tool": "PowerShell",
+"inp": "$PSVersionTable.PSVersion"
+},
+{
+"id": "Z4",
+"tool": "PowerShell",
+"inp": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5"
+},
+{
+"id": "Z5",
+"tool": "PowerShell",
+"inp": "foreach ($f in Get-ChildItem *.md) { $f.Name }"
+},
+{
+"id": "Z6",
+"tool": "PowerShell",
+"inp": "$x = 5; $x * 2"
+},
+{
+"id": "Z7",
+"tool": "PowerShell",
+"inp": "Get-Content log.txt | ForEach-Object { $_.ToUpper() }"
+},
+{
+"id": "Z8",
+"tool": "PowerShell",
+"inp": "(Get-Content package.json | ConvertFrom-Json).version"
+},
+{
+"id": "Z9",
+"tool": "PowerShell",
+"inp": "Set-Content -Path notes.txt -Value \"hello\""
+},
+{
+"id": "Z10",
+"tool": "PowerShell",
+"inp": "Get-ChildItem -Recurse | Measure-Object -Property Length -Sum"
+},
+{
+"id": "Z11",
+"tool": "PowerShell",
+"inp": "if ($LASTEXITCODE -ne 0) { Write-Host \"failed\" }"
+},
+{
+"id": "Z12",
+"tool": "PowerShell",
+"inp": "$files = Get-ChildItem *.log; $files.Count"
+},
+{
+"id": "Z13",
+"tool": "PowerShell",
+"inp": "Get-ChildItem *.json | ForEach-Object { $_.FullName }"
+},
+{
+"id": "Z14",
+"tool": "PowerShell",
+"inp": "$json = Get-Content config.json -Raw | ConvertFrom-Json; $json.name"
+},
+{
+"id": "Z15",
+"tool": "PowerShell",
+"inp": "git log --oneline | Select-Object -First 10"
+},
+{
+"id": "Z16",
+"tool": "PowerShell",
+"inp": "$env:NODE_ENV = 'production'; npm run build"
+},
+{
+"id": "Z17",
+"tool": "PowerShell",
+"inp": "Get-ChildItem -Path . -Filter *.ps1 | Select-String -Pattern 'TODO'"
+},
+{
+"id": "Z18",
+"tool": "PowerShell",
+"inp": "$p = Start-Process node -ArgumentList 'server.js' -PassThru; $p.Id"
+},
+{
+"id": "Z19",
+"tool": "PowerShell",
+"inp": "[Environment]::GetFolderPath('Desktop')"
+},
+{
+"id": "Z20",
+"tool": "PowerShell",
+"inp": "Test-Path $env:USERPROFILE\\.ssh\\id_ed25519"
+},
+{
+"id": "Z21",
+"tool": "Bash",
+"inp": "eval \"$(ssh-agent -s)\""
+},
+{
+"id": "Z22",
+"tool": "Bash",
+"inp": "source <(kubectl completion bash)"
+},
+{
+"id": "Z23",
+"tool": "Bash",
+"inp": "\"${EDITOR:-vi}\" notes.md"
+},
+{
+"id": "Z24",
+"tool": "Bash",
+"inp": "for f in *.md; do wc -l \"$f\"; done"
+},
+{
+"id": "Z25",
+"tool": "Bash",
+"inp": "export PATH=\"$HOME/.local/bin:$PATH\""
+}
+]
+}

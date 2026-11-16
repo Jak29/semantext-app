@@ -82,6 +82,13 @@ and which rule says so:
 - **The environment's own rules** that the message touches are counted too.
 - **Nothing is saved:** `semantext read` and the page's Try a message only show the reading. Try a message also shows
   the five steps for the message, and the card it would get.
+- **Clause by clause, one reader:** `semantext read`, Try a message and the message box on Home all use the same reader
+  (`semantext/reading.py`). It cuts the message into clauses (each shown as a chip with the acts it names and any time
+  word as you wrote it) and gives its advice for each act the words name. You can add the agent's last offer, so that a
+  bare "yes" is read as answering it. An ask whose words appear to say go is shown as "your words appear to say go:
+  confirm", never as a go: words alone never pass an act that leaves the machine, spends or deletes. The page asks
+  through `POST /api/read`, which changes and writes nothing; the words go in the body, never in an address, and no
+  further than this machine. If the reader cannot be reached the page says so and draws no reading.
 
 Reading is a guide for you, built from cue words. Your AI reads the card and applies the rules itself: the card is the
 same whatever the reading says, and the reading is never sent to your AI. The hook runs it on your own words for one

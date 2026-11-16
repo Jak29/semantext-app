@@ -4,10 +4,12 @@ Drawn in node (tests/v2_dom.js through tests/v2_node.py) with the page's own mod
 """
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
 
+from semantext import reading
 from v2_node import NODE, run
 
 needs_node = pytest.mark.skipif(NODE is None, reason="node is not installed")
@@ -24,14 +26,197 @@ return settled().then(() => {
 """
 
 
+EXAMPLE = "Could we maybe ship the dark mode later?"
+
+
+def answers(*messages, offer=None):
+    """The real reader's answers (reading.report, the one `semantext read` prints from), by message, as JSON for a stub."""
+    return json.dumps({m: {"ok": True, **reading.report(m, offer=offer)} for m in messages}, ensure_ascii=False)
+
+
+def stub(by_message):
+    """A fetch for the page: POST /api/read answers from the real reader (by message) at once; every other request
+    waits, as it does in node. What was sent is kept in `sent` as [path, method, body]."""
+    return """
+const sent = [];
+const BY = %s;
+globalThis.fetch = (path, opts) => {
+  sent.push([String(path), (opts && opts.method) || "GET", (opts && opts.body) || null]);
+  if (path === "/api/read") {
+    const got = BY[JSON.parse(opts.body).message];
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(got) });
+  }
+  return new Promise(() => {});
+};
+const ticks = (n = 40) => { let t = Promise.resolve(); for (let i = 0; i < n; i++) t = t.then(() => null); return t; };
+""" % by_message
+
+
 @needs_node
-def test_prism_reads_the_example_message_and_says_it_is_an_illustration():
+def test_prism_draws_what_the_real_reader_answers():
+    got = run(stub(answers(EXAMPLE)) + """
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => ticks()).then(() => {
+  const place = document.getElementById("place");
+  report({ text: place.textContent, sent, status: place.querySelector("p.prism-status").textContent });
+});
+""")
+    t = got["text"]
+    assert "QUESTION · publish" in t and "“later”, kept word for word" in t           # the reader's kind, act and time word
+    assert "You mentioned it as question, which is not a go." in t                       # the advice is the reader's why
+    assert "INSTRUCTION" not in t and "SUGGESTION" not in t and "YOUR WORD" not in t     # must-refuse: no page-made readings
+    assert "appear to say go" not in t                                                   # must-refuse: a question is no go
+    assert got["status"] == ""
+    posts = [s for s in got["sent"] if s[1] == "POST"]
+    assert posts == [["/api/read", "POST", json.dumps({"message": EXAMPLE}, separators=(",", ":"))]]   # in the body only
+    assert "Read by the same reader as semantext read" in t
+    assert "nothing is saved and nothing leaves it" in t
+
+
+@needs_node
+def test_prism_says_reading_and_draws_nothing_the_reader_did_not_say():   # must-refuse: no reading made up while waiting
     got = run(DRAW % 0)
-    for kind in ("QUESTION", "SUGGESTION", "TIME", "YOUR WORD"):                       # "Could we maybe ship ... later?"
-        assert kind in got["text"], kind
-    assert "INSTRUCTION" not in got["text"]                                             # must-refuse: no false fallback
-    assert "An illustration of how Semantext reads" in got["text"]
-    assert "Semantext sends nothing you type here" in got["text"]                      # P4's wording
+    assert "Reading…" in got["text"] and "READING…" in got["text"]
+    for kind in ("QUESTION", "SUGGESTION", "TIME", "YOUR WORD", "INSTRUCTION"):
+        assert kind not in got["text"], kind
+
+
+@needs_node
+def test_a_go_the_reader_hedges_is_drawn_as_confirm_never_as_a_go():
+    msg = "Publish the release tonight."
+    got = run(stub(answers(msg)) + """
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => {
+  const input = document.getElementById("place").querySelector("input.prism-input");
+  input.value = %s;
+  document.getElementById("place").querySelector("form.prism-form").dispatch("submit");
+  return ticks();
+}).then(() => report(document.getElementById("place").querySelector("ul.prism-advice").textContent));
+""" % json.dumps(msg))
+    assert "publish" in got and "your words appear to say go: confirm (within “tonight”)" in got
+    assert "ALLOWED" not in got and "BLOCKED" not in got
+
+
+def failing(reply):
+    """A page whose reader route answers `reply` (a JS expression for the response), then shows the message box."""
+    return """
+globalThis.fetch = (path, opts) => path === "/api/read" ? Promise.resolve(%s) : new Promise(() => {});
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => { let t = Promise.resolve(); for (let i = 0; i < 40; i++) t = t.then(() => null); return t; }).then(() => {
+  const place = document.getElementById("place");
+  report({ status: place.querySelector("p.prism-status").textContent, cls: place.querySelector("p.prism-status").className,
+           text: place.textContent });
+});
+""" % reply
+
+
+@needs_node
+@pytest.mark.parametrize("reply,says", [
+    ("{ ok: false, status: 400, statusText: 'Bad', json: () => Promise.resolve({ error: 'request too large' }) }", "request too large"),
+    ("{ ok: false, status: 502, statusText: 'Bad Gateway', json: () => Promise.reject(new SyntaxError('<html>')) }", "Bad Gateway"),
+    ("{ ok: false, status: 502, statusText: '', json: () => Promise.reject(new SyntaxError('<html>')) }", "the server answered 502"),
+    ("{ ok: true, status: 200, json: () => Promise.reject(new SyntaxError('not json')) }", "the server's answer was not readable"),
+    ("{ ok: true, status: 200, json: () => Promise.resolve(null) }", "the server's answer was not readable"),
+    ("{ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) }", "the answer was not in the shape the page expects"),
+], ids=["json error", "html error body", "no status text", "ok but not json", "ok but null", "ok but wrong shape"])
+def test_a_failed_read_is_said_plainly_and_no_reading_is_drawn(reply, says):   # must-refuse: no false reading
+    got = run(failing(reply))
+    assert got["status"] == f"Could not read it: {says}. No reading is shown." and "warn" in got["cls"]
+    assert "NOT READ" in got["text"] and "QUESTION" not in got["text"]
+
+
+@needs_node
+def test_a_good_answer_with_ok_first_still_draws():   # must-pass beside the failures above
+    ok = json.dumps({"ok": True, **reading.report("Delete the old branch.")})
+    got = run(failing("{ ok: true, status: 200, json: () => Promise.resolve(%s) }" % ok))
+    assert got["status"] == "" and "INSTRUCTION · delete" in got["text"]
+
+
+@needs_node
+def test_the_status_is_checked_before_the_body_is_trusted():   # item 4: r.ok first, then a body that may not be JSON
+    got = run("""
+const outcome = (r) => readerAnswer(r).then((j) => ["ok", j], (e) => ["error", e.message]);
+return Promise.all([
+  outcome({ ok: false, status: 500, statusText: "Server Error", json: () => Promise.resolve({ error: "no" }) }),
+  outcome({ ok: false, status: 500, statusText: "Server Error", json: () => Promise.reject(new Error("x")) }),
+  outcome({ ok: false, status: 500, statusText: "Server Error", json: () => Promise.resolve({ error: 5 }) }),
+  outcome({ ok: false, status: 500, statusText: "", json: () => Promise.resolve(null) }),
+  outcome({ ok: true, status: 200, json: () => Promise.reject(new Error("x")) }),
+  outcome({ ok: true, status: 200, json: () => Promise.resolve([1]) }),
+  outcome({ ok: true, status: 200, json: () => Promise.resolve({ a: 1 }) }),
+]).then(report);
+""")
+    assert got == [["error", "no"], ["error", "Server Error"], ["error", "Server Error"], ["error", "the server answered 500"],
+                   ["error", "the server's answer was not readable"], ["error", "the server's answer was not readable"],
+                   ["ok", {"a": 1}]]
+
+
+@needs_node
+def test_typing_waits_for_a_pause_and_a_slow_answer_to_an_older_message_is_dropped():
+    got = run(stub("{}") + """
+const timers = [], cleared = [];
+globalThis.setTimeout = (fn, ms) => { timers.push([fn, ms]); return timers.length; };
+globalThis.clearTimeout = (id) => { cleared.push(id); };
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => {
+  const place = document.getElementById("place");
+  const input = place.querySelector("input.prism-input");
+  const before = sent.filter((s) => s[0] === "/api/read").length;       // the page's own first ask, for the example
+  for (const v of ["P", "Pu", "Pub"]) { input.value = v; input.dispatch("input"); }
+  const typing = sent.filter((s) => s[0] === "/api/read").length;       // typing alone sends nothing
+  report({ before, typing, waits: timers.map((t) => t[1]), cleared: cleared.length,
+           status: place.querySelector("p.prism-status").textContent });
+});
+""")
+    assert got["before"] == 1 and got["typing"] == 1             # three keystrokes, no request; only the pause sends
+    assert got["waits"] == [400, 400, 400] and got["cleared"] >= 3
+    assert got["status"] == "Reading…"
+    late = run("""
+const resolvers = {};
+const reply = (msg) => ({ ok: true, status: 200, json: () => Promise.resolve(%s[msg]) });
+globalThis.fetch = (path, opts) => path === "/api/read"
+  ? new Promise((resolve) => { resolvers[JSON.parse(opts.body).message] = () => resolve(reply(JSON.parse(opts.body).message)); })
+  : new Promise(() => {});
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => {
+  const place = document.getElementById("place");
+  const input = place.querySelector("input.prism-input"), form = place.querySelector("form.prism-form");
+  input.value = "Delete the old branch."; form.dispatch("submit");
+  input.value = "Why is the build failing?"; form.dispatch("submit");
+  resolvers["Why is the build failing?"]();                       // the newer answer lands first
+  let t = Promise.resolve(); for (let i = 0; i < 40; i++) t = t.then(() => null);
+  return t.then(() => { resolvers["Delete the old branch."](); for (let i = 0; i < 40; i++) t = t.then(() => null); return t; })
+    .then(() => report(place.textContent));
+});
+""" % answers("Delete the old branch.", "Why is the build failing?"))
+    assert "QUESTION" in late and "INSTRUCTION · delete" not in late    # must-refuse: the older answer does not replace it
+
+
+@needs_node
+def test_an_empty_message_is_not_sent_and_says_so():   # must-refuse
+    got = run(stub("{}") + """
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => {
+  const place = document.getElementById("place");
+  const input = place.querySelector("input.prism-input");
+  const before = sent.length;
+  input.value = "   "; place.querySelector("form.prism-form").dispatch("submit");
+  report({ extra: sent.length - before, text: place.textContent });
+});
+""")
+    assert got["extra"] == 0 and "NOTHING TO READ" in got["text"] and "Type a message." in got["text"]
 
 
 @needs_node
@@ -201,8 +386,8 @@ return settled().then(() => {
   });
 });
 """)
-    band = [a for a in got["asked"] if not a[0].startswith("/api/v2/")]          # the app's own frame read aside
-    assert [a[0] for a in band] == ["/api/state", "/api/profile?name=me", "/api/profile?name=base", "/api/agents"]
+    band = [a for a in got["asked"] if not a[0].startswith("/api/v2/") and a[0] != "/api/read"]   # the frame read and the
+    assert [a[0] for a in band] == ["/api/state", "/api/profile?name=me", "/api/profile?name=base", "/api/agents"]   # reader aside
     assert all(a[1] == "1" and a[2] == "GET" for a in band)                      # reads only, with the header
     assert "In Me · 1 rule" in got["text"] and "Read before you write" in got["text"]
     assert "Shared one" not in got["text"]                                       # an archived rule is not drawn
@@ -229,10 +414,32 @@ return settled().then(() => {
 
 
 @needs_node
-def test_typing_reading_and_the_presets_send_and_keep_nothing():   # must-refuse (Koinos P3)
+@pytest.mark.parametrize("reply,says", [
+    ("{ ok: false, status: 502, statusText: 'Bad Gateway', json: () => Promise.reject(new SyntaxError('<html>')) }", "Bad Gateway"),
+    ("{ ok: true, status: 200, json: () => Promise.reject(new SyntaxError('<html>')) }", "the server's answer was not readable"),
+], ids=["error page", "ok but not json"])
+def test_the_rules_band_read_checks_the_status_and_survives_a_body_that_is_not_json(reply, says):   # item 4
     got = run("""
-const sent = [];
-globalThis.fetch = (path, opts) => { sent.push(String(path)); return new Promise(() => {}); };
+globalThis.fetch = (path, opts) => path.startsWith("/api/v2/") || path === "/api/read" ? new Promise(() => {}) : Promise.resolve(%s);
+applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
+location.hash = "#prism";
+route();
+return settled().then(() => {
+  const place = document.getElementById("place");
+  place.all((e) => e.tagName === "BUTTON" && e.className.includes("band-rules"))[0].click();
+  let ticks = Promise.resolve();
+  for (let i = 0; i < 30; i++) ticks = ticks.then(() => null);
+  return ticks.then(() => report(place.all((e) => e.getAttribute("id") === "band-panel-rules")[0].textContent));
+});
+""" % reply)
+    assert f"Could not read your rules: {says}." in got and "No rules yet" not in got      # said, never an empty list
+
+
+@needs_node
+def test_typing_reading_and_the_presets_send_the_words_in_one_body_and_never_in_an_address():   # must-refuse (Koinos P3)
+    got = run("""
+const sent = [], bodies = [];
+globalThis.fetch = (path, opts) => { sent.push(String(path)); bodies.push((opts && opts.body) || ""); return new Promise(() => {}); };
 applyFrame({ name: null, word: null, waiting: 0, problems: [], outside: [] });
 location.hash = "#prism";
 route();
@@ -243,17 +450,20 @@ return settled().then(() => {
   input.value = "MARKER-7f3a delete everything";
   place.querySelector("form.prism-form").dispatch("submit");
   for (const b of place.all((e) => e.tagName === "BUTTON" && e.classList.contains("chip"))) b.click();
-  report({ before, after: [sent.length, location.hash, document.title], sent,
+  report({ before, after: [sent.length, location.hash, document.title], sent, bodies,
            input: [input.getAttribute("spellcheck"), input.getAttribute("autocomplete")] });
 });
 """)
-    assert got["after"] == got["before"]                                                 # no request, address or title
-    assert not [p for p in got["sent"] if "MARKER" in p]
+    assert got["after"][1:] == got["before"][1:]                                        # no new address or title
+    assert got["after"][0] > got["before"][0]                                           # a read is a request, now
+    assert not [p for p in got["sent"] if "MARKER" in p]                                # the words are in no address
+    assert any("MARKER-7f3a delete everything" in b for b in got["bodies"])             # they travel in a body
+    assert all(p == "/api/read" for p, b in zip(got["sent"], got["bodies"]) if b)       # and only to the reader
     assert got["input"] == ["false", "off"]                                             # P4
 
 
 @needs_node
-def test_the_prism_page_sends_nothing():   # must-refuse: the reading is drawn here, never asked of a server
+def test_the_prism_page_posts_only_to_the_reader():   # must-refuse: no other change, and nothing in an address
     got = run("""
 const sent = [];
 globalThis.fetch = (path, opts) => { sent.push([path, (opts && opts.method) || "GET"]); return new Promise(() => {}); };
@@ -262,5 +472,5 @@ location.hash = "#prism";
 route();
 return settled().then(() => report(sent));
 """)
-    assert all(method == "GET" for _, method in got)                                   # reads only, as every place
-    assert not [p for p, _ in got if re.search(r"read|card|model|ask", p)]             # nothing about the message
+    assert [p for p, m in got if m == "POST"] == ["/api/read"]                         # the one POST: the reader, once
+    assert not [p for p, m in got if m == "GET" and re.search(r"read|card|model|ask|\?.*=", p)]   # no GET names the message

@@ -317,7 +317,11 @@ The place is answered at `/api/v2/<name>`. `build(sources, ctx)` returns a recor
 **An outside place is given a copy** of every source's answer, so it can change nothing the page or another place
 reads. `ctx` is the `ReadContext` of the home the page was started with; a build that takes one argument is called
 that way. The keys `place` and `frame` of its answer are the page's own and are dropped. A built-in place's name, or
-the person's own word for the whole page, cannot be taken.
+the person's own word for the whole page, cannot be taken. Nor can any address the page itself answers at (prism,
+today, rules, settings, waiting, projects, documents, diffmap, map, record, work, plugins, overview, live, inbox,
+decisions, agents, layers, test, history), or, in any case, the name of one of a JavaScript object's own properties
+(constructor, toString, valueOf, hasOwnProperty, isPrototypeOf, propertyIsEnumerable, toLocaleString, `__proto__`,
+`__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`).
 
 ### The page module
 

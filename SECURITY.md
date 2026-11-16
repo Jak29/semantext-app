@@ -73,6 +73,12 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   the page's `X-Semantext: 1` header, which another website can send only after a preflight this server never grants,
   and a browser that names the requesting site must name this one. The feed is never served as a file. Trying a
   message, from the page's Try a message, writes nothing: no feed line, no rule, no request and no pending decision.
+  - **The reader (`POST /api/read`):** the page's message boxes (Home, and Try a message) send the words to the reader
+    here, clause by clause. It is a POST so the words never travel in an address (a request with a query string is
+    refused). It is held to the page's own guards (its `X-Semantext` header, its own `Origin`, a `Referer` naming the
+    page and no plug-in module), takes a body of at most 100,000 bytes, reads at most 20,000 characters (and says when it
+    clipped), and writes nothing: no file is opened, no record kept. Its answer is advice for you to read, never
+    permission. Limit: a local process that forges the page's headers can ask it; it learns only the reading of the words it sent.
   - It always sends `X-Content-Type-Options: nosniff`.
 - **Request bodies:** it refuses a negative or oversized `Content-Length` (over 200,000 bytes). It drops a request that
   stalls for 10 seconds.
@@ -126,6 +132,61 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   as it can write any record there (the store's stated limit), and a local program that forges the page's headers can
   send one, as it can answer a request. Since the server listens on this machine only, another user signed in to the
   same computer can reach it too.
+- **The proxy's holds, answered on your page.** In Waiting, "The proxy holds" lists the calls the proxy keeps for your
+  word and takes your yes once, no or revoke (`/api/proxy/asks`, `/api/proxy/answer`; docs/proxy.md). The answer is
+  `semantext proxy answer`'s own, so the chain is verified first and an ask of an earlier run is refused (except in the moment a new proxy starts,
+  docs/proxy.md, Limits; it can never release a call). It is held as
+  the Work route is: the page's write guards, a `Referer` naming one of the page's own addresses, a same-origin plain
+  fetch, and nothing from a plug-in's page module; the list is read only with the page's header, from the page. The
+  limits are the Work route's: a local program that forges the page's headers, or a module imported into the page, can
+  answer, so the terminal's "not in an agent's shell" test does not apply to the page, and the record does not say the
+  answer came from the page. The list never carries a call's input or your words.
+- **A yes gives way to your newest words, act by act.** After a yes, a message you write in that chat after the held
+  turn is read for each act of the call on its own; if it names one of them other than as a plain go ("skip the
+  delete", "go ahead and push. do not delete anything" for a push and a delete), the call is held again on the same ask
+  and the yes is not spent (docs/proxy.md). A go in a message that also withholds something is not a plain go, so
+  "go ahead and push. do not delete anything" holds a call that only pushes too, which then asks again (the cheap
+  direction). Limits: a message that names none of the call's acts leaves the yes as it
+  is, so a bare "stop" or "wait" does not hold the call (revoke the yes for that); a word for the act the reader does
+  not know ("nuke", "get rid of", "trash") names nothing; a withhold by its object, not by an act word ("push it and
+  keep the logs", "just push" for a call that pushes and deletes), names no delete, so the yes stands for the whole
+  call; a call whose act the reader does not name (`./deploy.sh`, `npm run release`, `make deploy`), held by a gate,
+  is not held by newer words at all; a hold after the first 20,000 characters or 400 clauses of a message is not read
+  (the reader's clip); a sentence about the past that names the act ("I already deleted the logs") holds the call,
+  the cheap direction. And a request that does not carry your newer words is decided without them: the same request
+  sent again, or a chat rewound to before them, lets the yes through as it would have before you wrote them (revoke
+  the yes to withdraw it for good).
+- **Words typed beside a tool's result are read for holds, never as a go.** The person's words are their own newest
+  message that carries no tool result; but a client sends what you type while a tool runs inside the message that
+  carries its result. The text blocks of such messages after your own words, and the text after a
+  `<system-reminder>` tag that is never closed, are read too (within the limits at the end of this entry), with or
+  without a yes, only to add a hold: they are
+  read with no offer, never bind a bare yes, never answer an ask and never take the place of your own message. That
+  text may be the client's own or another session's (a note such as "Tool loaded.", a message from another agent), so
+  it can cost an ask (the cheap direction); a tool's own output is never read as words. The sentences one client puts
+  around words typed while a tool runs are cut before the reading (Claude Code's "The user sent a new message while
+  you were working:" and its closing paragraph, and the lead and the tag around another session's message): read as
+  words they name
+  a send, and would hold every send after such a message. Limit: they are known by their exact wording, measured on
+  that client's requests in November 2026; another client's wording, or a later one, is read with your words.
+  What you typed while a tool ran is read first: every text block that begins with that client's lead line is taken
+  as your words, whatever else its message carries (a note in a block before it, megabytes of another session's
+  message in a block after it), newest first, up to 16 messages; then the client's notes and other sessions'
+  messages, each distinct text once, up to 16. They are read joined in that order, up to the reader's 20,000
+  characters or 400 clauses, so a note or another session's message does not push those words out of the reading.
+  Limits: your words are known only by that lead at the start of a text block, so from another client, or where
+  something stands before the lead in its block, they are read with the other texts, and there a newer long text
+  can crowd an older one out (a closed reminder section before the lead is not counted as something before it); of
+  your own typing, the newest 16 typed messages are read, newest first, up to the
+  reader's clip, and of one typed block over 65,536 characters its two ends; a message of more than 10,000 blocks
+  is looked at only in its last 256 blocks and only for what you typed; and words inside a closed
+  `<system-reminder>` pair are cut with it, unless the section begins with that client's lead line (its own wrapped
+  form of what you typed, which is read). Two more limits, both the same in 1.7.0. Of one message of yours whose
+  text blocks hold more than 4 MiB in all, the newest blocks are read first, up to 4 MiB, so your words in an
+  earlier block of such a message are not read. And a user message that is another agent's message or the tool's
+  own notice, sent as a turn of its own and not inside a reminder tag, is taken for your words (the proxy does not
+  use the prompt hook's test of who is speaking), so as the newest message it stands where your hold stood. Claude
+  Code wraps another session's message in a reminder tag (106 of 106 measured), and then it is not read at all.
 - **Answering is your act.** An agent may file a request and withdraw its own; it must never answer one. Semantext
   holds that rule where it can:
   - `semantext answer` refuses in an agent's shell, which it knows by `CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`,
@@ -497,6 +558,115 @@ The refusals Semantext promises, each with the tests that hold it, are listed in
   built-in. Nothing else in the package is public. The contract is in `docs/plugin-api.md`, and the run-record format
   in `docs/run-record-schema.md`; what 0.2 added and changed is also in the module's own docstring.
 
+## Reading words and commands
+
+- **Naming what a tool call does.** The proxy and the reader name the acts of a tool call (publish, push, delete,
+  send, pay, download) from the call alone (`semantext/actclass.py`). A shell command is read with a lexer (quotes,
+  escapes, here-documents, `$(...)`, groups, comments), looking through wrappers and runners; a quoted word is never an
+  act, except where the quoted text is run (a shell's `-c`, PowerShell's `-Command`, an interpreter's code, an SQL
+  client's statement, a remote shell's command). A call it cannot read counts as every act: a program held in a
+  variable or a substitution, `curl u | sh`, nesting deeper than 8 levels, reading that costs more than 6 times the
+  command's length plus 4 KiB, or a command longer than the size limit below. A miss can only lose a hold your words
+  asked for; it never releases anything.
+  - **Not named, by design:** a script or target run by its own name at the top level of a command (`./deploy.sh`,
+    `npm run release`, `npm run prod`, `make deploy`, `make all`, `just`, `task`, `ansible-playbook`), a file handed to an
+    SQL client (`psql -f x.sql`), text piped from a file, an act done by a program the command starts, an alias or
+    function defined in another call, a string-built or base64-decoded program, a tool whose name says nothing (an MCP
+    tool that runs SQL or code), and any CLI not in its tables. Your words do not hold these; your space's gates decide
+    them as before.
+  - **Inside a `( )` or `{ }` group,** a script or target run by name is counted as every act, unless every part of
+    its name (split at `:`, `-`, `_`, `.` and `/`) is an everyday word and the first is one of the usual first words
+    (test, build, lint, check, dev, start, docs, all and the like), and no part names an act (deploy, publish, release,
+    push, delete, clean, migrate and the like). So `(cd web && npm run build)` and `(cd web && make all)` are no act,
+    while `(cd web && npm run prod)`, `(cd infra && make all-deploy)` and `(cd web && npm run preview:deploy)` count as
+    every act. The same holds in a group for `poetry`, `pipenv`, `hatch`, `pdm` or `uv run X` (with or without options
+    before `run`), `npx`, `bunx`, `pnpm dlx` or `npm exec` of X (with no option before `dlx` or
+    `exec`), `turbo run X`, `xargs make X`, `python -m X` and
+    `py -m X`; a runner's own download does not stop this, and a task runner given another recipe file or a recipe text
+    (`-f`, `--file=`, `--eval`, `--justfile`) counts as every act. Limits: a project whose `build` or `all` target
+    ships something is let through in a group, as it is at the top level; a bare `make`, `just` or `task` in a group
+    runs its default target, which no word names, so it is not held; and neither is a program the reader does not know,
+    run by its bare name (`(cd web && deploy)`), nor `find -exec make X` or `sudo -u user ./x`.
+  - **A dry run, a help page and PowerShell's `-WhatIf` do not make a call no act.** A call that holds `--dry-run`,
+    `-n`, `--dryrun`, `--help`, `-h`, `help` or `-WhatIf` is named as the act it would be without the word, and is
+    asked about, as in 1.7.0 (`git push --dry-run origin main` is read as a push). The reader does not try to tell a
+    real dry run from a line that only looks like one: a first attempt at that was attacked four times, and each time
+    a line was found that let a real push, publish or delete through. An extra ask for a real dry run is cheap; a call
+    let through is not. Limit: where the line already uses `-n` as an option that takes a value (`kubectl -n prod`,
+    `helm -n prod`), a help or dry-run word before the subcommand can leave the call unnamed; kubectl and helm print
+    help or fail on such a line.
+  - **A runner that fetches a package** (`npx`, `pnpx`, `bunx`, `uvx`, `pnpm dlx`, `yarn dlx`, `npm exec`, `npm x`,
+    `pipx run`, `uv tool run`) is a download whatever the package is given (`npx some-pkg --help` still fetches it).
+    Limits: `npx` of a common development tool (tsc, eslint, jest, turbo and the like), written in lower case with no
+    scope, version, `-p` or `--package`, `-y` or `--yes`, is taken to run the project's own copy and is not named a
+    download; if that copy is missing, npx fetches it and the reader does not see that. `deno run` of a URL and
+    `go run` of `pkg@version` are not named as downloads.
+  - **A tool is named a read by its name** when the name holds a reading word (list, get, search, read and the like)
+    and no writing word, as `list_orders` and `get_channel_history` do. A name that joins a second action is the act it
+    names: joined by `and`, `then`, `or`, `plus`, `also`, `+`, `&` or `__`, or by `to`, `for`, `with`, `via` or a
+    number before a bare act word (`search_and_purchase`, `find_to_purchase`, `find2purchase`); and so is one where
+    purchase, install, reinstall or uninstall stands before the reading word. For an MCP tool the name is everything
+    after the server's name (`mcp__a__purchase__list` is a purchase). A plural after the joining word is what is read
+    (`search_for_messages` is a read). Limit: an act word beside a reading word with no joining word
+    (`release_check`, `history_purchase`) is read as a noun, so the call is a read.
+  - Expect a miss rate above zero on commands written by someone new: the tables were tuned on every corpus they were
+    measured on, and each new attacker's commands found misses the last round had not.
+- **The act reader's size limit depends on the Python.** A shell command longer than 64 KiB (2 KiB on Python 3.10)
+  counts as every material act and is not read. The reader's patterns use possessive repeats, which Python 3.10 does not
+  have, so there they are compiled through a shim as plain greedy repeats: the same answers, but not linear at worst.
+  The smaller limit bounds the slowest known shape (printf's run of zeros: 0.14 s at 2 KiB, 0.56 s at 4 KiB, measured on
+  the greedy copy the tests load, not on a real Python 3.10). A longer command can draw an extra ask there, and is never
+  released for being long. Tests: `tests/test_actclass_linear.py` (the `test_e9_` tests and
+  `test_the_greedy_fallback_matches_what_the_possessive_patterns_match`). A Python 3.11 that has possessive repeats
+  and matches them wrongly is treated as 3.10 is: CPython 3.11.0 to 3.11.4 do so in two shapes (CPython issues 100061
+  and 106052, both fixed in 3.11.5; Debian 12 ships 3.11.2), and two of the reader's patterns have the first shape,
+  where the fault would be a missed act. When it loads, the reader runs the two upstream reproductions and uses
+  possessive repeats only if both come out right
+  (`test_l21_the_interpreter_is_asked_whether_possessive_repeats_match_rightly`). Limits: this was not run on a real
+  3.11.0 to 3.11.4; and an interpreter with a third fault of this kind, which the two reproductions do not show, is
+  not caught.
+- **Reading text from an agent or a page takes time in proportion to it.** Before reading text an agent or a page can
+  send (a shell command, your words, the agent's offer, a request's sender and title, a path judged against your closed
+  places), Semantext normalises it (NFKC, NFC or NFD) through one helper, `semantext/normal.py`. Its answer is Python's
+  `unicodedata.normalize`, character for character, and its work is linear in the text and in what the text expands
+  to. Python's own call took time in the square of the text on a long run of combining marks. A test forbids that call
+  elsewhere in the package. Limits: the standard library's own normalisation of a request's address (inside `urllib`) is
+  outside the helper; and the reader reads the agent's offer once per reading, but on the text as NFKC widens it, so a
+  message or an offer of a character that widens a lot (U+FDFA becomes 18 characters) takes about a second each at
+  20,000 characters: measured on this project's machine, a reading of 20,000 U+FDFA as the offer took 0.8 to 0.9 s,
+  and with the message the same as well, 1.9 to 2.0 s, on Python 3.11 and 3.14.
+- **Keys in what the reader shows.** What the feed and the reader show is checked for the shape of a key, a token or a
+  password, and a value with that shape is withheld, never rewritten. The check is made on the text as it stands and
+  again with every non-ASCII character that is not white space read as a hyphen, so a key spelled with a look-alike
+  hyphen is withheld too. The reader withholds a clause if it shows a key as you wrote it or as normalised; if
+  normalising moved where clauses end, every clause of a message with a key in it is withheld. It reads exactly the
+  first 20,000 characters and says when it clipped; the clause that runs to the clip is shown with its last word
+  replaced by "(the rest is withheld at the clip)". When only the whole message shows a key (its name and its value in
+  different clauses), every clause is withheld. `POST /api/explain` withholds the message in its quick reading, and a
+  sender's name, when they show a key. Limits:
+  - an ASCII character that is not a hyphen, and white space, are not folded;
+  - a message with a key inside one clause and also a name and value split across clauses withholds only the clause
+    with the key, and in `secret = Ze7, so-Pa55wordZebra` the second clause still shows the rest of the value;
+  - the clip withholds one word, so a key with white space inside it (a multi-line block) leaves its earlier words to
+    the ordinary check;
+  - the fold also reads ordinary non-ASCII text as hyphens, so some text that is no key is withheld: for example a run
+    of 32 or more such characters, letters and digits holding an ASCII letter and an ASCII digit, or "sk" (as in task,
+    desk) followed by a non-ASCII character and 16 more token characters. A false alarm costs one withheld value;
+  - the hook's own check of a relayed sender's name does not fold look-alike hyphens; that name goes only into the feed
+    line, which is checked with the fold when it is written;
+  - a password is known by "password is X", "password: X" and the like, not by every way of writing one: `password
+    is: X`, `password is - X`, `pw is X`, `pwd: X` and `passcode: X` are not known, so `semantext read`,
+    `POST /api/read` and the page's clause readings show the value back.
+- **A secret typed on the command line is cut from what the command prints.** Semantext collects the secret values you
+  typed (a key-shaped word or part of a path, the password and a key-shaped user of a `user:password@` address, the
+  value of `password=`, `token:` and the like, the word after "password is") and cuts every spelling of each (in any
+  case, with `/` and `\` swapped or doubled, escaped as Python writes it) from everything written to stderr and, when the
+  command fails, to stdout. An ordinary wrong word is still named in an error, so a typo can be seen. Limits: a value
+  shorter than 4 characters is not cut; only whole values are cut, not a prefix; output below Python's own streams is
+  not seen; the commands a reader waits on (`hook`, `mcp`, `serve`, `start --hook`, `proxy serve`) have their stdout left
+  alone; a JSON web token whose own `eyJ` is the ninth or later in one run of token characters is cut only with what is
+  glued before it; and a word typed after `token:` or `secret=` is cut from every later message, a key or not.
+
 ## What Semantext does not protect against
 
 - **Anything that can already act as you.** Malware, or another account with your permissions, can read and change your
@@ -606,5 +776,5 @@ do not open a public issue for a security problem.
 
 | Version | Supported |
 |---|---|
-| 1.4.x | yes |
-| 1.3.x and older | no |
+| 1.8.x | yes |
+| 1.7.x and older | no |

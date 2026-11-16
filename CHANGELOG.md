@@ -6,6 +6,253 @@ All notable changes to Semantext are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-16
+
+### Added
+- **`semantext proxy serve`** starts the proxy at your own terminal (refused in an agent's shell, as far as Semantext
+  can tell one), with your card and the space's blocks pinned as they are. One proxy runs per folder and per port.
+- **You can answer the proxy.** `semantext proxy asks` lists what waits for your word (never the call's input), and
+  `semantext proxy answer ASK yes|no|revoke` answers it from your own terminal. An ask of an earlier run of the proxy
+  can never release a call and, apart from the moment a new proxy starts (docs/proxy.md, Limits), cannot be answered;
+  nothing is answered while the record's chain is broken. The listing also shows a yes not yet
+  used, with the line that takes it back; that line carries the `--home` and `--proxy-home` you gave, quoted for
+  PowerShell on Windows or a POSIX shell elsewhere, and a folder whose name looks like a key is shown as
+  `"<your --home folder>"` instead.
+- **What a yes does, said plainly.** A yes counts once, in the chat it was asked in, until its ask runs out. The held
+  turn is sent on at that chat's next message when every call of the turn has a yes (all its asks are spent together,
+  or none), or else the call goes through when the model makes exactly that call again; neither while your newest
+  message in that chat names one of the call's acts other than as a plain go (see Fixed). The page's note after a yes and `semantext proxy answer ASK yes`
+  now say this; they used to say only "when the agent makes it again". docs/proxy.md has the details and the cases
+  where nothing is sent.
+- **You can answer the proxy from your page.** Waiting has a section, "The proxy holds": each call the proxy keeps for
+  your word, with the agent, the tool, why it is held and the minutes left (never what the call was given, never your
+  words), and **Yes once**, **No**, or **Revoke** for a yes not yet used. It is the command's own answer, sent from the
+  page by one press; it reads again whenever Waiting does, says in plain words when no proxy has run, when none is
+  running and when nothing waits, and says why an answer was not taken (an earlier run, an unknown ask, a broken
+  record, a stopped proxy). It is held like an answer to a card, and more: the page's header and own Origin, a Referer
+  naming one of the page's own addresses, a same-origin plain fetch, nothing from a plug-in's page module. Limits,
+  stated in docs/proxy.md: a program on this machine that sends those headers can send it too (SECURITY.md), and the
+  record does not say an answer came from the page.
+- **Try a message reads clause by clause.** Beside the quick reading, each clause is a chip with the acts it names and
+  its time word, and every act the words name has the reader's advice, with its rule and the words it rests on. The two
+  readings are headed by what each reads ("Clause by clause: what it asks for, act by act" and "The quick reading: what
+  kind of message this is"). A box takes the agent's last offer (optional), so a bare "yes" is read as answering it;
+  the advice made from the offer is withdrawn, with a note, when the offer is no longer in the box. An ask whose words
+  appear to say go reads "your words appear to say go: confirm", never as a go; a material act is never shown as
+  allowed.
+- **`POST /api/read`**, the page's route to the reader: `{message, offer?, acts?}` in, the clause readings, the advice
+  per act and the acts' meanings out (`reading.report`, which `semantext read` now prints from too). It changes nothing
+  and writes nothing. The words go in the body, never in an address (a query string is refused); a body over 100,000
+  bytes, a request from another page, from no page, from a plug-in's page module or without the page's own `Referer`, a
+  body that is not one JSON record, and an unknown act are refused. A message over 20,000 characters is read up to
+  there and the answer says it was clipped. The reader carries no house rules, as `semantext read` carries none.
+- **A replay of documented agent incidents** (`tests/test_incident_replays.py`, `tests/test_tamper.py`, and the table
+  in docs/incidents.md): published incidents, each with its source, replayed through the act reader, the decision and
+  the proxy, beside a tamper set (settings and hook edits, base-URL changes, an agent answering its own ask, a damaged
+  record). The gaps found are listed there and kept as expected failures, so closing one shows.
+
+### Changed
+- **The reader that names what a tool call does was rewritten** (`semantext/actclass.py`). It reads a shell command
+  with a lexer (quotes, escapes, here-documents, `$(...)`, groups, comments), looks through shell and PowerShell
+  wrappers, prefix wrappers and runners, and reads the act from the subcommand, so a read-only subcommand is no act,
+  but a dry run, a help page and PowerShell's `-WhatIf` do not make a call no act: such a call is named as the act it
+  would be without the word and is asked about, as in 1.7.0. (A first attempt to recognise real dry runs was attacked
+  four times, and each time a line was found that let a real push, publish or delete through, so 1.8.0 does not try.)
+  A runner that fetches a package (`npx`, `bunx`,
+  `pnpm dlx`, `npm exec` and their kin) keeps its download whatever flags the package is given. A tool is named a
+  read by its name when it holds a reading word (list, get, search, read and the like) and no writing word, and joins
+  no second action (`search_and_purchase` is a purchase; in an MCP tool's name a `__` joins as `and` does).
+  A call it cannot read (a program held in a variable, `curl u | sh`, nesting past 8
+  levels, reading that would cost more than 6 times the command's length plus 4 KiB) counts as every act. Its reading
+  time is linear in the command on Python 3.11.5 and later, and a test times every pattern on inputs built from its own parts (16 and 64 KiB).
+  Limits, stated in SECURITY.md: a script or target run by its own name (`npm run release`, `make deploy`) is not
+  named at the top level of a command; inside a `( )` or `{ }` group it counts as every act unless every part of its
+  name is an everyday word such as test, build or all (so do `poetry run X`, `py -m X`, `xargs make X` and a task
+  runner given another recipe file), and a bare `make`, `just` or `task` in a group names no target and is not held;
+  and expect a miss rate above zero on commands it has not seen.
+- **On Python 3.10 the act reader reads a shell command of up to 2 KiB (64 KiB from 3.11.5, and on any 3.11 that
+  passes two checks of its possessive repeats).** 3.10's regular
+  expressions have no possessive repeats, so the reader's patterns are compiled there through a shim as plain greedy
+  repeats: the same answers, but not linear at worst. A longer command counts as every material act. The slowest known
+  shape (printf's run of zeros) takes 0.14 s at 2 KiB and 0.56 s at 4 KiB on the greedy copy the tests load.
+  The same holds on a Python 3.11 that matches possessive repeats wrongly: CPython 3.11.0 to 3.11.4 do, in two
+  shapes (CPython issues 100061 and 106052, both fixed in 3.11.5; Debian 12 ships 3.11.2), and two of the reader's
+  patterns have the first shape, where the fault would be a missed act. When it loads, the reader runs the two
+  upstream reproductions and uses possessive repeats only if both come out right. Not run on a real 3.11.0 to
+  3.11.4: the path such an interpreter takes is the one tested on 3.10.
+- **Text an agent or a page sends is normalised in linear time.** Every Unicode normalisation of such text goes through
+  one helper (`semantext/normal.py`) whose answer is Python's own, character for character; Python's own call took time
+  in the square of the text on a long run of combining marks. Nothing Semantext decides changed.
+- **The command line is read the same on every supported Python.** Before Python 3.12.7, argparse left a word unread
+  when it followed an option after an earlier word (`semantext env add --env work an-id`), and refused the line. A
+  sub-command left with unread words now reads its part of the line a second way (options and words intermixed), and
+  keeps that reading only if it reads every word. It also now reads, on every Python, one kind of line that every
+  Python refused before: the words of one many-word argument split by an option (`semantext backtest a.jsonl --env
+  work b.jsonl` reads both files). A line with more words than the command takes is refused as before.
+- **The tests need the `test` extra, and CI installs it.** The proxy's tests use the Anthropic SDK as their client and
+  skip themselves without it, so until now they never ran in CI. Install with `pip install -e ".[test]"`; the extra
+  holds pytest, the Anthropic SDK and, on Python 3.10, `tomli`.
+- **The reader is on the page: one reader for the command line and the page.** Home's message box used to draw four
+  kinds from word patterns written in the page's own JavaScript, which could disagree with `semantext read`. It now asks
+  the real reader (`semantext/reading.py`) and draws what it answers: each clause with its kind, acts and any time word
+  kept as written, and the advice for each act under it. Typing waits for a pause (400 ms) before it asks; it says
+  "Reading…" while it waits, and any failure plainly ("Could not read it: …"), with no reading drawn in its place; an
+  older, slower answer never replaces a newer one. The words now go to Semantext on this machine to be read (in a request
+  body, never an address), so the note under the box no longer says nothing you type is sent; it says where they go.
+- **A read that fails with a body that is not JSON is said, not thrown.** The Rules band's reads (and the reader's) check
+  the status first, and then a body that is not JSON (a proxy's page, an empty reply) is reported as "the server's answer
+  was not readable" or by its status text. Before, `r.json()` ran first and a non-JSON error page surfaced as a
+  JavaScript parse error.
+
+### Fixed
+- **Your newest words win over an earlier yes.** After you said yes to a held call, a later message of yours in that
+  chat that withholds the act ("wait, do not delete anything") did not hold it: the kept turn was sent on at that
+  message, and the same call made again went through (1.7.0 did the same). Now neither happens while your newest
+  message, written after the held turn, names one of the call's acts other than as a plain go. The message is read for
+  each act of the call, and a go in a message that also withholds something is not a plain go: so "go ahead and push.
+  do not delete anything" holds `git push && rm -rf logs` (and a call that only pushes too, which then asks again),
+  and so do "skip the delete",
+  "I forbid deleting" and "delete them tomorrow"; "yes, delete them" does not. Then the kept turn is not sent and the
+  request goes on to the model, a call made again is held on the same ask, and the yes is not spent; it goes through
+  once after a later message that does not name the act that way, or `semantext proxy answer ASK revoke` takes it
+  back. A message naming none of the call's acts ("ok, go ahead now", "thanks") leaves the yes, and words only ever
+  hold, never release. Words typed beside a tool's result (a client sends what you type while a tool runs inside the
+  message carrying its result), and the text after a `<system-reminder>` tag that is never closed, are now read for
+  holds too, on both paths and with no yes as well, never as a go: a "don't push yet" typed while a tool ran was not
+  read before. The sentences the client itself puts around such words (Claude Code's "The user sent a new message
+  while you were working:" and its closing paragraph) are cut first, because read as words they name a send; and
+  what you typed (each text block that begins with that client's lead line) is read before the client's notes and
+  other sessions' messages, so those do not crowd your words out of the reading. SECURITY.md has the caps and the
+  limits.
+  Limits, in docs/proxy.md: the newest words hold only acts the reader names, so a call held by a gate
+  whose act it does not name (`./deploy.sh`, `npm run release`, `make deploy`) is not held by them; a bare "stop" or
+  "wait" names no act; a word for the act the reader does not know ("nuke", "get rid of") names nothing; a withhold
+  by its object ("push it and keep the logs", "just push" for a push and a delete) names no delete; a hold after the
+  first 20,000 characters or 400 clauses of a message is not read; a sentence about the past that names the act holds the call.
+- **Cutting the harness's reminder sections out of a message takes time in proportion to it.** A `<` followed by a
+  long run of white space that opens no tag took the square of the run (8 s for 32 KiB of spaces, measured), on
+  every request that carried the message; 1.7.0 did the same. The pattern now makes one pass and finds the same
+  tags.
+- **A kept turn that makes the same call twice says why it is not sent.** It shares one ask, and one yes releases one
+  call, so the turn is refused; the refusal said "the space or its gates changed", which was not so. It now says the
+  turn makes the same call twice, and the call made again goes through once on the yes.
+- **A yes belongs to the chat it was asked in, with or without a session header.** Two chats that start alike (same
+  system prompt, same first message) used to be one conversation to the proxy, so a yes in chat A could release the
+  identical call in chat B. Each ask now keeps a keyed digest of the history it was asked after, and a yes releases a
+  call only in a request whose history begins with exactly that. With Claude Code's session header a chat is its
+  session and its messages; without one it is also its whole system and its tools list. A cache marker is ignored only
+  where it is a marker. Kept turns are stored per chat too, so one chat's held turn no longer overwrites another's.
+- **The proxy's record decides a yes.** A yes counts only while the record's last word for that ask is yes and no spend
+  of it is on the record, so a crash between the record and the asks file cannot release a call after a revoke, or the
+  same yes twice. A held turn is sent on only if every one of its asks is still a live yes when it is spent; before, an
+  ask revoked in between was skipped and the whole turn went out.
+- **A turn is held with all of its asks or none.** A turn whose new asks would pass the cap (20 waiting, or 5 for tools
+  the agent may not call) is refused and opens no ask, so a long turn no longer leaves 20 stale asks that shut the agent
+  out for an hour.
+- **The asks file is read and written with the store's retrying tools,** so a page or a terminal reading at the same
+  moment no longer makes a yes, a revoke or a new ask fail on Windows.
+- **A stopped proxy is known to be stopped.** Whether a proxy runs is found by trying its lock, which the system lets go
+  when the process ends, not by reading its run file. The page says "No proxy is running from this Semantext home, and
+  what it held went with it", `semantext proxy asks` says no proxy is running, and an answer is refused. While a new
+  proxy starts, nothing of the run before it is listed or answered (but see the limits in docs/proxy.md).
+- **The proxy's record heals one interrupted write.** A file exactly one sealed line ahead of its head, following it,
+  is rolled forward. A last line without its newline, or a head that is not a whole count, is a broken record (it was a
+  traceback for a bad head before).
+- **Keys stay out of what the reader shows.** The check for a key's shape now also reads every non-ASCII character
+  that is not white space as a hyphen, so a key spelled with a look-alike hyphen is withheld. The reader checks each
+  clause as you wrote it as well as normalised. At the 20,000-character clip it reads exactly to the clip again (a hold
+  written in the last word is read) and shows the clause that runs to the clip with its last word withheld. A key whose
+  name and value fall in different clauses withholds every clause. `POST /api/explain` no longer carries a key in the
+  message copy of its quick reading or as a sender's name. The check of a JSON web token takes linear time (a long run
+  of `eyJ` had stalled the page's server for 10 to 18 seconds), and the proxy's scan of inputs over 96 KiB finds a
+  token after a long run of token characters again.
+- **A secret typed on the command line is cut from what the command prints.** The values you typed that look like a
+  key, a token or a password are collected and every spelling of each is cut from stderr and, when the command fails,
+  from stdout. `semantext env new` refuses a title that looks like a key, and says why without repeating it.
+- **A key typed in the wrong place is not printed back.** `semantext read --act VALUE` echoed an invalid value through
+  argparse's "invalid choice" message, so a key typed there reached the screen and any log of it. `--act` now refuses a
+  word it does not know without repeating it and lists the acts, and every argparse error of the command line (an invalid
+  command or choice, an unrecognised argument) is scrubbed the same way when what it quotes is key-shaped. A word that
+  is not a key is still named.
+- **The page no longer drops what you have selected when it draws again.** It draws again every ten seconds, when the
+  window gets focus, and when an open Waiting or Rules band or a drawer reads again; each draw kept your place and your
+  caret but lost a selection (in a box it collapsed to the caret, in a card's words it vanished), so copying a line from
+  a card meant racing the clock. A box now keeps its start, end and direction, and words selected on the page are put
+  back on the same words after the draw. A draw whose output reads the same replaces nothing. The draw is not held back
+  while you select: a held card could show something already answered. Only a selection you hold at that moment is put
+  back, so words you released stay released; words that changed, or that now stand twice, are not guessed at and the
+  selection is let go. A read that differs only in the machine's busy and free readings is no change. A selected ID that
+  Semantext offers for Ctrl+C (when your browser refuses the clipboard) is no longer dropped by the button writing the
+  same ID again 1.5 seconds later. Limit: a selection whose ends sit in no card, row or other part with its own key is
+  not put back.
+- **Plug-in places keep a selection through a late draw.** A module whose `render()` is async is now waited for, and a
+  render that throws or rejects leaves a problem line. A late draw puts a selection back only if it lay wholly inside
+  what the module drew, reads exactly the same, and you have not changed it meanwhile; what you did in the place while
+  it waited stays yours. A plug-in place may not take a name the page answers at, nor the name of a JavaScript object's
+  own property (docs/plugin-api.md).
+- **A refusal says what the act is.** Starting or answering the proxy from an agent's shell was refused with "Only the
+  user changes their rules". The guard is the same for every act of yours; what it says after the refusal now fits the
+  act (the proxy's two, keeping or forgetting what was heard, accepting a proposal, settings, features and the model),
+  and the acts that change rules say what they always said.
+- **A very long own inbox stays fast and bounded.** Your own inbox had no cap: thousands of requests, or requests with
+  very long texts, were all read into every page build (5,000 requests of 2,000 characters made a 33 MB answer and took
+  about 2 s) and every line of them went into the card hook's work. The page now draws the newest 100 cards of each kind
+  (waiting, parked, done) and says "N more waiting requests not drawn here" in plain words, on Waiting, on the Home band
+  and in the machine's own section; the numbers it shows (the bar, the counts, `semantext statusline`) are of the whole
+  inbox, and as you answer or park the newer cards the older ones are drawn. A field over 2,000 characters is drawn
+  cut, with how many characters were left out, and the card says which fields were cut; a command drawn cut is not
+  offered to copy, and its warning is still worked out from the whole command. The Record draws the newest 500 answers
+  and says how many more there are. The card hook reads the file once instead of three times, makes a line only for the
+  few it can show, cuts a very long title so it cannot hide the lines after it, and says "N more: run `semantext
+  inbox`". Nothing in the inbox file is changed. Limits, stated: the file is still read whole, once per page build and
+  per prompt (31 MB took about 0.15 s); the Map still lists every agent that filed a request; a line a hand made far
+  larger than the file's other lines makes that read slower in proportion to its size.
+- **A hand-made huge list of projects is capped the same way.** With no setup, Projects and the Map drew every name in
+  `work/projects.json`, a list anyone can edit by hand. The list is now made distinct first (the first spelling, at its
+  first place, stays), and they draw the last 200 names in it, in the list's order, saying "N more project names in
+  your list of projects not drawn here: the last 200 in your list are shown" on the page and as a problem line. The same
+  name in two cases is one project. Limits, stated: the work store still checks a project against the whole list (a cap
+  there would make a real project unknown), so the Work page's `known_projects` is whole; projects from your bound
+  folders and the sessions agents were seen in are not capped by this.
+- **A parked request is shown as parked everywhere it is listed.** In 1.5.1 a request you set aside still read as open
+  to the page's data and to the asking agent. It stays open for its asker (an answer still counts), but it no longer
+  waits: the note before the card puts it under "Set aside by the user" with its own count, the start screen and
+  `answers` (the command and the tool) name it as parked, `semantext inbox` marks it, the doctor counts waiting and
+  parked apart, the Agents preview and the feed leave it out of "waiting", and `/api/inbox` and the decision counts give
+  it its own `parked` list and count.
+- **`semantext statusline` counts this machine's own inbox.** With a setup named (a seats file and an inbox folder) the
+  requests agents filed in this machine's own inbox have their own section on the page and count as waiting there, but
+  the status line read the setup's cards only, so it said less than the page. It now says the page's number, with the
+  newest of both; a parked, answered or withdrawn request is not counted, and an own inbox that cannot be read is said
+  on the line, never taken for an empty one. Limit, stated: where the setup's Waiting is off or cannot be used, the line
+  still says "unavailable" (as before), though the page still draws the own inbox.
+
+### Known limits
+- **The proxy.** Tools that Anthropic runs on its own side (web fetch, web search, code execution, the MCP connector's
+  remote servers, tool search) have finished before the proxy sees the answer, so it cannot hold them. The record's
+  chain catches a line edited or moved out of order, not a cut-off tail or a whole rewrite by someone with the file's
+  rights, and it has no anchor outside its files. An agent with your file rights can answer its own ask through the
+  library. A gate that names acts still holds every call; making it hold by act alone would release every call that
+  has no class. "Your own terminal" is a test Semantext makes, not a guarantee. These, and the start window and the
+  lock limits, are in docs/proxy.md and docs/incidents.md.
+- **The act reader.** A script or target run by its own name, a file handed to an SQL client, text piped from a file,
+  and an act done by a program the command starts are not named, so your words do not hold them; your space's gates
+  decide them. A project whose `build` or `all` target ships something is let through in a group, and so is a bare
+  `make`, `just` or `task`, whose default target is not named. On Python 3.10 a
+  command over 2 KiB counts as every act. Expect a miss rate above zero on commands written by someone new.
+- **Keys.** A message with a key inside one clause and also a name and value split across clauses withholds only the
+  clause with the key, and a value split by a comma can show its second part. The hook's own check of a relayed
+  sender's name does not fold look-alike hyphens (that name reaches only the feed, which does). A typed secret shorter
+  than 4 characters is not cut, nor is the stdout of the commands a reader waits on; a JSON web token whose own `eyJ`
+  is the ninth or later in one run of token characters is cut only with what is glued before it. A password written
+  as `password is: X`, `password is - X`, `pw is X`, `pwd: X` or `passcode: X` is not known for one, so `semantext
+  read`, `POST /api/read` and the page's clause readings show it back.
+  SECURITY.md lists them all.
+- **Reading cost.** The reader reads an offer once per reading, but on the text as NFKC widens it, so a message or an
+  offer made of a character that widens a lot (U+FDFA becomes 18 characters) can take about a second each at 20,000
+  characters: 0.8 to 0.9 s for such an offer, 1.9 to 2.0 s with the message the same, every act asked about (measured
+  on Python 3.11 and 3.14 on one machine).
+
 ## [1.7.0] - 2026-11-06
 
 ### Changed

@@ -396,10 +396,12 @@ def load(cfg: dict) -> dict:
         if no_setup(cfg):
             # no setup at all: what you answered in your own inbox (own_inbox.py)
             from .own_inbox import decisions
-            entries, path, problems = decisions(cfg["_home"])
+            counted: dict = {}
+            entries, path, problems = decisions(cfg["_home"], counted=counted)
             threads, cards = _threads(entries), _card_index(entries)
             out.update(own=True, notes_off=True, files={"register": path, "notes": None}, entries=entries, threads=threads,
-                       cards=cards, counts=_counts(entries, threads, 0, cards), problems=problems)
+                       cards=cards, counts=_counts(entries, threads, 0, cards), problems=problems,
+                       own_answered=counted.get("answered", len(entries)))   # all answered, not only the newest drawn
             return out
         out["off"] = True
         return out

@@ -42,8 +42,8 @@ DATA = {"place": "plugins", "closures_known": True, "sources_readable": True, "l
 
 SETUP = "const DATA = " + json.dumps(DATA) + r""";
 const sent = [];
-let answer = { ok: true, status: 200, body: { change: { n: 3, what: "off", plugin: "source.tickets" } } };
-sender.post = (act, body) => { sent.push([act, body]); return Promise.resolve({ ok: answer.ok, status: answer.status, json: () => Promise.resolve(answer.body) }); };
+let served = { ok: true, status: 200, body: { change: { n: 3, what: "off", plugin: "source.tickets" } } };
+sender.post = (act, body) => { sent.push([act, body]); return Promise.resolve({ ok: served.ok, status: served.status, json: () => Promise.resolve(served.body) }); };
 S.data.plugins = DATA; S.place = "plugins"; S.sub = null; mount(); fill();
 const place = $("place");
 const byKey = (k) => place.all((e) => e.getAttribute("data-k") === k)[0];
@@ -104,7 +104,7 @@ report({ none, said: text().includes("Nothing changed"), out: changedSettings(DA
 
 def test_a_refusal_shows_the_servers_words_and_the_line_to_type():   # must refuse quietly, and say why
     got = run(SETUP + r"""
-answer = { ok: false, status: 403, body: { error: "not changed on the page: it would widen what the plug-in reads (tickets)", command: "semantext plugins confirm 4", proposal: 4 } };
+served = { ok: false, status: 403, body: { error: "not changed on the page: it would widen what the plug-in reads (tickets)", command: "semantext plugins confirm 4", proposal: 4 } };
 const f = byKey("pf-source.tickets-tickets"); f.value = "/elsewhere"; f.dispatch("input");
 byKey("pchange:source.tickets").click();
 return (async () => {
@@ -134,7 +134,7 @@ report({ text: li.textContent, buttons: li.all((e) => e.tagName === "BUTTON").le
 
 def test_a_proposal_answered_202_is_shown_as_recorded_never_as_refused():   # must pass, and must refuse "refused"
     got = run(SETUP + r"""
-answer = { ok: true, status: 202, body: { proposed: 5, line: "semantext plugins confirm 5", said: "proposed, not changed: proposal 5 is applied at your own console" } };
+served = { ok: true, status: 202, body: { proposed: 5, line: "semantext plugins confirm 5", said: "proposed, not changed: proposal 5 is applied at your own console" } };
 const f = byKey("pf-source.tickets-project"); f.value = "beta"; f.dispatch("input");
 byKey("pchange:source.tickets").click();
 return (async () => {
@@ -173,8 +173,13 @@ def test_the_module_writes_only_to_its_own_routes():   # must refuse any other w
     posting = {n: t for n, t in posting.items() if re.search(r'method:\s*"POST"', t)}
     # Two exceptions: a request in your own inbox is answered or parked from its card (two routes), and your own work is
     # changed from the Work place (one route, /api/work, 1.5.15; tests/test_work_page_acts.py)
-    assert sorted(posting) == ["cards.js", "workact.js"] and posting["cards.js"].count('method: "POST"') == 2
-    assert posting["workact.js"].count('method: "POST"') == 1
+    # and the proxy's holds from Waiting (one route, /api/proxy/answer; tests/test_proxy_page.py)
+    # and the reader, which POSTs only so the words never travel in an address and writes nothing (one route, /api/read;
+    # tests/test_reader_route.py)
+    assert sorted(posting) == ["cards.js", "proxyholds.js", "reader.js", "workact.js"]
+    assert posting["cards.js"].count('method: "POST"') == 2
+    assert posting["workact.js"].count('method: "POST"') == 1 and posting["proxyholds.js"].count('method: "POST"') == 1
+    assert re.findall(r'fetch\("([^"]+)"', posting["reader.js"]) == ["/api/read"]
     assert re.findall(r'fetch\(([^,]+),', posting["workact.js"]) == ["WORK_ROUTE"]
     assert 'export const WORK_ROUTE = "/api/work";' in posting["workact.js"]
     assert re.search(r'fetch\("/api/park", \{ method: "POST"', posting["cards.js"])

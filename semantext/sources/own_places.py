@@ -16,17 +16,37 @@ from . import problem
 from .own_inbox import load as own_inbox
 from .places import _key, _node_id
 
+PROJECT_CAP = 200   # names drawn from your hand-made list of projects; the rest are counted and said
 
-def _named(home: Path, problems: list) -> list[str]:
+
+def _named(home: Path, problems: list, cap: int = PROJECT_CAP) -> tuple[list[str], int]:
+    """(the names in your list of projects that are drawn, how many more there are). The list is a file anyone can edit by
+    hand, so a huge one is capped as the own inbox is: the names are made distinct first (the first spelling, at its first
+    place, stays), then the last `cap` of them (the end of the list, where `semantext work project` adds) are drawn, in
+    the list's order, and the rest are counted and said, never dropped silently. What the work store checks a project against (work/writer.py) is not this list's drawing, and is not capped."""
     path = home / "work" / "projects.json"
     try:
         listed = jsonread.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return []
+        return [], 0
     except (OSError, ValueError, RecursionError) as e:
         problems.append(problem(path, None, "unreadable", f"your list of projects cannot be read ({type(e).__name__})"))
-        return []
-    return [x for x in listed if isinstance(x, str) and x.strip()] if isinstance(listed, list) else []
+        return [], 0
+    names = [x for x in listed if isinstance(x, str) and x.strip()] if isinstance(listed, list) else []
+    # The same name twice is one project (as project() keys it), and the FIRST spelling at the FIRST place wins, as it did
+    # before there was a cap: ["Foo", "foo", "Bar"] is Foo, Bar. (Keeping the last mention instead reordered the list
+    # and turned a repeated list into a wrapped one: p200..p299 then p0..p99.) Only then is the list cut to its end.
+    seen, distinct = set(), []
+    for x in names:
+        if x.casefold() not in seen:
+            seen.add(x.casefold())
+            distinct.append(x)
+    drawn = distinct[-cap:] if cap > 0 else []
+    more = len(distinct) - len(drawn)
+    if more:
+        problems.append(problem(path, None, "more projects", f"{more} more names in your list of projects are not drawn "
+                                                             f"here (the last {cap} in your list are); they are in this file"))
+    return drawn, more
 
 
 def load(home, name, group, problems: list) -> dict:
@@ -38,7 +58,7 @@ def load(home, name, group, problems: list) -> dict:
     except (AttributeError, KeyError, TypeError, ValueError, OSError) as e:   # a file edited by hand costs the agents it held, said
         seen = []
         problems.append(problem(home, None, "unreadable", f"the agents Semantext has seen cannot be read ({type(e).__name__})"))
-    asked = [s["seat"] for s in own_inbox(home)["seats"]]
+    asked = own_inbox(home)["asked_by"]   # every agent that filed a request, whether or not its cards are drawn
     spelled = {x.casefold(): x for x in asked}   # one agent, however its name was written: the cards' spelling is what they match
     seen = [{**a, "name": spelled.get(str(a["name"]).casefold(), str(a["name"]))} for a in seen]
     known = {a["name"] for a in seen}
@@ -57,7 +77,8 @@ def load(home, name, group, problems: list) -> dict:
                              "identity": {"path": None, "state": "absent", "entries": 0}}
         return projects[key]
 
-    for label in _named(home, problems):
+    named, more = _named(home, problems)
+    for label in named:
         project(label)
     agents = []
     for a in seen:
@@ -76,5 +97,5 @@ def load(home, name, group, problems: list) -> dict:
                 me["placed"]["projects"].append(p["id"])
     top = {"id": _node_id("whole", "own", str(home)), "kind": "whole", "name": name, "measured": None, "members": [], "children": []}
     return {"off": False, "own": True, "missing": [], "name": name, "group": group, "seats_file": None, "base": None,
-            "agents": agents, "projects": list(projects.values()), "levels": top, "documents": [], "diffmaps": [], "map": {"off": True},
-            "problems": problems}
+            "agents": agents, "projects": list(projects.values()), "projects_more": more, "levels": top, "documents": [],
+            "diffmaps": [], "map": {"off": True}, "problems": problems}

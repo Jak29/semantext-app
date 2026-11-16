@@ -1,20 +1,19 @@
 // Prism: the home of the page (the Prism identity, chosen on I-20261103-133724). One message goes in; what it means
 // comes out as labelled rays; and below it your five parts, the spectrum, each opening the place that holds it.
-// The reading at the top is an illustration of HOW Semantext reads, drawn here from a few word patterns, and it says
-// so: the reader itself works from your rules and, where you set one, a model. Nothing typed here is sent anywhere.
+// The reading at the top is the real reader's (semantext/reading.py, the one `semantext read` prints from), asked
+// through reader.js: this file draws what the reader answers and never reads a message itself. The words go to
+// Semantext on this machine to be read and no further; the route changes nothing and nothing is saved.
 import { h } from "./dom.js";
 import { newestFirst, plural } from "./words.js";
 import { S, keep, load } from "./app.js";
 import { cardNode } from "./cards.js";
+import { readerAnswer, readMessage, adviceLine } from "./reader.js";
 
 // The Rules band only reads, so it does not import the Rules parts: they hold the one way to change rules, and no other
 // place may reach it (test_one_page). Its reads are GETs, made here; the words for where a rule came from are the Rules
-// place's own (its SOURCE), said again.
+// place's own (its SOURCE), said again. The status is checked before the body is trusted (readerAnswer).
 async function read(path) {
-  const r = await fetch(path, { headers: { "X-Semantext": "1" }, cache: "no-store" });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error || r.statusText);
-  return j;
+  return readerAnswer(await fetch(path, { headers: { "X-Semantext": "1" }, cache: "no-store" }));
 }
 const live = (es) => (es || []).filter((e) => !e.archived);
 function source(e) {
@@ -40,19 +39,21 @@ export function mark(size = 36) {
     svg("path", { d: "M25 14L38 23", class: "ray-waiting" }));
 }
 
-// The readings the illustration can show, each with its colour's part of the spectrum.
-const KINDS = [
-  { kind: "QUESTION", text: "It answers. Nothing changes.", ray: "agents", test: (t) => t.includes("?") },
-  { kind: "SUGGESTION", text: "An option, never an order.", ray: "rules", test: (t) => /\b(maybe|could|we should|perhaps|i was thinking)\b/.test(t) },
-  { kind: "TIME", text: "Kept word for word.", ray: "record", test: (t) => /\b(later|today|tonight|tomorrow|next week|for now|soon)\b/.test(t) },
-  // Koinos P7: Semantext holds acts a gate catches, not words; a word here only says the act would need you.
-  { kind: "YOUR WORD", text: "Would need your word: the act waits, not the words.", ray: "waiting",
-    test: (t) => /\b(delete|publish|push|ship|send|buy|pay|deploy)\b/.test(t) },
-];
-export function readings(text) {
-  const t = String(text || "").toLowerCase();
-  const out = KINDS.filter((k) => k.test(t));
-  return out.length ? out : [{ kind: "INSTRUCTION", text: "Done as asked, inside your rules.", ray: "plain" }];
+// Each clause the reader names, and the colour of the spectrum it is drawn in. Only the colour is chosen here; the kind,
+// its label, its acts and its time are the reader's. Koinos P7: Semantext holds acts a gate catches, not words.
+const COLOUR = { question: "agents", option: "rules", condition: "rules", withheld: "waiting", askfirst: "waiting",
+  yours: "waiting", instruction: "plain", keep: "plain", assent: "plain", praise: "plain", note: "plain" };
+const MAX_RAYS = 6, WAIT_MS = 400;
+const short = (t, n) => { const v = String(t || "").split(/\s+/).join(" "); return v.length > n ? v.slice(0, n - 1) + "…" : v; };
+// The rays for an answer of the reader: one for each clause (and one for a time word it kept), the rest counted.
+export function raysOf(data) {
+  const out = [];
+  for (const r of data.readings) {
+    out.push({ kind: r.label + (r.acts.length ? " · " + r.acts.join(", ") : ""), text: short(r.clause, 36), ray: COLOUR[r.kind] || "plain" });
+    if (r.time) out.push({ kind: "TIME", text: "“" + short(r.time, 24) + "”, kept word for word", ray: "record" });
+  }
+  if (out.length > MAX_RAYS) out.splice(MAX_RAYS - 1, out.length, { kind: "AND " + (out.length - MAX_RAYS + 1) + " MORE", text: "See Try a message in Rules.", ray: "plain" });
+  return out.length ? out : [{ kind: "NOTHING TO READ", text: "The message is empty.", ray: "plain" }];
 }
 
 const BANDS = [
@@ -65,7 +66,10 @@ const BANDS = [
 
 // open: the band opened in place (APP-DESIGN depth 2), or null. Waiting and Rules open in place (build step 2); the
 // other bands still go to their place. rules: the Rules band's own read, and the rule picked to show beside the list.
+// msg: what the message box reads (the reader's answer, or why there is none). seq: which ask is the newest, so a slow
+// answer to an older one is dropped. timer: the pause after typing.
 const P = { draft: "Could we maybe ship the dark mode later?", open: null, reading: false, readErr: null,
+  msg: { busy: false, data: null, err: null, empty: false, for: null }, seq: 0, timer: null,
   rules: { data: null, err: null, reading: false, at: 0, pick: null } };
 const IN_PLACE = new Set(["rules", "waiting"]);
 export { P as PRISM };   // the tests set a band's read as a read would; fetch answers never in node
@@ -85,16 +89,54 @@ function prism(rs) {
   svg("path", { d: "M0 150 H250", class: "beam" }), svg("path", { d: "M250 80 L320 150 L250 220 Z", class: "glass" }), rays);
 }
 
+// What the message box shows now: the status line (reading…, a clip, or why there is no reading) and the figure, drawn
+// only from the reader's answer. A failure is said and no reading is drawn. While a newer ask is being answered no
+// reading is drawn either (R4): the last one was of other words, and a stale "your words appear to say go: confirm"
+// beside words that now forbid it is the wrong thing to leave on the page. The figure says it is reading, with no rays.
+function show() {
+  const m = P.msg, d = m.busy ? null : m.data;
+  const note = m.err ? "Could not read it: " + m.err + ". No reading is shown." : m.busy ? "Reading…"
+    : d && d.clipped ? "Read up to " + d.max_chars + " characters; the rest was not read." : d && d.unreadable
+    ? "Some letters are outside the Latin script, which the reader cannot vouch for: no go is read from this." : "";
+  P.status.textContent = note;
+  P.status.className = "prism-status" + (m.err || (d && (d.clipped || d.unreadable)) ? " warn" : "");
+  const rays = m.err ? [{ kind: "NOT READ", text: "No reading to show.", ray: "waiting" }]
+    : m.empty ? [{ kind: "NOTHING TO READ", text: "Type a message.", ray: "plain" }]
+    : d ? raysOf(d) : [{ kind: "READING…", text: "Asking the reader on this machine.", ray: "plain" }];
+  // Each act the words name, with the reader's advice: an ASK whose words appear to cover it is never shown as a go.
+  const advice = !m.err && d ? d.advice.map((a) => h("li", { class: "prism-advice-row" },
+    h("b", null, a.act), " ", h("span", { class: "chip" }, a.word), " ", adviceLine(a))) : [];
+  // R1: replaceChildren writes a null as the text "null" (h() skips one; this does not), so only what is there is passed.
+  const kids = [prism(rays)];
+  if (advice.length) kids.push(h("ul", { class: "prism-advice", "aria-label": "What the words say for each act" }, advice));
+  P.figure.replaceChildren(...kids);
+}
+// Ask the reader about the draft: at once, or after a pause in typing. Each ask makes the older ones stale.
+function ask(now) {
+  clearTimeout(P.timer);
+  const seq = ++P.seq, msg = P.draft;
+  if (!msg.trim()) { P.msg = { busy: false, data: null, err: null, empty: true, for: msg }; return show(); }
+  P.msg = { busy: true, data: null, err: null, empty: false, for: msg };   // the old reading goes at once (R4)
+  show();
+  const go = () => readMessage(msg).then(
+    (data) => { if (seq === P.seq) { P.msg = { busy: false, data, err: null, empty: false, for: msg }; show(); } },
+    (e) => { if (seq === P.seq) { P.msg = { busy: false, data: null, err: String(e && e.message || e), empty: false, for: msg }; show(); } });
+  if (now) go(); else P.timer = setTimeout(go, WAIT_MS);
+}
+export { ask as askReader };   // the tests ask as typing does
+
 export function mount(el) {
   P.figure = h("div", { class: "prism-art" });
+  P.status = h("p", { class: "prism-status", role: "status" });
   // P4: no spell-check or autocomplete, so the browser's own helpers are not handed what is typed here either.
   const input = h("input", { id: "prism-msg", class: "prism-input", value: P.draft, "data-k": "prism:msg",
-    "aria-label": "A message to your agents", spellcheck: "false", autocomplete: "off" });
-  const draw = () => { P.draft = input.value; P.figure.replaceChildren(prism(readings(P.draft))); };
-  const form = h("form", { class: "prism-form", on: { submit: (ev) => { ev.preventDefault(); draw(); } } },
+    "aria-label": "A message to your agents", spellcheck: "false", autocomplete: "off",
+    on: { input: () => { P.draft = input.value; ask(false); } } });
+  const now = () => { P.draft = input.value; ask(true); };
+  const form = h("form", { class: "prism-form", on: { submit: (ev) => { ev.preventDefault(); now(); } } },
     input, h("button", { type: "submit", class: "btn primary" }, "Read"));
   const presets = h("div", { class: "prism-presets" }, ["Could we maybe ship the dark mode later?", "Delete the old branch.",
-    "Why is the build failing?"].map((t) => h("button", { type: "button", class: "chip", on: { click: () => { input.value = t; draw(); } } }, t)));
+    "Why is the build failing?"].map((t) => h("button", { type: "button", class: "chip", on: { click: () => { input.value = t; now(); } } }, t)));
   P.bands = h("div", { class: "spectrum" });
   // Koinos C5: Escape closes the open band and gives focus back to its button (a drawer, when one is open, goes first).
   // On the document, once: a redraw replaces the button, so focus is not always inside the bands when Escape comes.
@@ -109,15 +151,16 @@ export function mount(el) {
     h("section", { class: "prism-hero", "aria-label": "Read a message" },
       h("div", { class: "prism-words" },
         h("h1", { class: "prism-title" }, "One message.", h("br"), h("strong", null, "Everything it means.")),
-        form, presets,
-        h("p", { class: "prism-note" }, "An illustration of how Semantext reads. The reader itself works from your rules and, " +
-          "where you set one, a model on your machine. Semantext sends nothing you type here.")),
+        form, presets, P.status,
+        h("p", { class: "prism-note" }, "Read by the same reader as semantext read, clause by clause, from cue words in English: " +
+          "advice for the gates, never a permission. Your words go to Semantext on this machine to be read; " +
+          "nothing is saved and nothing leaves it.")),
       P.figure),
     h("section", { class: "prism-spectrum", "aria-label": "Your spectrum" },
       h("div", { class: "spectrum-head" }, h("h2", { class: "label" }, "Your spectrum"),
         h("span", { class: "meta" }, "every message passes through all five")),
       P.bands));
-  draw();
+  if (P.msg.data && P.msg.for === P.draft && !P.msg.busy) show(); else ask(true);   // back on the page: no second ask for an answer in hand
   bands();   // drawn at once from the frame: the place's own read may be slow, and the bands do not wait for it
 }
 
@@ -190,9 +233,11 @@ function readWaiting() {
   load("waiting").then(() => { P.readErr = null; }, (e) => { P.readErr = String(e && e.message || e); })
     .finally(() => { P.reading = false; if (P.bands && document.contains(P.bands)) redrawPanel(); });
 }
-function redrawPanel() {
+export function redrawPanel() {   // exported for the tests: the ten-second read ends here
   const key = P.open;
-  // Koinos F1: in keep(), so the focused control (a rule row, a card's words box) and its caret survive the redraw.
+  // Koinos F1: in keep(), so the focused control (a rule row, a card's words box), its caret or range, and words you
+  // have selected in a card survive the redraw. The redraw is not held while you select: a held panel would show a
+  // card that has since been answered.
   if (key && P.panel && P.bands.contains(P.panel)) keep(() => P.panel.replaceChildren(panelFor(BANDS.find((b) => b.key === key))));
 }
 
@@ -261,13 +306,16 @@ function waitingPanel(b) {
   // Koinos W1: the band's count is the frame's, which adds this machine's own inbox; so the panel draws those cards
   // too, apart and under their own heading, as the Waiting place does.
   const machine = newestFirst(data.machine_inbox || []).filter((c) => c.state === "waiting");
+  // A long own inbox draws its newest cards; the rest are counted, never dropped (the cap of sources/own_inbox.py).
+  const notDrawn = (n) => n ? h("p", { class: "band-state", "data-more": "waiting" }, plural(n, "more waiting request") + " not drawn here (the newest are shown); the older ones appear as you answer or park these.") : null;
+  const machineMore = (data.machine_more || {}).waiting || 0;
   const own = machine.length ? h("section", { "aria-label": "This machine's own inbox" },
-    h("h3", { class: "label" }, "This machine's own inbox · " + machine.length + " waiting"),
-    h("div", { class: "cards" }, machine.map(cardNode))) : null;
+    h("h3", { class: "label" }, "This machine's own inbox · " + (machine.length + machineMore) + " waiting"),
+    h("div", { class: "cards" }, machine.map(cardNode)), notDrawn(machineMore)) : null;
   const stale = P.readErr ? h("p", { class: "band-state warn", role: "status" }, "Could not check just now (" + P.readErr + "); these are the cards last read.") : null;
   if (data.off) return h("div", { class: "band-body" }, stale, h("p", { class: "band-state" }, "Waiting is off: your sources file names no place for cards."), own, all);
   const waiting = newestFirst(data.cards || []).filter((c) => c.state === "waiting");
   const list = waiting.length ? h("div", { class: "cards" }, waiting.map(cardNode))
     : h("p", { class: "band-state" }, machine.length ? "Nothing else is waiting for you." : "Nothing is waiting for you.");
-  return h("div", { class: "band-body" }, stale, list, own, all);
+  return h("div", { class: "band-body" }, stale, list, notDrawn((data.more || {}).waiting || 0), own, all);
 }

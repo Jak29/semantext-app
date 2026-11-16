@@ -35,7 +35,15 @@ Python 3.10 or newer, one dependency (PyYAML), no account and no telemetry. Sema
 own; the three exceptions are opt-in and started at your own terminal: `semantext backtest --reader` asks a model you
 name, and `semantext record topics` and `semantext model ask` ask a model on this machine.
 
-> **Status: version 1.5.9.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
+On Python 3.10 the reader that names what a shell command does reads a command of up to 2 KiB; from 3.11, up to 64
+KiB. A longer command counts as every act the reader names (publish, push, delete, send, pay, download), so it can draw
+an extra ask and is never let through for being long. The reason is that 3.10's regular expressions lack a feature the reader relies on to stay
+fast (possessive repeats), so the smaller size keeps its slowest known case under half a second, as measured on the
+greedy copy the tests load (SECURITY.md). A
+Python 3.11 that has the feature and fails either of two known checks of it (CPython 3.11.0 to 3.11.4 do; Debian 12
+ships 3.11.2) is treated as 3.10 is.
+
+> **Status: version 1.8.0.** CI tests every command on Linux, Windows and macOS with Python 3.10 to 3.14. The
 > connections for Codex, freebuff and local models are tested for the files they write, and have not yet been tried
 > inside those tools.
 
@@ -468,6 +476,10 @@ rules stay in `~/.semantext` until you delete that folder yourself.
 pip install -e ".[test]"
 python -m pytest
 ```
+
+Install the `test` extra, not pytest alone: the proxy's tests use the Anthropic SDK as their client and skip
+themselves where it is not installed, so without it they are skipped and the run still passes. On Python 3.10 the extra also
+brings `tomli`. CI installs the same extra.
 
 The tests are written in pairs: what must work, and what must be refused. CI runs them on Linux, Windows and macOS
 for Python 3.10 to 3.14 (the badge above). For example, the editor must save a valid edit and must

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -17,8 +18,8 @@ from .heard import Heard
 from .hook import LIMIT_BYTES
 from .hook import main as hook_main
 from .agents import Agents, Identity, clean, key_shaped, since
-from .inbox import (AGENT_MARKERS, HOW_WORDS, Inbox, age, asked_before, describe_answer, human_terminal, mine,
-                    register_line)
+from .inbox import (AGENT_MARKERS, HOW_WORDS, SECRET, TOKEN_RUN, Inbox, age, asked_before, describe_answer,
+                    human_terminal, mine, register_line, still_open, token_like)
 from .backtest import backtest as run_backtest
 from . import reading
 from .reader import EndpointReader, OllamaReader, is_local, model_backtest
@@ -31,20 +32,392 @@ def _out(text: str = "") -> None:
     print(text)
 
 
+_NOT_REPEATED = "(a key-shaped value, not repeated)"
+
+
+def _shown(value) -> str:
+    """A word the person typed, as it may be repeated in a message: quoted, unless it looks like a key, a token or a
+    password. A key typed in the wrong place (a name, a profile, an id) must not come back out on the screen, in a log or
+    in an agent's transcript; the parser's own errors are scrubbed the same way (_Parser). An ordinary wrong word is
+    still named, since naming it is what lets the person see the typo."""
+    return _NOT_REPEATED if key_shaped(value) else repr(value)
+
+
+def _plain(value) -> str:
+    """A typed word as it may be repeated, unquoted (a file name): the value, or the note that it is not repeated."""
+    return _NOT_REPEATED if key_shaped(value) else str(value)
+
+
+def _resolve(store: Store, text) -> str:
+    """store.resolve, which refuses a key-shaped word without repeating it (a key typed after --env would be printed)
+    and still finds an existing environment whose slug is key-shaped (made before `env new` refused such titles)."""
+    return store.resolve(text)
+
+
+# The secret itself, as the shapes in inbox.SECRET find it, cut out of a typed word. Whole-word matching was the first
+# backstop's flaw (attack 22, O4): a message echoes a typed word changed (a URL lowercased, a path normalised, a
+# backslash doubled, a tab written \t), so the line no longer held the word, and the key stayed in it. The backstop now
+# collects the VALUES (the key; the password of user:password@; the word after "password is") and cuts every
+# spelling of each from what is written.
+_URL_PASSWORD = re.compile(r"[a-z][a-z0-9+.-]{0,31}://[^\s/:@]+:([^\s/@]+)@", re.I)
+_ASSIGNED = re.compile(r"(?:password|passwd|passphrase|secret|token|api[_-]?key)\s*[=:]\s*(\S{6,})", re.I)
+_PROSE = re.compile(r"\b(?:password|passphrase|passcode)\s+(?:is|was)\s+(\S{4,})", re.I)
+# key=VALUE from 4 characters, as the prose form is. inbox.SECRET's key=VALUE arm needs 6 characters after the "=" (it is
+# the shared, wide key check), so a 4- or 5-character value with no tail, or a 1-character tail, was never collected and
+# the folder message that printed it printed it whole (attack 25, L7). The arm is not widened there (a false alarm in the
+# shared check skips a call); the backstop, which only cuts, collects it here.
+_ASSIGNED_SHORT = re.compile(r"(?:password|passwd|passphrase|secret|token|api[_-]?key)\s*[=:]\s*(\S{4,})", re.I)
+# A JSON web token from its own "eyJ", as inbox.SECRET found it before the arm began at the start of its run (R10): the
+# match is now lead+JWT, and a line that prints the JWT without its glued lead must still be cut (attack 25, L9).
+_JWT_OWN = re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", re.I)
+# Case-insensitive like _JWT_OWN, so a run is the same run for both: under re.I the class also takes U+212A, U+017F, U+0131
+# and U+0130, and a run cut at one of them made every "eyJ" of ("eyJ" + U+212A) * n a run of its own, each scanned to the end
+# of the text (attack 26, K1: quadratic, 2.7 s at 32,000 characters; 3e5e2ac was linear).
+_TOKEN_CHARS = re.compile(r"[A-Za-z0-9_-]+", re.I)
+_EYJ = re.compile("eyj", re.I)
+_EYJ_TRIES = 8   # "eyJ"s of one run tried; a limit, stated in _jwt_starts
+
+
+def _jwt_starts(text: str):
+    """Yield (start, token, run_start) for every JSON web token in the text from an "eyJ", as inbox.SECRET found them before R10 (the
+    old arm had no lead and no lookbehind, so a token glued after anything was found; the arm now begins at the start of
+    its run, and a token glued after a key that SECRET has already taken (AKIA + 16 characters, then the token) is not found
+    by it at all). Every "eyJ" of a run meets the same dot, so the ones after the first give the same token with a shorter
+    first segment: the first _EYJ_TRIES of each run are tried, not only the first, because a key typed glued before the token
+    may itself hold e-y-j in some case (attack 26, K3: the first "eyJ" is then inside the key, and the token printed alone was
+    left). Linear: at most _EYJ_TRIES attempts per run, each a match() at one place, and a run inside a token already taken
+    is not tried again, as finditer would not. Limit: a token whose own "eyJ" is the ninth or later of its run, in a word
+    that holds eight earlier ones, is found whole from the earlier ones and not alone."""
+    end = 0
+    for run in _TOKEN_CHARS.finditer(text):
+        if run.start() < end:
+            continue
+        for n, e in enumerate(_EYJ.finditer(text, run.start(), run.end())):
+            if n >= _EYJ_TRIES:
+                break
+            m = _JWT_OWN.match(text, e.start())
+            if m:
+                end = max(end, m.end())
+                yield e.start(), m.group(0), run.start()
+
+
+def _jwts(text: str) -> list[str]:
+    """Every JSON web token in the text from its own "eyJ" (see _jwt_starts)."""
+    return [tok for _, tok, _ in _jwt_starts(text)]
+_URL_USER = re.compile(r"[a-z][a-z0-9+.-]{0,31}://([^\s/:@]+):[^\s/@]+@", re.I)
+_VALUE_END = re.compile(r"""[\s"'`,;&#()\[\]{}<>/\\]""")   # where a value stops when it is written inside something else
+_RUN_NO_SLASH = re.compile(r"[A-Za-z0-9+=_-]{32,}")
+_SHORTEST_CUT = 4   # a value shorter than this is not cut (it would be cut out of every word); a limit, stated
+
+
+def _value_alone(value: str, shortest: int) -> str | None:
+    """The value of key=VALUE as a message may print it by itself: _ASSIGNED and _PROSE take everything up to the next
+    space (a path tail, a "#model@VAR", "&b=2"), but the secret ends at the first quote, comma, semicolon, &, #, bracket,
+    slash or space (attack 22b, O8). None when what is left is shorter than the shapes allow."""
+    v = value.lstrip("\"'`")
+    end = _VALUE_END.search(v)
+    v = v[:end.start()] if end else v
+    return v if len(v) >= shortest else None
+
+
+def secret_values(argv, runs: bool = True) -> set[str]:
+    """The secret values typed on a command line: each key-shaped token as the shapes find it inside a word or a path
+    component, the password of a user:password@ URL and its user when that is key-shaped (GitHub's token:x-oauth-basic),
+    the word after "password is" and the like, each both with whatever follows it up to the next space and alone (cut
+    at a quote, comma, semicolon, &, #, bracket or slash, so a message that prints the value without its tail is cut).
+    Each argument is looked at alone and all of them joined (a password said across several words). A long run of
+    letters and digits that holds a "/" is a token only when it does not look like a path (it does not begin with / or .
+    or hold //); its slash-free parts are always looked at. Limit: a token with a "/" inside that begins like a path is
+    cut only in its parts. key=VALUE is collected from 4 characters of value whether or not a tail follows (L7; the shared
+    key check needs 6, so this module reads the short ones itself); a JSON web token is collected from its own "eyJ" as
+    well as with whatever token characters are glued before it (L9). Limit: a word typed after "token:" or "secret="
+    and the like is cut from every later message from 4 characters, a key or not (a false alarm costs a word).
+    runs=False leaves out the last two arms (a long run of token characters that is no more than key-shaped), for a
+    caller that must not call an ordinary long folder name a key (proxycmd.revoke_line, L8)."""
+    typed = [str(a) for a in argv or ()]
+    found: set[str] = set()
+    for text in [*typed, " ".join(typed)]:
+        for m in SECRET.finditer(text):
+            whole = m.group(0)
+            url = _URL_PASSWORD.fullmatch(whole)
+            inner = url or _ASSIGNED.fullmatch(whole) or _PROSE.fullmatch(whole)
+            found.add(inner.group(1) if inner else whole)
+            if url:   # the user half: a key there is as much a key as the password (the key arms never see it: finditer)
+                user = _URL_USER.match(whole).group(1)
+                found.update(k.group(0) for k in SECRET.finditer(user))
+                if token_like(user):
+                    found.add(user)
+            elif inner:
+                # From _SHORTEST_CUT for key=VALUE as for prose (attack 24, L5): the line is key-shaped when SECRET finds
+                # VALUE plus a path tail, so the value alone is as much a secret at 4 or 5 characters as at 6; it was
+                # collected only from 6, and `password=abcde/h` printed the folder `password=abcde` whole.
+                alone = _value_alone(inner.group(1), _SHORTEST_CUT)
+                if alone:
+                    found.add(alone)
+        for at, tok, begin in _jwt_starts(text):   # the token from its own "eyJ", beside whatever SECRET holds of it (L9)
+            found.add(tok)
+            # The key printed alone, when it was typed glued before the token (attack 26, K3): SECRET's token arm starts at the
+            # start of the run and takes the key with it, so the key's own arm never ran; look at the lead of each token. A "_"
+            # or "-" typed between the key and the token is the key's own token character: the key is also kept without it.
+            for k in SECRET.finditer(text[begin:at]):
+                found.update((k.group(0), k.group(0).rstrip("_-")))
+        for m in _ASSIGNED_SHORT.finditer(text):   # the 4- and 5-character values SECRET's arm does not reach (L7)
+            # The value as typed, to the next space, always (attack 26, K4: with a "#", ",", "/" and the like among its first
+            # four characters there is no part "alone" of 4 characters, and the value was not collected at all).
+            # Not when it begins with a path or list separator (token=/abc is a path, password="",x is an empty value): limit.
+            if not m.group(1).lstrip("\"'`").startswith(("/", "\\", ",", ";", "&")):
+                found.add(m.group(1))
+            alone = _value_alone(m.group(1), _SHORTEST_CUT)
+            if alone:
+                found.add(alone)
+        if not runs:
+            continue
+        for m in TOKEN_RUN.finditer(text):
+            run = m.group(0)
+            if token_like(run) and "/" in run and not run.startswith(("/", ".")) and "//" not in run:
+                found.add(run)
+        for m in _RUN_NO_SLASH.finditer(text):
+            if token_like(m.group(0)):
+                found.add(m.group(0))
+    return {v for v in found if len(v) >= _SHORTEST_CUT}
+
+
+def _console_escaped(s: str) -> str:
+    """s as pluginpage.ascii_only writes it (a value has no space at its edge): the backslash doubled, every character
+    outside U+0020 to U+007E as \\uXXXX or, past U+FFFF, \\UXXXXXXXX."""
+    return "".join("\\\\" if c == "\\" else c if " " <= c <= "~" else
+                   f"\\u{ord(c):04x}" if ord(c) <= 0xFFFF else f"\\U{ord(c):08x}" for c in s)
+
+
+def _spellings(value: str) -> set[str]:
+    """Every way a message may write a typed value: as typed, with / turned to \\ (a path made native), and each of
+    those repr-escaped (a tab as \\t, a quote), ASCII-escaped (\\xe9), \\uXXXX-escaped (JSON's way), escaped the way
+    the plug-in console writes text (pluginpage.ascii_only: \\uXXXX up to U+FFFF and \\UXXXXXXXX above, so a Latin-1
+    letter beside an astral character is \\u00e4 and \\U0001f600, a mix none of the others makes; attack 22b, O11), and
+    with the backslashes doubled (a repr of a repr).
+
+    The plug-in console writes a message through ascii_only AFTER the message has put the typed name through repr
+    (`named {key!r}`), so the spelling it prints is ascii_only(repr(name)): repr doubles a backslash and escapes an
+    invisible or control character (\\u200b, \\x07) and leaves a Latin-1 letter alone, and ascii_only then doubles every
+    backslash again and writes the letter as \\u00e4. That spelling was never built, and a secret holding a letter
+    beyond ASCII and also a backslash or an invisible character was printed whole by `plugins show` (attack 24, L4).
+    Now ascii_only is applied to EVERY base form (the raw value, its repr, its ascii, its JSON), not to the raw value
+    alone; and each base is built from the value as typed and from the value lowered (a message that lowers the name
+    before it escapes it writes \\u00e4 where the typed Ä is \\u00c4). The case of the rest is the cut's.
+    Limit: that module is not imported (the hook runs this one on every prompt), so its rule is written out here and
+    must be kept in step."""
+    out = set()
+    for typed in {value, value.lower()}:
+        for s in (typed, typed.replace("/", "\\")):
+            r = repr(s)[1:-1]
+            out |= {s, r, r.replace("\\'", "'").replace("'", "\\'"),   # repr escapes a ' only when the name holds " too
+                    ascii(s)[1:-1], json.dumps(s)[1:-1], s.encode("unicode_escape").decode("ascii")}
+    out |= {_console_escaped(f) for f in out}                         # ascii_only of each: of the raw, of the repr, ...
+    for _ in range(2):
+        out |= {s.replace("\\", "\\\\") for s in out}
+    return {s for s in out if len(s) >= _SHORTEST_CUT}
+
+
+# The characters the re module reads as one in a case-insensitive match and that casefolding does not join: dotless i
+# with i; the two Greek letters with tonos and dialytika (U+0390, U+03B0) with their polytonic twins; the two long-s-t
+# ligatures. (The rest of the re module's table is joined by casefold: the Kelvin sign, the long s, the micro sign, ...)
+_SAME_CASE = {"ı": "i", "ΐ": "ΐ", "ΰ": "ΰ", "ﬆ": "ﬅ"}
+
+
+@functools.lru_cache(maxsize=None)
+def _fold(c: str) -> str:
+    """One character in the case the cut compares in, always one character (so a position in the folded text is the same
+    position in the text): its case-folded form when that is one character (K, the Kelvin sign, is k; the long s is
+    s), else its lowered form, else the first character of that (a capital I with a dot above is i, as the re module
+    reads it), else itself; then the few that the re module joins and casefolding does not (_SAME_CASE)."""
+    f = c.casefold()
+    if len(f) != 1:
+        low = c.lower()
+        f = low if len(low) == 1 else low[:1]
+    return _SAME_CASE.get(f, f)
+
+
+def _folded(text: str) -> str:
+    return text.lower() if text.isascii() else "".join(map(_fold, text))
+
+
+_TIERS = (16, 8, 4)   # the forms are looked up by their first 16, 8 or 4 characters (none is shorter than 4)
+
+
+def _cut(text: str, values) -> str:
+    """text without any spelling of any of the values, in any case: the longest first, so a value inside another is
+    not left half cut.
+
+    One pass over the text, linear in its length however many values there are (attack 24, L6: one alternation of every
+    spelling made each position try every form, 0.44 s for a thousand secrets and 1.7 s for two thousand). The
+    spellings are filed by their first 16, 8 or 4 characters, folded to one case; at each position that could begin one
+    the text is looked up by those few characters and only the few forms filed under them are compared, the longest
+    first. Limit: forms that share their first 16 (or 8, or 4) characters are compared one by one at a position where
+    that prefix is met, so a hostile line of thousands of secrets with one prefix and a text full of that prefix costs
+    that product; a command line cannot hold enough of them to matter. Case is folded character by character
+    (_fold), which is the re module's case-insensitive rule for every character that has one. Forms that overlap are cut
+    as their union (a value that ends where a key begins does not leave the rest of the key)."""
+    if not text:
+        return text
+    index: dict[int, dict[str, list[str]]] = {k: {} for k in _TIERS}
+    for form in {_folded(f) for v in values for f in _spellings(v)}:
+        tier = next(k for k in _TIERS if len(form) >= k)
+        index[tier].setdefault(form[:tier], []).append(form)
+    if not any(index.values()):
+        return text
+    for tier in index.values():
+        for forms in tier.values():
+            forms.sort(key=len, reverse=True)
+    begins = re.compile("[" + "".join(re.escape(c) for c in {f[0] for t in index.values() for fs in t.values()
+                                                               for f in fs}) + "]")
+    folded = _folded(text)
+    def size_at(i: int) -> int:
+        for tier in _TIERS:                            # a longer tier's forms are all longer than a shorter tier's
+            for form in index[tier].get(folded[i:i + tier], ()):
+                if folded.startswith(form, i):
+                    return len(form)
+        return 0
+
+    out, last, i = [], 0, 0
+    while True:
+        m = begins.search(folded, i)
+        if m is None:
+            break
+        i = m.start()
+        size = size_at(i)
+        if size:
+            # The union of the forms that overlap, not the leftmost alone (attack 26, K5): a short value that ends where a
+            # key begins took the cut and the rest of the key was printed. Every position inside the cut is looked at, and a
+            # form that begins inside and ends beyond it extends the cut.
+            end, j = i + size, i + 1
+            while j < end:
+                m2 = begins.search(folded, j, end)
+                if m2 is None:
+                    break
+                j = m2.start()
+                end = max(end, j + size_at(j))
+                j += 1
+            out += (text[last:i], _NOT_REPEATED)
+            i = last = end
+        else:
+            i += 1
+    out.append(text[last:])
+    return "".join(out)
+
+
+def _unkeyed(text: str, argv) -> str:
+    """The last line of defence for what main prints: any secret value typed on this command line is cut out of the
+    text wherever it came from, however the message that held it was worded and however it changed the value (see
+    secret_values, _spellings). The named sites say it better (_shown, _resolve); this catches the rest, in store.py
+    and beyond."""
+    return _cut(text, secret_values(argv))
+
+
+class _Cutting:
+    """A text stream that cuts the typed secrets out of what is written through it. On stderr, line by line, as it goes.
+    On stdout the lines are held until the command ends, and are cut only if it failed: a command that worked
+    prints what it prints. Everything else (encoding, isatty, buffer) is the stream underneath's. Over no stream at all
+    (sys.stdout is None under pythonw) it writes nothing, as print() does (attack 22b, O10)."""
+
+    def __init__(self, inner, values, hold: bool = False):
+        self._inner, self._values, self._hold = inner, values, hold
+        self._tail = ""
+        self._held: list[str] = []
+
+    def release(self) -> None:
+        """The command turned out to be one a reader waits on line by line (see _streams): give back what was held,
+        as it is, and put the stream underneath back in place of this one, so it is as if nothing had been wrapped."""
+        held, self._held, self._hold = "".join(self._held), [], False
+        if sys.stdout is self:
+            sys.stdout = self._inner
+        if held and self._inner is not None:
+            self._inner.write(held)
+
+    def write(self, s):
+        s = s if isinstance(s, str) else str(s)
+        if self._inner is None:
+            return len(s)
+        if self._hold:
+            self._held.append(s)
+            return len(s)
+        head, nl, self._tail = (self._tail + s).rpartition("\n")
+        if nl:
+            self._inner.write(_cut(head + nl, self._values))
+        return len(s)
+
+    def flush(self):
+        try:
+            self._inner.flush()
+        except (OSError, ValueError, AttributeError):   # AttributeError: no stream underneath
+            pass
+
+    def finish(self, failed: bool) -> None:
+        if self._inner is None:
+            self._held, self._tail = [], ""
+            return
+        if self._hold:
+            text, self._held = "".join(self._held), []
+            self._inner.write(_cut(text, self._values) if failed else text)
+        elif self._tail:
+            self._inner.write(_cut(self._tail, self._values))
+            self._tail = ""
+        self.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+_STREAMING = {"hook", "mcp", "serve"}   # commands whose output a reader waits on, line by line: never held
+
+
+def _streams(args) -> bool:
+    """Whether the PARSED command is one a reader waits on: hook, mcp, serve, `start --hook`, `proxy serve`. It is the
+    command that decides, never a word typed somewhere in the line (attack 22b, O9: `start --since KEY --from serve`
+    printed KEY on stdout because "serve" was typed). Limit: stdout of these is left alone; only stderr is cut."""
+    command = getattr(args, "command", None)
+    return (command in _STREAMING or (command == "start" and bool(getattr(args, "hook", False)))
+            or (command == "proxy" and getattr(args, "action", None) == "serve"))
+
+
 def _env(store: Store, args) -> str:
     given = getattr(args, "env", None)
-    name = store.resolve(given) if given else store.state()["active"]   # a name or a title; refuses an unknown one
+    name = _resolve(store, given) if given else store.state()["active"]   # a name or a title; refuses an unknown one
     store.path(name)
     return name
 
 
+_RULES_SAID = ("Only the user changes their rules, at their own terminal or on the page. Propose a rule with "
+               "`semantext teach`; ask for anything else with `semantext ask`")
+# What each act that is not a change of rules says after the refusal: the guard is the same, the words fit the act.
+# The repo's contract (tests/test_your_words.py): every change refused in an agent's shell names BOTH routes, `teach`
+# (a proposed rule) and `ask` (anything else). The owed attack found four acts that had lost `teach`.
+_BOTH = "asks with `semantext ask`, or proposes a rule with `semantext teach`"
+_ACT_SAID = {
+    "start the proxy": ("Only the user starts the proxy, at their own terminal. An agent that needs a call let through "
+                        f"{_BOTH}"),
+    "answer the proxy": ("Only the user answers what the proxy holds, at their own terminal. An agent cannot release "
+                         f"its own held call; it {_BOTH}"),
+    "keep a message as the user's": ("Only the user keeps their own words as theirs, at their own terminal. An agent "
+                                     f"{_BOTH}"),
+    "keep your past messages as yours": ("Only the user keeps their own past messages as theirs, at their own "
+                                         f"terminal. An agent {_BOTH}"),
+    "forget what was heard": f"Only the user forgets what was heard, at their own terminal. An agent {_BOTH}",
+    "accept a proposal": ("Only the user accepts a proposed rule, at their own terminal or on the page. An agent "
+                          "proposes a rule with `semantext teach`, or asks with `semantext ask`"),
+    "change a setting": f"Only the user changes a setting, at their own terminal or on the page. An agent {_BOTH}",
+    "switch a feature": f"Only the user switches a feature, at their own terminal or on the page. An agent {_BOTH}",
+    "set the model": f"Only the user chooses the model Semantext uses, at their own terminal. An agent {_BOTH}",
+    "clear the model": f"Only the user clears the model Semantext uses, at their own terminal. An agent {_BOTH}",
+}
+
+
 def _users_act(what: str) -> None:
-    """Changing the user's rules is the user's act, like answering: refused in an agent's shell, or anywhere that is
-    not their own terminal. An agent proposes a rule with `teach`, and asks for anything else in the inbox."""
+    """An act that is the user's, like answering: refused in an agent's shell, or anywhere that is not their own
+    terminal. The guard is one for every act; what is said after it fits the act (changing rules, starting or answering
+    the proxy, and the rest). An agent proposes a rule with `teach`, and asks for anything else in the inbox."""
     why_not = human_terminal()
     if why_not:
-        raise Refused(f"cannot {what} here: {why_not}. Only the user changes their rules, at their own terminal or on "
-                      f"the page. Propose a rule with `semantext teach`; ask for anything else with `semantext ask`")
+        raise Refused(f"cannot {what} here: {why_not}. {_ACT_SAID.get(what, _RULES_SAID)}")
 
 
 # ---- environments and rules -------------------------------------------------------------------------------------
@@ -67,7 +440,7 @@ def cmd_env(store: Store, args) -> int:
     if args.action == "use":
         if not args.name_or_title:
             raise Refused("name one environment to use, for example: semantext env use default")
-        name = store.resolve(" ".join(args.name_or_title))   # its name or its title: env use "Deep Work"
+        name = _resolve(store, " ".join(args.name_or_title))   # its name or its title: env use "Deep Work"
         store.set_active(name)
         _out(f"Active environment: {store.title(name)}")
         return 0
@@ -83,7 +456,7 @@ def cmd_env(store: Store, args) -> int:
             every = {e["id"]: p["environment"]["id"] for p in store.packs() for e in p.get("entries") or []}
             missing = [i for i in args.pick if i not in every]
             if missing:
-                raise Refused(f"no such suggestion: {', '.join(missing)} (see them with: semantext env ideas)")
+                raise Refused(f"no such suggestion: {', '.join(_NOT_REPEATED if key_shaped(i) else i for i in missing)} (see them with: semantext env ideas)")
             picks = [{"pack": every[i], "id": i} for i in args.pick]
         elif sg["matched"]:
             picks = [{"pack": r["pack"], "id": r["id"]} for r in sg["rules"] if r["ticked"]]
@@ -106,7 +479,7 @@ def cmd_env(store: Store, args) -> int:
     if args.action == "add":
         if not args.name_or_title:
             raise Refused("name the suggestions to add, for example: semantext env add work.outcome-first")
-        target = store.resolve(args.env) if args.env else store.state()["active"]
+        target = _resolve(store, args.env) if args.env else store.state()["active"]
         added = store.add_suggestions(target, args.name_or_title)
         _out(f"Added {len(added)} rule{'s' if len(added) != 1 else ''} to {store.title(target)}"
              + (f": {', '.join(added)}" if added else " (it already holds them)."))
@@ -137,7 +510,7 @@ def cmd_rules(store: Store, args) -> int:
         entries = d.get("entries") or []
         if args.agent and n == name:   # that agent's own layer, instead of the shared rules
             entries = store.layers(d).get(args.agent) or []
-            _out(f"{d['environment'].get('title', n)} ({n}), for {args.agent} only")
+            _out(f"{d['environment'].get('title', n)} ({n}), for {_plain(args.agent)} only")
         else:
             _out(f"{d['environment'].get('title', n)} ({n})")
         shown = 0
@@ -157,6 +530,8 @@ def cmd_rules(store: Store, args) -> int:
 
 
 def cmd_teach(store: Store, args) -> int:
+    if args.agent and key_shaped(args.agent):   # the name would be written to the file and said back: never a key
+        raise Refused("that agent name looks like it holds a key, a token or a password; never put one in a name")
     name, words, agent = _env(store, args), " ".join(args.words), clean(args.agent) if args.agent else None
     if human_terminal() is None:
         rid = store.learn(name, words, agent=agent, misread=args.misread)
@@ -280,24 +655,80 @@ def cmd_read(store: Store, args) -> int:
         _out("Touches: " + ", ".join(r["touched"]))
     # The reader, clause by clause, and its advice for each act (advice only: it can make the gate stricter, never
     # looser). Printed after the lines above, which stay as they were.
-    got = reading.read(" ".join(args.message))
-    if got.readings:
+    # reading.report is the one reading: the page's reader route (POST /api/read) sends the same, so they never differ.
+    got = reading.report(" ".join(args.message), offer=args.offer, acts=args.act)
+    if got["readings"]:
         _out("Clause by clause:")
-    for x in got.readings:
-        d = x.to_dict()
+    for d in got["readings"]:
         extra = "".join([f" [{', '.join(d['acts'])}]" if d["acts"] else "", f' ("{d["time"]}")' if d["time"] else ""])
         _out(f"  {d['label']}{extra}: {d['clause']}")
-    if got.clipped:
+    if got["clipped"]:
         _out(f"  (read up to {reading.MAX_CHARS} characters; the rest was not read)")
-    named = {a for x in got.readings for a in x.acts}
-    if args.offer:                                   # a bare yes answers the offer: its acts are asked about too
-        named |= {a for x in reading.read(args.offer).readings for a in x.acts}
-    acts = args.act or sorted(named, key=list(reading.ACTS).index)
-    for a in acts:
-        adv = reading.advise(got, a, offer=args.offer).to_dict()
+    for adv in got["advice"]:
         q = f'  "{adv["quote"]}"' if adv["quote"] else ""
-        _out(f"{a}: {adv['word']} ({adv['rule']}) {adv['why']}{q}")
+        _out(f"{adv['act']}: {adv['word']} ({adv['rule']}) {adv['why']}{q}")
     return 0
+
+
+# ---- the proxy --------------------------------------------------------------------------------------------------
+def cmd_proxy(store: Store, args) -> int:
+    # Imported here, not at the top: the card hook runs this module on every prompt and must not load the proxy's
+    # kernel (tests/test_registry.py::test_running_the_hook_scans_no_entry_point).
+    from . import proxycmd
+    home = proxycmd.proxy_home(store.root, args.proxy_home)
+    if args.port is None:
+        args.port = proxycmd.DEFAULT_PORT
+    if args.action == "serve":
+        _users_act("start the proxy")
+        if not args.space:
+            raise Refused("name the space folder: semantext proxy serve --space FOLDER")
+        card = store.card(_env(store, args))
+        _out(f"Semantext proxy on http://127.0.0.1:{args.port} for the space in {args.space}, its blocks pinned as they "
+             f"are now. Point your AI tool's base URL here and name its agent in the header x-semantext-agent. "
+             f"What it holds waits for you: `semantext proxy asks`, then `semantext proxy answer ASK yes|no`. "
+             f"Stop it with Ctrl+C.")
+        try:
+            proxycmd.serve(args.space, home, card, args.port)
+        except KeyboardInterrupt:
+            _out("Proxy stopped.")
+        return 0
+    if args.action == "asks":
+        try:
+            rows = proxycmd.held_asks(home)
+        except proxycmd.Starting:
+            _out(f"{proxycmd.STARTING[0].upper()}{proxycmd.STARTING[1:]}. Nothing waits for your word yet; ask again "
+                 f"in a moment.")
+            return 0
+        except proxycmd.Stopped:
+            _out(f"{proxycmd.STOPPED[0].upper()}{proxycmd.STOPPED[1:]}. Nothing waits for your word; start one with "
+                 f"`semantext proxy serve`.")
+            return 0
+        if not rows:
+            _out("Nothing waits for your word.")
+        for r in rows:
+            line = f"{r['id']}  {r['agent']} -> {r['tool']}  ({r['why']}; {r['minutes_left']} min left)"
+            if r["status"] == "yes":
+                # A yes not yet used can still be taken back: the line that does it is printed with it, quoted for the
+                # shell it is printed in (K7). An id the proxy did not mint, or a home that cannot be quoted, gets no line.
+                take_back = proxycmd.revoke_line(r["id"], args.proxy_home, args.home)   # every option that chose the home
+                note = proxycmd.revoke_note(args.proxy_home, args.home) if take_back else ""
+                line += ("  a yes not yet used; to take it back: " + take_back + (f"  {note}" if note else "") if take_back else
+                         "  a yes not yet used (its id or home cannot be pasted safely, so no command is printed for it)")
+            _out(line)
+        return 0
+    if args.action == "answer":
+        _users_act("answer the proxy")
+        if len(args.rest) != 2:
+            raise Refused("answer one ask: semantext proxy answer ASK yes|no|revoke")
+        state = proxycmd.answer(home, args.rest[0], args.rest[1].lower())
+        _out(f"Ask {args.rest[0]} is now {state}." + (
+            " The held call can go through once, in that chat: with its held turn at the chat's next message if every"
+            " call of the turn has your yes, or when the agent makes the call again. Not while your newest message in"
+            " that chat names one of its acts other than as a plain go (\"skip the delete\"); a bare \"stop\" names"
+            " none. `semantext proxy answer ASK revoke` takes the yes back."
+            if state == "yes" else ""))
+        return 0
+    raise Refused("say serve, asks or answer")
 
 
 def cmd_where(store: Store, args) -> int:
@@ -363,7 +794,7 @@ def cmd_mine(store: Store, args) -> int:
         raise Refused("no transcripts found for this project: name the files, or use --project DIR")
     missing = [f for f in files if not Path(f).is_file()]
     if missing:
-        raise Refused(f"not a file: {missing[0]}")
+        raise Refused(f"not a file: {_plain(missing[0])}")
     r = mine_history(store, name, files, dry_run=args.dry_run)
     if args.json:
         _out(json.dumps(r))
@@ -397,7 +828,7 @@ def cmd_backtest(store: Store, args) -> int:
         raise Refused("no transcripts found for this project: name the files, or use --project DIR")
     for f in [*files, *(x for x in (args.cases, args.finder) if x)]:
         if not Path(f).is_file():
-            raise Refused(f"not a file: {f}")
+            raise Refused(f"not a file: {_plain(f)}")
     if args.weighed:
         if (args.reader or args.cases or args.finder or args.split or args.show or args.judge or args.ablate
                 or args.samples != 1 or args.clean_sample is not None):
@@ -470,7 +901,7 @@ def make_reader(spec: str, key_env: str | None):
         model, _, own_key = model.partition("@")
         if url.startswith(("http://", "https://")) and model:
             return EndpointReader(url, model, key_env=own_key or key_env or "")
-    raise Refused(f"not a reader: {spec!r}. Use ollama:MODEL or endpoint:URL#MODEL[@KEY_VARIABLE]")
+    raise Refused(f"not a reader: {_shown(spec)}. Use ollama:MODEL or endpoint:URL#MODEL[@KEY_VARIABLE]")
 
 
 def _host(url: str) -> str:
@@ -742,6 +1173,8 @@ def _show_request(r: dict, full: bool = True) -> None:
     head = f"#{r['id']}  {r['title']}   ({sender}; asked {age(r['at'])} ago)"
     if r["status"] != "open":
         head += f"  [{r['status']}]"
+    elif r.get("parked"):   # open, and set aside by the user: never listed as if it waited
+        head += "  [parked: set aside by you, not answered]"
     _out(head)
     if not full:
         return
@@ -1068,6 +1501,11 @@ def cmd_inbox(store: Store, args) -> int:
         _show_request(r)
         _out("")
     if not args.all:
+        parked = sum(bool(r.get("parked")) for r in shown)
+        if not parked < len(shown):
+            _out("Nothing is waiting for you now; the requests above are the ones you parked.")
+        elif parked:
+            _out(f"{parked} of these {'is' if parked == 1 else 'are'} parked: set aside by you, still open for their asker.")
         _out("Answer with: semantext answer ID CHOICE [your words]")
     return 0
 
@@ -1092,8 +1530,7 @@ def cmd_answers(store: Store, args) -> int:
     who = _as(store, args.source)
     unread = inbox.unread_answers(who)
     if not unread:
-        waiting = inbox.open_requests(who)
-        _out("No new answers." + (" Still waiting: " + ", ".join(f"#{r['id']}" for r in waiting) if waiting else ""))
+        _out("No new answers." + still_open(inbox, who))
         return 0
     for r in unread:
         _out(describe_answer(r))
@@ -1207,7 +1644,10 @@ def cmd_doctor(store: Store, args) -> int:
         ok = agentfiles.has_block(Path(f))
         problems += not ok
         rows.append(("agent file", f"{'connected' if ok else 'PROBLEM: block missing or broken'} ({f})"))
-    rows += [("inbox", f"{len(inbox.open_requests())} waiting for you, {len(inbox.unread_answers())} answers unread"),
+    parked = len(inbox.parked_requests())
+    rows += [("inbox", f"{len(inbox.waiting_requests())} waiting for you"
+                       + (f", {parked} parked (set aside by you)" if parked else "")
+                       + f", {len(inbox.unread_answers())} answers unread"),
              ("hear-prompts", "on" if s.get("hear_prompts") else "off"),
              ("feed", f"{'on' if s.get('feed', True) else 'off'} ({len(Feed(store.root).recent(200))} deliveries kept; "
                       f"what was sent, never what was said)")]
@@ -1252,7 +1692,7 @@ def _gaming_switch(args, cfg: dict, trouble) -> int:
     try:
         hours = float(args.hours)
     except ValueError:
-        raise Refused(f"--hours is a number of hours, not {args.hours!r}") from None
+        raise Refused(f"--hours is a number of hours, not {_shown(args.hours)}") from None
     if not math.isfinite(hours) or not 1 / 60 <= hours <= gaming.LAPSE_S / 3600:
         raise Refused(f"--hours is at least a minute (0.02) and at most {gaming.LAPSE_S // 3600}, since a hold always "
                       f"lapses by itself")
@@ -1284,8 +1724,67 @@ def cmd_compute(args) -> int:
     return code
 
 
+class _Parser(argparse.ArgumentParser):
+    """argparse, except that it never repeats a key-shaped value, and that it reads a command line the same way on every
+    Python the package supports. Its own errors quote what was typed ("invalid choice: 'sk-...'", "unrecognized
+    arguments: ..."), and a key typed in the wrong place would reach the screen, a log, or an agent's transcript.
+    Sub-commands are made with the same class.
+
+    The same on every Python: argparse before 3.12.7 gives a word to nobody when it follows an option and an earlier
+    word of the command was already taken, so `semantext env add --env work an-id` left `an-id` unread there
+    ("unrecognized arguments") while newer Pythons read it. A sub-command that is left with unread words therefore
+    reads its own part of the line once more with options and words intermixed (parse_known_intermixed_args, in every
+    supported Python); that reading stands only if it reads every word, and otherwise the first one does, with its
+    refusal. So a line that newer Pythons read is read the same by the older ones. It also reads, on every Python, one
+    kind of line that every Python refused before: words of ONE many-word argument split by an option
+    (`semantext backtest a.jsonl --env work b.jsonl` now reads both files; before, the second was "unrecognized").
+    A line with more words than the command takes is refused as before, in the same words. Limit: only sub-commands
+    do this (the top parser's own options are --home and --version)."""
+
+    _again = False      # true while this parser is reading its line the second way, so the second way is not re-entered
+
+    def parse_known_args(self, args=None, namespace=None):
+        if self._again or namespace is not None or any(isinstance(a, argparse._SubParsersAction) for a in self._actions):
+            return super().parse_known_args(args, namespace)
+        line = list(sys.argv[1:] if args is None else args)
+        got, left = super().parse_known_args(list(line), None)
+        if not left:
+            return got, left
+        self._again = True
+        try:
+            again, still = self.parse_known_intermixed_args(list(line), None)
+        except TypeError:           # a parser the intermixed reading does not take: the first reading stands
+            return got, left
+        finally:
+            self._again = False
+        return (again, still) if not still else (got, left)
+
+    def error(self, message):
+        if key_shaped(message):
+            message = "an argument looks like it holds a key, a token or a password, so it is not repeated here"
+        super().error(message)
+
+    def _print_message(self, message, file=None):
+        # Python 3.10's argparse writes its usage and its error to sys.stderr without asking whether there is one, so
+        # with no console streams (pythonw) a refused line raised AttributeError there instead of exiting 2. Where
+        # there is no stream there is nowhere to say it, and the exit code still does. Found by the first run on a
+        # real Python 3.10 (15 November 2026); newer Pythons already check.
+        if (file if file is not None else sys.stderr) is None:
+            return
+        super()._print_message(message, file)
+
+
+def _act_word(value: str) -> str:
+    """One act the reader knows. Any other word is refused WITHOUT being repeated: it may be a key typed in the wrong
+    place, and argparse's own "invalid choice" message would print it."""
+    if value in reading.ACTS:
+        return value
+    raise argparse.ArgumentTypeError("that is not an act the reader knows (the word is not repeated). The acts are: "
+                                     + ", ".join(reading.ACTS))
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
+    p = _Parser(
         prog="semantext",
         description="Keep your standing rules for how an AI assistant reads you, and hand them to it with every "
                     "prompt.")
@@ -1336,9 +1835,17 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("undo", cmd_undo, "undo a rule (kept in the file, off the card), or the last change", env=True)
     sp.add_argument("rule_id", nargs="?", help=rule_help)
     sp.add_argument("--last", action="store_true", help="undo the last change to the environment")
+    sp = add("proxy", cmd_proxy, "the proxy between your AI tool and its model: start it, list what it holds for your "
+                                 "word, answer it", env=True)
+    sp.add_argument("action", choices=("serve", "asks", "answer"))
+    sp.add_argument("rest", nargs="*", metavar="ARG", help="for answer: the ask id, then yes, no or revoke")
+    sp.add_argument("--space", help="for serve: the folder of the space's blocks")
+    sp.add_argument("--port", type=int, default=None, help="for serve: the port on 127.0.0.1 (default 8790)")
+    sp.add_argument("--proxy-home", help="the folder the proxy keeps its asks and record in (default: proxy in "
+                                         "your home)")
     sp = add("read", cmd_read, "show how a message is read (nothing is saved)", env=True)
     sp.add_argument("message", nargs="+", help="the message to read")
-    sp.add_argument("--act", action="append", choices=list(reading.ACTS),
+    sp.add_argument("--act", action="append", type=_act_word, metavar="{" + ",".join(reading.ACTS) + "}",
                     help="say what the words advise for this act (repeatable; default: every act the words name)")
     sp.add_argument("--offer", help="the agent's last offer, which a bare yes binds to")
     add("where", cmd_where, "print the path of an environment's rule file", env=True)
@@ -1547,21 +2054,57 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the command. If a secret was typed on the command line (secret_values), everything written to stderr is cut
+    of it line by line, and stdout is held and cut if the command fails, so no message, whatever its words and
+    wherever it was made (the parser's own errors included), can say it back. Without one the streams are untouched.
+    Limits, stated: output written below Python's streams (a child process, a buffer) is not seen; the stdout of a
+    command a reader waits on (_streams) is left alone, only its stderr is cut; a value shorter than _SHORTEST_CUT is
+    not cut; a message showing only part of a secret is not caught."""
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         except (OSError, ValueError):   # nobody is reading; the command still runs
             pass
+    typed = list(sys.argv[1:] if argv is None else argv)
+    values = secret_values(typed)
+    if not values:
+        return _main(argv, typed)
+    real_out, real_err = sys.stdout, sys.stderr
+    # A stream that is None (pythonw) stays None: print() to it writes nothing, as before. Stdout is held from the start
+    # and given back as it is once the parsed command turns out to be one a reader waits on (_main, _streams).
+    err = None if real_err is None else _Cutting(real_err, values)
+    out = None if real_out is None else _Cutting(real_out, values, hold=True)
+    if err is not None:
+        sys.stderr = err
+    if out is not None:
+        sys.stdout = out
+    failed = True   # until the command returns: an exit by SystemExit or an exception counts by its own code
+    try:
+        code = _main(argv, typed)
+        failed = bool(code)
+        return code
+    except SystemExit as e:
+        failed = e.code not in (None, 0)
+        raise
+    finally:
+        sys.stderr, sys.stdout = real_err, real_out
+        if out is not None:
+            out.finish(failed)
+        if err is not None:
+            err.finish(failed)
+
+
+def _main(argv, typed) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if isinstance(sys.stdout, _Cutting) and _streams(args):   # decided by the parsed command, not by a typed word
+        sys.stdout.release()
     if args.command == "hook":
         if args.home:
-            import os
             os.environ["SEMANTEXT_HOME"] = args.home
         return hook_main()
     if args.command == "start" and args.hook:   # before the home is opened: a session start makes no home
         if args.home:
-            import os
             os.environ["SEMANTEXT_HOME"] = args.home
         from .start import hook_main as start_hook
         code = start_hook()
@@ -1576,7 +2119,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             return cmd_compute(args)
         except (Refused, OSError) as e:
-            print("semantext: " + str(e), file=sys.stderr)
+            print("semantext: " + _unkeyed(str(e), typed), file=sys.stderr)
             return 1
     if not args.command:
         parser.print_help()
@@ -1587,11 +2130,12 @@ def main(argv: list[str] | None = None) -> int:
     except (Refused, OSError, ValueError) as e:
         # A refusal, or a file that could not be read or written (a home that is a file, a damaged state.json):
         # one line, never a traceback.
-        print("semantext: " + _said(args, e, str(e)), file=sys.stderr)
+        print("semantext: " + _unkeyed(_said(args, e, str(e)), typed), file=sys.stderr)
         return 1
     except Exception as e:  # noqa: BLE001  the last resort: still one line, with what failed, never a traceback
-        print("semantext: " + _said(args, e, f"an unexpected {type(e).__name__}: {e}. `semantext doctor` checks the "
-                                             f"files; please report it if it persists"), file=sys.stderr)
+        print("semantext: " + _unkeyed(_said(args, e, f"an unexpected {type(e).__name__}: {e}. `semantext doctor` checks "
+                                                      f"the files; please report it if it persists"), typed),
+              file=sys.stderr)
         return 1
 
 

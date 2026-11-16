@@ -1,6 +1,7 @@
 // Today, Rules, Settings and Agents as places on the page. They draw from the home page's reads (ownbase.js), not from a
 // place's answer: the route they read is only the frame, so the bar and the waiting count stay current.
 import { $, AFTER, S, fill, h, hooks, host, load, loadInbox, loadMetrics, pollFeed, render } from "./ownbase.js";
+import { keep } from "./app.js";
 import { Sky, closePop } from "./ownsky.js";
 import { Space } from "./ownspace.js";
 import { countsView, heroNodes, historyRows, needsYou, recentRows } from "./owntoday.js";
@@ -17,12 +18,14 @@ AFTER.settings = () => loadModels();
 
 const onToday = (fn) => { if (host.el && S.view === "today") fn(); };
 hooks.inbox = () => {};
-hooks.metrics = () => onToday(() => fill("counts", countsView()));
+// The feed polls every three seconds and the inbox every fifteen; what they draw again goes through keep(), so a
+// selection in the words of Today or History survives it (selection.js).
+hooks.metrics = () => onToday(() => keep(() => fill("counts", countsView())));
 hooks.layout = () => Space.layout();
 hooks.fresh = (fresh) => {
   loadMetrics();
-  onToday(() => { fill("hero", heroNodes()); fill("recent", recentRows()); });
-  if (host.el && S.view === "history") fill("historyRows", historyRows());
+  onToday(() => keep(() => { fill("hero", heroNodes()); fill("recent", recentRows()); }));
+  if (host.el && S.view === "history") keep(() => fill("historyRows", historyRows()));
   if (host.el && S.view === "rules") Sky.pulse(fresh);
 };
 

@@ -127,6 +127,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import jsonread, paths
+from .. import normal
 from . import config_path, problem
 
 KEY = "closed"
@@ -248,8 +249,8 @@ def _fold(text: str) -> str:
     without case, as Python's case-insensitive matching takes it or wider (U+0130 and U+0131 as i, U+017F as s, the
     Kelvin sign as k; full case folding beyond), so a fold closes whatever such matching would, and maybe more."""
     for _ in range(4):   # to a fixed point, so a folded name folds to itself (what a ReadContext's check asks)
-        text0 = unicodedata.normalize("NFC", text)
-        again = unicodedata.normalize("NFC", "".join(FOLD_EXTRA.get(c, c) for c in text0).casefold())
+        text0 = normal.nfc(text)   # linear: unicodedata's was quadratic (actclass r4 attack, finding 3)
+        again = normal.nfc("".join(FOLD_EXTRA.get(c, c) for c in text0).casefold())
         if again == text:
             break
         text = again
@@ -973,7 +974,8 @@ def _components(path: str) -> tuple | None:
 
 def _component_forms(path: str) -> set:
     """The components of a path as given and composed (NFC); {None} when it cannot be read."""
-    return {_components(path), _components(unicodedata.normalize("NFC", path))}
+    # normal.nfc: linear on any path; unicodedata's was quadratic (actclass r4 attack, finding 3)
+    return {_components(path), _components(normal.nfc(path))}
 
 
 def _listed_closed(text: str, listed) -> bool:
@@ -1115,15 +1117,16 @@ def _casefold(text: str) -> str:
 @functools.lru_cache(maxsize=4096)
 def _forms_of(texts: tuple, form: str) -> tuple:
     """A Name's literals in each normal form it is compared in: as read (NFC) and decomposed (NFD)."""
-    return tuple(dict.fromkeys((texts, tuple(unicodedata.normalize(form, t) for t in texts))))
+    # normal.normalize: linear; unicodedata's was quadratic (actclass r4 attack, finding 3)
+    return tuple(dict.fromkeys((texts, tuple(normal.normalize(form, t) for t in texts))))
 
 
 def _fields_hit(n: Name, text: str) -> bool:
     """The field matcher's three legs on one string: as given (case folded, not normalised), composed (NFC) and
     decomposed (NFD), each against the literals as read and decomposed. Any leg closes."""
-    rests = (n.excepted, unicodedata.normalize("NFD", n.excepted))
-    for s in dict.fromkeys((_casefold(text), _casefold(unicodedata.normalize("NFC", text)),
-                            _casefold(unicodedata.normalize("NFD", text)))):
+    rests = (n.excepted, normal.nfd(n.excepted))   # linear: unicodedata's was quadratic (actclass r4 attack, finding 3)
+    for s in dict.fromkeys((_casefold(text), _casefold(normal.nfc(text)),
+                            _casefold(normal.nfd(text)))):
         for texts in _forms_of(n.texts, "NFD"):
             for rest in dict.fromkeys(rests):
                 if _match(n, s, texts, rest):

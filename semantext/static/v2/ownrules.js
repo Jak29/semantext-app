@@ -1,6 +1,8 @@
 // Rules: see, add, switch and try them.
 import { $, S, back, h, fill, act, api, ago, clock, copyBtn, enc, envTitle, fmt, label, live, plural, render, go, still, stepsView, fromRecord, fromTest, claimsYou, count, palette, rgba, toast, when, WORDS, HOW, loadMetrics, RULE_FOR, VIEWS } from "./ownbase.js";
 import { skyLegend } from "./ownsky.js";
+import { readMessage, adviceLine } from "./reader.js";
+import { keep } from "./app.js";
 
 const WRITTEN_BY = ["DEFAULT", "LEARNED", "PROPOSED", "SUGGESTED", "SETTING"];
 const handWritten = (e) => !WRITTEN_BY.includes((e.provenance || {}).type);
@@ -70,13 +72,84 @@ const ruleIndex = () => {
   for (const a of S.agents) for (const e of [...(a.rules || []), ...(a.carried || []).flatMap(c => c.rules)]) m.set(e.id, e.statement);
   return m;
 };
+// Try a message: the quick reading of /api/explain, and the reader's clause-by-clause reading with its advice for each
+// act (reader.js, the same reader `semantext read` prints from). The two are asked together and fail apart: each says
+// its own failure, and neither stands in for the other.
+export async function tryMessage(message, words, agent, offer) {
+  const mine = S.tryNo = (S.tryNo || 0) + 1;   // a slower, older try never replaces a newer one
+  S.reader = { message, offer: offer || "", busy: true };
+  S.offerBox = offer || "";   // R9: the box holds what was sent; the view and its input listener keep this as the box changes
+  S.test = null;   // R4: the last quick reading is of other words; none is shown beside a new ask (a failed one leaves none, too)
+  fill("testFlow", testFlow());
+  const asked = readMessage(message, offer).then((data) => ({ message, offer: offer || "", data }),
+    (e) => ({ message, offer: offer || "", err: String(e && e.message || e) }));
+  let got = null, failed = null;
+  try { got = fromTest(await api("/api/explain", { message, words: words || null, agent }), message, false); } catch (e) { failed = e; }
+  const reader = await asked;
+  if (mine !== S.tryNo) return;
+  S.test = got;
+  S.reader = reader;
+  if (failed) toast(failed.message);
+  fill("testFlow", testFlow());
+}
+const chip = (t, more) => h("span", { class: "chip" + (more ? " " + more : "") }, t);
+// Each clause as a chip with the acts it names and any time word kept as written, then the advice for each act the
+// words name. An ASK whose words appear to cover the act reads "your words appear to say go: confirm", never as a go.
+export function clauseFlow() {
+  const Q = S.reader;
+  if (!Q) return null;
+  const head = h("div", { class: "sechead" }, h("h2", { class: "label" }, "Clause by clause: what it asks for, act by act"));
+  if (Q.busy) return h("section", { class: "gap" }, head, h("p", { class: "soft", role: "status" }, "Reading…"));
+  if (Q.err) return h("section", { class: "gap" }, head, h("p", { class: "soft", role: "status" }, "Could not read it clause by clause: " + Q.err + ". No reading is shown."));
+  const d = Q.data;
+  const cut = d.clipped ? h("p", { class: "meta" }, `Read up to ${d.max_chars} characters; the rest was not read.`) : null;
+  const odd = d.unreadable ? h("p", { class: "meta" }, "Some letters are outside the Latin script, which the reader cannot vouch for: no go is read from this message.") : null;
+  const clauses = d.readings.length ? h("ul", { class: "clauses" }, d.readings.map(x => h("li", { class: "clause" },
+    chip(x.label, "kind"), " ", x.acts.map(a => [chip(a), " "]), x.time ? [chip("“" + x.time + "”", "time"), " "] : null,
+    h("span", { class: "soft" }, x.clause)))) : h("p", { class: "soft" }, "Nothing to read: the message is empty.");
+  // R9: a bare yes answers the offer in the second box, so the advice made with an offer (the go-hint among it) is drawn only
+  // while that offer is in the box. After the box is emptied or changed, or the view is drawn again (its box starts empty),
+  // the advice is withdrawn and says why; the clauses, made from the message alone, stay.
+  // R12: the advice sits in a slot of its own, so a keystroke in the offer box redraws only the slot (offerKeystroke), never the
+  // view: the teach box's words and its open fold are not in it.
+  return h("section", { class: "gap" }, head, cut, odd, clauses, adviceSlot(),
+    h("p", { class: "meta", "data-sp": "mt12" }, "Advice only: it can make a gate stricter, never looser, and words alone never pass an act that leaves this machine, spends or deletes. The same reader as semantext read."));
+}
+// The offer this reading was made with is no longer the one in the box (R9).
+const offerGone = (Q) => !!Q && !!Q.offer && String(S.offerBox || "") !== Q.offer;
+function adviceNode(Q, gone) {
+  const d = Q.data;
+  return gone ? h("p", { class: "soft", role: "status" }, "The offer this was read with is no longer in the box, so the advice made from it is withdrawn. Put the offer back, or press Try it to read these words alone.")
+    : d.advice.length ? h("div", { class: "advice" }, d.advice.map(a => h("div", { class: "advice-row" },
+    h("div", {}, h("b", {}, a.act), "  ", chip(a.word, a.covers ? "covers" : ""), "  ", h("span", { class: "soft" }, adviceLine(a))),
+    h("div", { class: "meta" }, `The rule: ${a.rule}` + (a.quote ? `  ·  “${a.quote}”` : ""))))) : h("p", { class: "soft" }, "The words name no act, so there is nothing to advise on.");
+}
+function adviceSlot() {
+  const gone = offerGone(S.reader);
+  return h("div", { class: "adviceslot", "data-slot": "advice", "data-gone": gone ? "1" : "0" }, adviceNode(S.reader, gone));
+}
+// R12: the offer box changed. Only the advice node is withdrawn or restored, and only when its state changes, through
+// keep() (the focus, the caret, the scroll); the rest of the view, and what was typed in it, is not drawn again. A
+// reading that is not drawn (busy, failed) has no slot, and nothing is done.
+function offerKeystroke(flow, value) {
+  S.offerBox = value;
+  const slot = flow.querySelector('[data-slot="advice"]'), Q = S.reader;
+  if (!slot || !Q || !Q.data) return;
+  const gone = offerGone(Q);
+  if (slot.getAttribute("data-gone") === (gone ? "1" : "0")) return;
+  keep(() => { slot.setAttribute("data-gone", gone ? "1" : "0"); fill(slot, adviceNode(Q, gone)); });
+}
 export function testFlow() {
   const d = S.test;
-  if (!d) return null;
+  if (!d) return clauseFlow();
   const R = d.reading || { readings: [], decisions: [], touched: [] };
   const idx = ruleIndex();
-  return [
-    h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "How it is read")),
+  return [clauseFlow(),
+    // R5: each reading says what it reads. This one is the whole message by cue words, as a kind; the other, above it, is
+    // each clause by the act it names. Their sentences differ on purpose (a kind of message is not a go), and neither
+    // speaks for both.
+    h("section", { class: "gap" }, h("div", { class: "sechead" }, h("h2", { class: "label" }, "The quick reading: what kind of message this is")),
+      h("p", { class: "meta" }, "How it is read, as a whole message, from cue words."),
       R.readings.length || R.decisions.length ? h("div", { class: "readings" },
         R.readings.map(x => h("div", {}, h("div", {}, h("b", {}, x.label), "  ", h("span", { class: "soft" }, x.says)), h("div", { class: "meta" }, "The rule: " + (idx.get(x.rule) || x.rule)))),
         R.decisions.map(x => h("div", { "data-sp": "ink" }, x.ask))) : h("p", { class: "soft" }, "No cue words: it is read as a plain message, with your whole card."),
@@ -112,16 +185,26 @@ export function testFlow() {
           h("summary", {}, "Add suggested rules"), h("div", { id: "ideasList" }, h("p", { class: "meta" }, "Looking...")))));
   };
 
-  VIEWS.test = () => h("section", { class: "view", "data-part": "test" },
+  VIEWS.test = () => {
+    S.offerBox = "";   // R9: this view draws its offer box empty
+    const offerBox = h("input", { class: "input", name: "offer", "data-sp": "mt12", autocomplete: "off", spellcheck: "false",
+      placeholder: "The agent's last offer, if this answers one, such as: Shall I publish the release?", "aria-label": "The agent's last offer, if this message answers one" });
+    const flow = h("div", { id: "testFlow" }, testFlow());
+    // The advice is withdrawn at once when the box changes, so a hint made from an offer is never beside other words. Only
+    // the advice node is touched (R12); a whole redraw of the flow wiped the teach box and closed its fold.
+    offerBox.addEventListener("input", () => offerKeystroke(flow, offerBox.value.trim()));
+    return h("section", { class: "view", "data-part": "test" },
     back("rules", "Rules"),
     h("header", {}, h("h1", {}, "Try a message"), h("p", { class: "sub" }, "See how one message would be read, and which rules would go with it. Nothing is saved.")),
     h("section", {}, h("form", { id: "testForm" },
-      h("textarea", { class: "input", name: "message", rows: "3", placeholder: "Could we maybe publish it tomorrow?", "aria-label": "The message to try" }, S.test ? S.test.message : ""),
+      h("textarea", { class: "input", name: "message", rows: "3", placeholder: "Could we maybe publish it tomorrow?", "aria-label": "The message to try" }, S.test ? S.test.message : S.reader ? S.reader.message : ""),
       h("div", { class: "row", "data-sp": "mt12 wrap" },
         h("select", { class: "input", name: "words", "aria-label": "Whose words" },
           [["", "Whose words: tell from the text"], ["own", "Mine"], ["agent", "Another agent's"], ["tool", "A tool's notice"]].map(([v, t]) => h("option", { value: v }, t))),
         h("select", { class: "input", name: "agent", "aria-label": "Sent to" }, h("option", { value: "" }, "Sent to: an unnamed agent"),
           S.agents.filter(a => a.name !== "ai").map(a => h("option", { value: a.name, selected: S.testAgent === a.name ? "" : null }, label(a.name)))),
         h("span", { class: "grow" }),
-        h("button", { class: "btn primary", type: "submit" }, "Try it")))),
-    h("div", { id: "testFlow" }, testFlow()));
+        h("button", { class: "btn primary", type: "submit" }, "Try it")),
+      offerBox)),
+    flow);
+  };

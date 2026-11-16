@@ -24,7 +24,7 @@ import sys
 from . import __version__, jsonread
 from .agents import Agents, Identity, clean, key_shaped
 from .hook import LIMIT_BYTES, fit
-from .inbox import Inbox, asked_before, card_notes, describe_answer, mine, register_line
+from .inbox import Inbox, asked_before, card_notes, describe_answer, mine, register_line, still_open
 from .store import Refused, Store
 
 VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")   # newest first; a client's own is used when it is one of these
@@ -218,9 +218,7 @@ class Server:
         if tool == "answers":
             unread = inbox.unread_answers(who)
             if not unread:
-                waiting = inbox.open_requests(who)
-                return "No new answers." + (" Still waiting: " + ", ".join(f"#{r['id']}" for r in waiting)
-                                            if waiting else "")
+                return "No new answers." + still_open(inbox, who)
             inbox.mark_read([r["id"] for r in unread], by=who.name)
             return "\n".join(describe_answer(r) for r in unread) + "\nMarked as read."
         if tool == "close":

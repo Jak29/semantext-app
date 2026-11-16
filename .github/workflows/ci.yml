@@ -41,10 +41,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Install the package and pytest
+      - name: Install the package and what its tests need
+        # The `test` extra, not pytest alone: a test file that skips itself for want of a package (the proxy's tests
+        # use the Anthropic SDK as their client) would look passed here. tests/test_ci_runs_every_test.py keeps this.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install . pytest
+          python -m pip install ".[test]"
       - name: Run the tests (headless by design)
         run: python -m pytest -q
 
@@ -72,10 +74,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Install the package and pytest
+      - name: Install the package and what its tests need
         run: |
           python -m pip install --upgrade pip
-          python -m pip install . pytest
+          python -m pip install ".[test]"
       - name: Run the tests (headless by design)
         run: python -m pytest -q
 

@@ -1,0 +1,6452 @@
+[
+{
+"cmd": "git push",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin main",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push -u origin feature/login",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push --force-with-lease origin HEAD",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push -f",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin --tags",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin v2.1.0",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin --delete old-feature",
+"label": "push+delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin :stale-branch",
+"label": "push+delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push --mirror git@github.com:acme/backup.git",
+"label": "push+~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git -C ../api push origin main",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git -c core.sshCommand=\"ssh -i ~/.ssh/deploy_key\" push",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git --git-dir=repo/.git --work-tree=repo push",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git commit -am \"release 1.4\" && git push",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git add -A; git commit -m \"wip\"; git push origin HEAD",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git remote add origin git@github.com:acme/x.git && git push -u origin main",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin HEAD:refs/for/main",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git subtree push --prefix dist origin gh-pages",
+"label": "push|publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git clone https://github.com/acme/tool.git",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git clone --depth 1 git@github.com:acme/x.git /tmp/x",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git fetch origin",
+"label": "~download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git pull --rebase origin main",
+"label": "~download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git submodule update --init --recursive",
+"label": "~download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git lfs pull",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git branch -D feature/old",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git branch -d merged-branch",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git tag -d v1.0.0-rc1",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push origin :refs/tags/v1.0.0-rc1",
+"label": "push+delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git rm -r old_module/",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git rm --cached secrets.env",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git clean -fdx",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git clean -fd",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git stash drop stash@{0}",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git stash clear",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git reset --hard origin/main",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git checkout -- .",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git restore --source=HEAD --staged --worktree .",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git worktree remove ../wt-old --force",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git reflog expire --expire=now --all && git gc --prune=now --aggressive",
+"label": "~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git send-email --to=dev@lists.example.org outgoing/*.patch",
+"label": "send",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh repo clone cli/cli",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release download v2.0.0 -p \"*.tar.gz\"",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh run download 123456 -n build-artifacts",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release create v1.4.0 dist/*.zip --title \"v1.4.0\" --notes \"Bug fixes\"",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release upload v1.4.0 dist/app-linux.tar.gz --clobber",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release delete v1.3.9 --yes",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh repo create acme/site --public --source=. --remote=origin --push",
+"label": "publish+push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh repo delete acme/old-site --yes",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh repo edit acme/site --visibility public --accept-visibility-change-consequences",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh gist create notes.md --public",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh pr create --title \"Add login\" --body \"Implements login\"",
+"label": "~publish|send|push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh pr merge 42 --squash --delete-branch",
+"label": "~push+~delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh pr comment 42 --body \"LGTM, merging\"",
+"label": "~send|publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh issue create --title \"Crash on start\" --body \"Steps to reproduce\"",
+"label": "~send|publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh api -X DELETE repos/acme/site/git/refs/heads/tmp",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh api repos/acme/site/releases -f tag_name=v1.5.0 -f name=v1.5.0",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh workflow run deploy.yml --ref main",
+"label": "~publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh repo sync acme/fork --source upstream/repo",
+"label": "~push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "glab release create v1.0.0 --notes \"first release\"",
+"label": "publish",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "glab mr create --fill --yes",
+"label": "~publish|send|push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "hg push",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "hg clone https://hg.example.org/repo",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "svn commit -m \"update docs\"",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "svn delete https://svn.example.org/repo/branches/old -m \"remove old branch\"",
+"label": "delete",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "svn checkout https://svn.example.org/repo/trunk app",
+"label": "download",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "jj git push --all",
+"label": "push",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git status",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git log --oneline -20",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git diff --stat",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git branch -a",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git remote -v",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git stash list",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git checkout -b feature/delete-account",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git switch -c push-notifications",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git add src/delete_user.py",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git commit -m \"Remove old payment code; push docs later\"",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git commit -m \"fix: delete button sends email twice\"",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git tag -a v1.2.0 -m \"publish to npm\"",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git log --grep=\"publish\" --oneline",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git grep -n \"DROP TABLE\"",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git show HEAD:scripts/push.sh",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git blame src/send_mail.py",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git log -p -- src/payments/pay.py",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git merge --no-ff feature/payments",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git rebase origin/main",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git cherry-pick 1a2b3c4",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git push --dry-run origin main",
+"label": "push",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "git push -n origin main",
+"label": "push",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "git clean -n -d",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "git help push",
+"label": "push",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "git push --help",
+"label": "push",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "git log --author=\"push-bot\"",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git ls-files | grep -i pay",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh pr view 12",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh pr list --state open",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh issue list --label delete",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release list",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh run list --workflow publish.yml",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh api repos/acme/site/pulls",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "gh release create --help",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "glab mr list",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git config --get remote.origin.pushurl",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git config push.default simple",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git remote set-url --push origin no_push",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git log origin/main..HEAD",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git rev-parse HEAD",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "git commit --amend --no-edit",
+"label": "none",
+"tag": "vc",
+"shell": "sh"
+},
+{
+"cmd": "npm publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm publish --access public --tag next",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm unpublish my-pkg@1.0.3",
+"label": "delete|publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm deprecate my-pkg@\"< 2.0.0\" \"use v2\"",
+"label": "~publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm dist-tag add my-pkg@2.0.0 latest",
+"label": "~publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "yarn npm publish --access public",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "yarn publish --new-version 1.2.3",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pnpm publish --no-git-checks",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pnpm -r publish --access public",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "bun publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "lerna publish from-package --yes",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx changeset publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx semantic-release",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx np --no-tests",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx release-it --ci",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx gh-pages -d build",
+"label": "publish|push",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo publish -p my-crate --allow-dirty",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo yank --version 0.3.1 my-crate",
+"label": "~delete|publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "twine upload dist/*",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "python -m twine upload --repository testpypi dist/*",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "poetry publish --build",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "uv publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "hatch publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "flit publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pdm publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "python setup.py sdist bdist_wheel upload",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "gem push my_gem-0.1.0.gem",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "gem yank my_gem -v 0.1.0",
+"label": "delete|publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "mvn deploy -DskipTests",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "mvn clean deploy -P release",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "./gradlew publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "gradle publishPlugins",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dotnet nuget push bin/Release/App.1.0.0.nupkg --api-key $NUGET_KEY --source https://api.nuget.org/v3/index.json",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "nuget push App.1.0.0.nupkg -Source https://api.nuget.org/v3/index.json",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dotnet nuget delete App 1.0.0 --non-interactive",
+"label": "delete|publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "choco push app.1.0.0.nupkg --source https://push.chocolatey.org/",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "vsce publish minor",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx @vscode/vsce publish",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "ovsx publish -p $OVSX_PAT",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "snapcraft upload --release=stable app_1.0_amd64.snap",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "mix hex.publish --yes",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dart pub publish --force",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pod trunk push MyLib.podspec",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cabal upload --publish dist-newstyle/sdist/x-0.1.tar.gz",
+"label": "publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "helm push mychart-0.1.0.tgz oci://registry.acme.com/charts",
+"label": "push|publish",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip download requests==2.32.3 -d wheels/",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "python -m pip download -r requirements.txt -d vendor",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm pack left-pad",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "go mod download",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "apt-get download curl",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "helm pull bitnami/nginx --untar",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "ollama pull llama3.1:8b",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "huggingface-cli download meta-llama/Llama-3.1-8B --local-dir ./models",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "kaggle datasets download -d zillow/zecon",
+"label": "download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip install requests",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm install express",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm ci",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "yarn add lodash",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo install ripgrep",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "go install golang.org/x/tools/gopls@latest",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "brew install jq",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "sudo apt-get install -y jq",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "choco install git -y",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "winget install --id Git.Git -e",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "scoop install ripgrep",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "composer require guzzlehttp/guzzle",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "bundle install",
+"label": "~download",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip uninstall -y requests",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm uninstall lodash",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "brew uninstall --zap firefox",
+"label": "delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "sudo apt-get purge -y nginx",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "sudo apt-get autoremove -y",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "choco uninstall git -y",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "winget uninstall --id Git.Git",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "conda env remove -n old-env",
+"label": "delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "conda clean --all -y",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm cache clean --force",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip cache purge",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "make clean",
+"label": "~delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "make deploy",
+"label": "?",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm run deploy",
+"label": "?",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm run release",
+"label": "?",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx rimraf node_modules dist",
+"label": "delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npx del-cli \"dist/**\"",
+"label": "delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "bunx rimraf build",
+"label": "delete",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm publish --dry-run",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "cargo publish --dry-run",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "twine check dist/*",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm run build",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm run lint",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm test -- --testNamePattern=\"sends email\"",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm view express version",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm outdated",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm ls --depth=0",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip show requests",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip freeze > requirements.txt",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "poetry build",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "python -m build",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo build --release",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "cargo test publish",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "go build ./...",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "go test ./... -run TestDelete",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dotnet build -c Release",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dotnet test --filter \"FullyQualifiedName~Payment\"",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dotnet publish -c Release -o out",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "mvn package -DskipTests",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "./gradlew build",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm publish --help",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "cargo publish --help",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "npm help publish",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "make -n deploy",
+"label": "none",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "npx semantic-release --dry-run",
+"label": "download",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "npx changeset status",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "npm pkg get scripts.deploy",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "jq '.scripts.publish' package.json",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pnpm why lodash",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "poetry show --tree",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "gem build my_gem.gemspec",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "helm package ./chart",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "helm lint ./chart",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "vsce package",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "uv build",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "dart pub publish --dry-run",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "npm version patch --no-git-tag-version",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "pip check",
+"label": "none",
+"tag": "pkg",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 cp ./report.pdf s3://acme-reports/2026/",
+"label": "~push|publish|send",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 cp s3://acme-data/exports/users.csv ./users.csv",
+"label": "download",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 sync s3://acme-data/exports ./exports",
+"label": "download",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 sync ./build s3://acme-site --delete",
+"label": "~push|publish+delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 rm s3://acme-logs/2025/ --recursive",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 rm s3://acme-data/tmp/file.json",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 rb s3://acme-old-bucket --force",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3api delete-object --bucket acme --key a/b.txt",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3api delete-objects --bucket acme --delete file://keys.json",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3api put-object-acl --bucket acme-site --key index.html --acl public-read",
+"label": "~publish",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ec2 terminate-instances --instance-ids i-0abc123",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws lambda delete-function --function-name thumbnailer",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws lambda update-function-code --function-name api --zip-file fileb://api.zip --publish",
+"label": "~publish",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws cloudformation delete-stack --stack-name staging",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws cloudformation deploy --template-file stack.yml --stack-name prod",
+"label": "~publish",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws dynamodb delete-table --table-name Sessions",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws dynamodb delete-item --table-name Users --key '{\"id\":{\"S\":\"42\"}}' ",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws rds delete-db-instance --db-instance-identifier legacy-db --skip-final-snapshot",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws iam delete-user --user-name contractor1",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ecr batch-delete-image --repository-name app --image-ids imageTag=old",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws logs delete-log-group --log-group-name /aws/lambda/old",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/123/jobs",
+"label": "delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ses send-email --from ops@acme.com --destination ToAddresses=team@acme.com --message \"Subject={Data=Deploy},Body={Text={Data=Done}}\"",
+"label": "send",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sesv2 send-email --from-email-address a@acme.com --destination ToAddresses=b@acme.com --content file://email.json",
+"label": "send",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sns publish --topic-arn arn:aws:sns:us-east-1:123:alerts --message \"disk full\"",
+"label": "send|publish",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sqs send-message --queue-url https://sqs.us-east-1.amazonaws.com/123/jobs --message-body '{\"job\":1}' ",
+"label": "~send",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws route53domains register-domain --domain-name acme-new.com --duration-in-years 1 --admin-contact file://c.json --registrant-contact file://c.json --tech-contact file://c.json",
+"label": "pay",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ec2 purchase-reserved-instances-offering --reserved-instances-offering-id abc --instance-count 1",
+"label": "pay",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ssm send-command --instance-ids i-1 --document-name AWS-RunShellScript --parameters 'commands=[\"rm -rf /var/app/cache\"]' ",
+"label": "~delete",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 ls s3://acme-site/",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sts get-caller-identity",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws ec2 describe-instances --filters Name=tag:Name,Values=delete-me",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 rm s3://acme/tmp/ --recursive --dryrun",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 sync ./build s3://acme-site --delete --dryrun",
+"label": "publish+delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "aws ses list-identities",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws sns list-topics",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws s3 rm help",
+"label": "delete",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "aws configure list",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "aws logs tail /aws/lambda/api --since 1h",
+"label": "none",
+"tag": "aws",
+"shell": "sh"
+},
+{
+"cmd": "az group delete --name rg-staging --yes --no-wait",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az vm delete -g rg -n vm1 --yes",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob upload --account-name acme -c site -f index.html -n index.html",
+"label": "~push|publish|send",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob download --account-name acme -c data -n export.csv -f export.csv",
+"label": "download",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob delete --account-name acme -c data -n export.csv",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob delete-batch --account-name acme -s data --pattern \"tmp/*\"",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob upload-batch -d '$web' -s ./dist --account-name acmesite",
+"label": "~publish|push",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az webapp deploy --resource-group rg --name acme-api --src-path app.zip",
+"label": "publish",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az webapp up --name acme-api --runtime \"PYTHON:3.12\"",
+"label": "publish",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az functionapp deployment source config-zip -g rg -n fn --src fn.zip",
+"label": "publish",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az acr repository delete --name acmeacr --image api:old --yes",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az keyvault secret delete --vault-name kv --name old-secret",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az keyvault secret purge --vault-name kv --name old-secret",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az resource delete --ids /subscriptions/x/resourceGroups/rg/providers/Microsoft.Web/sites/app",
+"label": "delete",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az communication email send --sender \"DoNotReply@acme.com\" --to team@acme.com --subject \"Deploy\" --text \"Done\" --connection-string $CS",
+"label": "send",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "Remove-AzResourceGroup -Name rg-staging -Force",
+"label": "delete",
+"tag": "az",
+"shell": "ps"
+},
+{
+"cmd": "Remove-AzStorageBlob -Container data -Blob export.csv -Context $ctx",
+"label": "delete",
+"tag": "az",
+"shell": "ps"
+},
+{
+"cmd": "Publish-AzWebApp -ResourceGroupName rg -Name app -ArchivePath app.zip",
+"label": "publish",
+"tag": "az",
+"shell": "ps"
+},
+{
+"cmd": "az login",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az account show",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az vm list -o table",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az group list --query \"[?starts_with(name,'delete')]\"",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az storage blob list -c data --account-name acme",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "az webapp log tail -n acme-api -g rg",
+"label": "none",
+"tag": "az",
+"shell": "sh"
+},
+{
+"cmd": "gcloud app deploy --quiet",
+"label": "publish",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud run deploy api --source . --region us-central1",
+"label": "publish",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud functions deploy hello --runtime python312 --trigger-http --allow-unauthenticated",
+"label": "publish",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud compute instances delete vm-1 --zone us-central1-a --quiet",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud projects delete acme-sandbox",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud storage rm gs://acme-tmp/file.json",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud storage rm --recursive gs://acme-tmp/",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud storage cp report.pdf gs://acme-reports/",
+"label": "~push|publish|send",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud storage cp gs://acme-data/export.csv .",
+"label": "download",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gsutil cp gs://acme-data/model.bin ./models/",
+"label": "download",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gsutil -m rm -r gs://acme-tmp/2025/",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gsutil rsync -d -r ./site gs://acme-site",
+"label": "~push|publish+delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gsutil acl ch -u AllUsers:R gs://acme-site/index.html",
+"label": "~publish",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud pubsub topics publish alerts --message \"deploy done\"",
+"label": "send|publish",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud container clusters delete staging --region us-central1 --quiet",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud sql instances delete legacy-db",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud secrets delete api-key --quiet",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud compute ssh vm-1 --zone us-central1-a --command \"rm -rf /tmp/build\"",
+"label": "delete",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud compute scp vm-1:/var/log/app.log ./app.log --zone us-central1-a",
+"label": "download",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud domains registrations register acme-new.com --contact-data-from-file=c.yaml --yearly-price=\"12.00 USD\"",
+"label": "pay",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud config list",
+"label": "none",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud auth list",
+"label": "none",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud compute instances list",
+"label": "none",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud storage ls gs://acme-site",
+"label": "none",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud run services describe api",
+"label": "none",
+"tag": "gcp",
+"shell": "sh"
+},
+{
+"cmd": "gcloud help app deploy",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete pod api-7d9f8 -n prod",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete -f k8s/",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete namespace staging",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete pvc --all -n staging",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete deployment,service -l app=old",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl exec api-7d9f8 -- rm -rf /data/cache",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl exec -it db-0 -- psql -U postgres -c \"DROP DATABASE app\"",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl exec deploy/api -- sh -c \"rm -f /tmp/*.lock\"",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl cp prod/db-0:/tmp/dump.sql ./dump.sql",
+"label": "~download",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl apply -f deploy.yaml",
+"label": "~publish",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl config delete-context old-cluster",
+"label": "~delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm uninstall api -n prod",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm delete legacy",
+"label": "delete",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm upgrade --install api ./chart -n prod",
+"label": "~publish",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm install redis bitnami/redis",
+"label": "~publish+~download",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl get pods -A",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl describe deploy api",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl logs deploy/api --tail=50",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete -f k8s/ --dry-run=client",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "kubectl apply -f deploy.yaml --dry-run=server",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "kubectl delete --help",
+"label": "delete",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "kubectl get events --field-selector reason=Killing",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl rollout status deploy/api",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl top pods",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl exec api -- ls /data",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "kubectl exec api -- cat /etc/config/delete_policy.yaml",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm list -A",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm upgrade --install api ./chart --dry-run",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "helm template ./chart",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "helm history api",
+"label": "none",
+"tag": "k8s",
+"shell": "sh"
+},
+{
+"cmd": "terraform destroy -auto-approve",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform apply -destroy -auto-approve",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform destroy -target=aws_instance.web -auto-approve",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform apply -auto-approve",
+"label": "~publish",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform state rm aws_s3_bucket.logs",
+"label": "~delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform workspace delete dev",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform init -upgrade",
+"label": "~download",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "pulumi destroy --yes",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "pulumi stack rm dev --yes",
+"label": "delete",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "pulumi up --yes",
+"label": "~publish",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform plan",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform plan -destroy -out=destroy.tfplan",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform fmt -recursive",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform validate",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform output -json",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform state list",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "terraform destroy -help",
+"label": "delete",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "pulumi preview --diff",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "pulumi stack ls",
+"label": "none",
+"tag": "iac",
+"shell": "sh"
+},
+{
+"cmd": "vercel --prod",
+"label": "publish",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel deploy --prod --yes",
+"label": "publish",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel deploy",
+"label": "publish",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "npx vercel --prod --token $VERCEL_TOKEN",
+"label": "publish",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel promote https://acme-abc123.vercel.app",
+"label": "publish",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel remove acme-old --yes",
+"label": "delete",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel rm acme-abc123.vercel.app --yes",
+"label": "delete",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel env rm DATABASE_URL production --yes",
+"label": "~delete",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel domains buy acme-new.dev",
+"label": "pay",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel env pull .env.local",
+"label": "~download",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel ls",
+"label": "none",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel logs acme-abc123.vercel.app",
+"label": "none",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel whoami",
+"label": "none",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel inspect acme-abc123.vercel.app",
+"label": "none",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "vercel dev",
+"label": "none",
+"tag": "vercel",
+"shell": "sh"
+},
+{
+"cmd": "netlify deploy --prod --dir=dist",
+"label": "publish",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify deploy --dir=dist",
+"label": "publish",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "npx netlify-cli deploy --prod",
+"label": "publish",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify sites:delete 1234-abcd --force",
+"label": "delete",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify env:unset API_KEY",
+"label": "~delete",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify status",
+"label": "none",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify sites:list",
+"label": "none",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify dev",
+"label": "none",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify build",
+"label": "none",
+"tag": "netlify",
+"shell": "sh"
+},
+{
+"cmd": "netlify deploy --help",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "fly deploy",
+"label": "publish",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "flyctl deploy --remote-only --app acme-api",
+"label": "publish",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly apps destroy acme-old --yes",
+"label": "delete",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly volumes destroy vol_abc123 --yes",
+"label": "delete",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly machine destroy 3d8d9 --force",
+"label": "delete",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly ssh console -C \"rm -rf /data/tmp\"",
+"label": "delete",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly ssh sftp get /data/app.db ./app.db",
+"label": "download",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly status",
+"label": "none",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly logs -a acme-api",
+"label": "none",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly apps list",
+"label": "none",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "fly secrets list",
+"label": "none",
+"tag": "fly",
+"shell": "sh"
+},
+{
+"cmd": "firebase deploy",
+"label": "publish",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase deploy --only hosting",
+"label": "publish",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase deploy --only functions:api",
+"label": "publish",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase hosting:channel:deploy preview-42",
+"label": "publish",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase firestore:delete --all-collections --force",
+"label": "delete",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase firestore:delete /users/abc --recursive --force",
+"label": "delete",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase database:remove /sessions --force",
+"label": "delete",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase functions:delete oldFn --force",
+"label": "delete",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase hosting:disable --force",
+"label": "~delete|publish",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase projects:list",
+"label": "none",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase emulators:start",
+"label": "none",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase use staging",
+"label": "none",
+"tag": "firebase",
+"shell": "sh"
+},
+{
+"cmd": "firebase deploy --help",
+"label": "publish",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "wrangler deploy",
+"label": "publish",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "npx wrangler deploy --env production",
+"label": "publish",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler publish",
+"label": "publish",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler pages deploy ./dist --project-name acme",
+"label": "publish",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler delete --name old-worker",
+"label": "delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler r2 object delete acme-bucket/old.json",
+"label": "delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler r2 object put acme-bucket/site/index.html --file ./dist/index.html",
+"label": "~push|publish",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler r2 object get acme-bucket/backups/db.sqlite --file db.sqlite",
+"label": "download",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler kv key delete --binding CACHE \"user:42\"",
+"label": "delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler d1 execute acme-db --remote --command \"DROP TABLE sessions\"",
+"label": "delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler d1 execute acme-db --command \"DELETE FROM users WHERE id = 42\"",
+"label": "delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler secret delete API_KEY",
+"label": "~delete",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler dev",
+"label": "none",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler tail",
+"label": "none",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler whoami",
+"label": "none",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler d1 execute acme-db --command \"SELECT * FROM deletions LIMIT 5\"",
+"label": "none",
+"tag": "wrangler",
+"shell": "sh"
+},
+{
+"cmd": "wrangler deploy --dry-run",
+"label": "publish",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "git push heroku main",
+"label": "push+~publish",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku apps:destroy --app acme-old --confirm acme-old",
+"label": "delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku pg:reset DATABASE_URL --app acme --confirm acme",
+"label": "delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku run \"rm -rf tmp/cache\" --app acme",
+"label": "delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku run rails db:drop --app acme",
+"label": "~delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku releases:rollback v41 --app acme",
+"label": "~publish",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku addons:destroy heroku-redis --app acme --confirm acme",
+"label": "delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku pg:backups:download --app acme",
+"label": "download",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku container:push web --app acme",
+"label": "push|publish",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku container:release web --app acme",
+"label": "publish",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku config:unset OLD_KEY --app acme",
+"label": "~delete",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku addons:create heroku-postgresql:standard-0 --app acme",
+"label": "~pay",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku logs --tail --app acme",
+"label": "none",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku ps --app acme",
+"label": "none",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku config --app acme",
+"label": "none",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "heroku apps",
+"label": "none",
+"tag": "heroku",
+"shell": "sh"
+},
+{
+"cmd": "docker push acme/api:1.4.0",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker image push ghcr.io/acme/api:latest",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker buildx build --platform linux/amd64,linux/arm64 -t acme/api:1.4 --push .",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker compose push",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "podman push quay.io/acme/api:1.4",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "nerdctl push acme/api:1.4",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker pull postgres:16",
+"label": "download",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker image pull node:22-alpine",
+"label": "download",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "podman pull docker.io/library/redis:7",
+"label": "download",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker rm -f api",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker rmi acme/api:old",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker image rm $(docker images -q -f dangling=true)",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker rmi $(docker images -q)",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker container prune -f",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker system prune -af --volumes",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker volume rm pgdata",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker volume prune -f",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker compose down -v",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker compose down --rmi all",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker run --rm -v \"$PWD\":/work alpine rm -rf /work/build",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker exec api rm -rf /tmp/uploads",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker exec -it pg psql -U postgres -c \"DROP DATABASE shop;\"",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "podman rm -a -f",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "podman system reset --force",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "skopeo copy docker://docker.io/library/nginx:1.27 docker://registry.acme.com/nginx:1.27",
+"label": "~download+push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "skopeo delete docker://registry.acme.com/api:old",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "oras push registry.acme.com/artifacts/model:v1 model.onnx",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "crane push image.tar registry.acme.com/api:1.4",
+"label": "push|publish",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "ctr -n k8s.io images rm docker.io/library/nginx:1.25",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "kind delete cluster --name dev",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "minikube delete --all --purge",
+"label": "delete",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker ps -a",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker images",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker logs api --tail 100",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker inspect api",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker build -t api:dev .",
+"label": "?",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker compose ps",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker compose config",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker exec api ls /app",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker run --rm alpine echo \"rm -rf /\"",
+"label": "?",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker push --help",
+"label": "push",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "docker system prune --help",
+"label": "delete",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "docker system df",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker tag api:dev acme/api:1.4",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "podman ps",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker stats --no-stream",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker network ls",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "docker volume ls",
+"label": "none",
+"tag": "container",
+"shell": "sh"
+},
+{
+"cmd": "psql -h db.acme.internal -U app -c \"DROP TABLE sessions;\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql \"$DATABASE_URL\" -c \"DELETE FROM sessions WHERE expires_at < now()\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"TRUNCATE TABLE audit_log\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -d app -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql \"$DATABASE_URL\" <<'SQL'\nDELETE FROM users WHERE banned = true;\nSQL",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "echo \"DROP TABLE tmp_import;\" | psql -d app",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysql -u root -p\"$MYSQL_PWD\" -e \"DROP DATABASE shop\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysql -h 127.0.0.1 -u app -e \"DELETE FROM orders WHERE status='test'\" shop",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysqladmin -u root -f drop shop",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "dropdb --if-exists app_test",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "dropuser legacy_user",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \"DELETE FROM users;\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \"DROP TABLE logs\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 data.db 'DELETE FROM cache WHERE ts < 1700000000'",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlcmd -S localhost -U sa -Q \"DROP DATABASE TestDb\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-Sqlcmd -ServerInstance . -Database App -Query \"DELETE FROM Sessions\"",
+"label": "delete",
+"tag": "db",
+"shell": "ps"
+},
+{
+"cmd": "mongosh \"mongodb://localhost/app\" --eval \"db.users.drop()\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mongosh app --eval 'db.dropDatabase()'",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mongosh --quiet --eval \"db.getSiblingDB('app').events.deleteMany({})\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mongo app --eval \"db.sessions.remove({})\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli FLUSHALL",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli -n 2 flushdb",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli DEL session:42 session:43",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli --scan --pattern 'cache:*' | xargs redis-cli del",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli -h cache.acme.internal UNLINK bigkey",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "cqlsh -e \"DROP KEYSPACE analytics;\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "clickhouse-client --query \"DROP TABLE events\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "duckdb warehouse.duckdb \"DROP TABLE staging_orders\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "etcdctl del --prefix /app/config",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "consul kv delete -recurse app/",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "vault kv delete secret/app/db",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "vault kv metadata delete secret/app/db",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "bq rm -f -t analytics.events_2025",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "bq query --use_legacy_sql=false 'DELETE FROM analytics.events WHERE true'",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "snowsql -q \"DROP TABLE raw.events\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "influx bucket delete --name metrics --org acme",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "python manage.py flush --noinput",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "bin/rails db:drop",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "npx prisma migrate reset --force",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "php artisan db:wipe --force",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "npx sequelize-cli db:drop",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "supabase db reset",
+"label": "~delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "curl -X DELETE \"http://localhost:9200/logs-2025.*\"",
+"label": "delete",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"SELECT * FROM deleted_users LIMIT 5\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"SELECT count(*) FROM users\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"\\dt\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysql -e \"SELECT id FROM payments WHERE status='sent'\" shop",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysql -e \"SHOW TABLES\" shop",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \".tables\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \"SELECT * FROM users WHERE note = 'delete me'\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \"SELECT count(*) FROM downloads\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mongosh --eval \"db.pushes.find().limit(5)\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli GET publish:lock",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli KEYS 'delete:*'",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "redis-cli INFO",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlcmd -Q \"SELECT @@VERSION\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "bq query --use_legacy_sql=false 'SELECT COUNT(*) FROM analytics.events'",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "pg_dump app > app.sql",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "mysqldump shop > shop.sql",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "sqlite3 app.db \".schema payments\"",
+"label": "none",
+"tag": "db",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"EXPLAIN DELETE FROM sessions\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "psql -c \"SELECT 'DROP TABLE ' || tablename FROM pg_tables\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "mail -s \"Nightly report\" boss@acme.com < report.txt",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "echo \"Deploy finished\" | mail -s \"Deploy\" team@acme.com",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "mailx -s \"Logs\" -a app.log ops@acme.com < /dev/null",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "mutt -s \"Invoice\" -a invoice.pdf -- client@example.com < body.txt",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "sendmail -t < message.eml",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "/usr/sbin/sendmail ops@acme.com < alert.txt",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "msmtp -a work team@acme.com < note.eml",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "swaks --to team@acme.com --from ci@acme.com --server smtp.acme.com --body \"build ok\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "Send-MailMessage -To \"team@acme.com\" -From \"ci@acme.com\" -Subject \"Build\" -Body \"ok\" -SmtpServer smtp.acme.com",
+"label": "send",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "curl --ssl-reqd --url \"smtps://smtp.example.com:465\" --mail-from ci@acme.com --mail-rcpt team@acme.com --upload-file mail.txt --user \"ci@acme.com:$SMTP_PASS\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "curl -X POST -H \"Content-type: application/json\" --data '{\"text\":\"Deploy done\"}' https://hooks.slack.com/services/T000/B000/XXXX",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "curl -H \"Content-Type: application/json\" -d '{\"content\":\"build failed\"}' https://discord.com/api/webhooks/123/abc",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "curl -s -X POST \"https://api.telegram.org/bot$TG_TOKEN/sendMessage\" -d chat_id=42 -d text=\"hello\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "curl -d \"Backup complete\" ntfy.sh/acme-alerts",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-RestMethod -Uri $env:TEAMS_WEBHOOK -Method Post -ContentType 'application/json' -Body '{\"text\":\"Deploy done\"}' ",
+"label": "send",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-RestMethod -Method Post -Uri \"https://hooks.slack.com/services/T0/B0/X\" -Body (@{text=\"hi\"} | ConvertTo-Json)",
+"label": "send",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "slack chat send \"v1.4 is live\" \"#deploys\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "twilio api:core:messages:create --from \"+15005550006\" --to \"+15558675310\" --body \"Your code is 1234\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "telegram-send \"Training finished\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "signal-cli -u +15550001111 send -m \"server down\" +15550002222",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "matrix-commander -m \"deploy done\" --room \"!abc:matrix.org\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "apprise -vv -t \"Alert\" -b \"Disk full\" \"mailto://user:pass@gmail.com\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "ntfy publish acme-alerts \"Backup complete\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "osascript -e 'tell application \"Messages\" to send \"On my way\" to buddy \"+15550001111\"' ",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import smtplib; s=smtplib.SMTP('localhost'); s.sendmail('a@acme.com',['b@acme.com'],'Subject: hi\\n\\nbody'); s.quit()\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('nodemailer').createTransport({sendmail:true}).sendMail({from:'a@acme.com',to:'b@acme.com',subject:'hi',text:'x'})\"",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "wall \"System going down for maintenance\"",
+"label": "~send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "msg * \"Server restarting in 5 minutes\"",
+"label": "~send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "$smtp = New-Object Net.Mail.SmtpClient(\"smtp.acme.com\"); $smtp.Send(\"ci@acme.com\",\"team@acme.com\",\"Build\",\"ok\")",
+"label": "send",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "[System.Net.Mail.SmtpClient]::new(\"smtp.acme.com\").Send(\"ci@acme.com\",\"team@acme.com\",\"Build\",\"ok\")",
+"label": "send",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "croc send backup.tar.gz",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "wormhole send report.pdf",
+"label": "send",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "notify-send \"Build done\"",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "osascript -e 'display notification \"Build done\" with title \"CI\"' ",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "echo \"send the report to boss@acme.com\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "grep -i \"sendmail\" /var/log/maillog",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "journalctl -u postfix --since today",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "Get-Command Send-MailMessage",
+"label": "none",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "twilio api:core:messages:list --limit 5",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import smtplib; print(smtplib.SMTP_PORT)\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "cat templates/send_invoice.html",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "systemctl status postfix",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "nslookup -type=mx acme.com",
+"label": "none",
+"tag": "mail",
+"shell": "sh"
+},
+{
+"cmd": "swaks --help",
+"label": "send",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "Test-NetConnection smtp.acme.com -Port 587",
+"label": "none",
+"tag": "mail",
+"shell": "ps"
+},
+{
+"cmd": "Get-Help Send-MailMessage -Examples",
+"label": "none",
+"tag": "help",
+"shell": "ps"
+},
+{
+"cmd": "scp ./dist.tar.gz deploy@web1:/tmp/",
+"label": "~push|publish|send",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "scp deploy@web1:/var/log/nginx/access.log ./logs/",
+"label": "download",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "scp -r ./site/ deploy@web1:/var/www/html/",
+"label": "~push|publish",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync -avz ./site/ deploy@web1:/var/www/html/",
+"label": "~push|publish",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync -avz --delete ./site/ deploy@web1:/var/www/html/",
+"label": "~push|publish+delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync -av --delete src/ backup/",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync -av deploy@web1:/backups/ ./backups/",
+"label": "download",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "sftp deploy@web1 <<< $'put build.zip /uploads/'",
+"label": "~push|publish|send",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "sftp -b - deploy@web1 <<< \"get /data/export.csv\"",
+"label": "download",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "lftp -e \"mirror -R ./dist /public_html; quit\" -u user,pass ftp.acme.com",
+"label": "~publish|push",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "curl -T backup.tar.gz ftp://ftp.acme.com/uploads/ --user user:pass",
+"label": "~push|publish|send",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "curl -u user:pass -T release.zip sftp://files.acme.com/releases/",
+"label": "~push|publish|send",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone copy ./data s3remote:acme-data/2026",
+"label": "~push|publish",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone copy gdrive:Reports ./reports",
+"label": "download",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone sync ./site s3remote:acme-site",
+"label": "~push|publish+~delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone delete s3remote:acme-tmp/old --min-age 30d",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone purge gdrive:OldProject",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "smbclient //nas/share -U sam -c 'put backup.zip'",
+"label": "~push|send",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "smbclient //nas/share -U sam -c 'del old.zip'",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "robocopy C:\\src \\\\nas\\backup /MIR",
+"label": "~push+~delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "robocopy C:\\empty C:\\old_build /PURGE",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "Copy-Item .\\dist\\* \\\\web01\\wwwroot\\ -Recurse -Force",
+"label": "~push|publish",
+"tag": "xfer",
+"shell": "ps"
+},
+{
+"cmd": "ssh deploy@web1 \"rm -rf /var/www/releases/old\"",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh -o BatchMode=yes deploy@web1 'sudo rm -f /etc/nginx/sites-enabled/default'",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh db1 \"mysql -e 'DROP DATABASE staging'\"",
+"label": "delete",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh web1 'cd /srv/app && git pull && npm ci'",
+"label": "~download",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh -t web1 \"sudo -u app bash -lc 'git push origin main'\"",
+"label": "push",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh web1 \"ls -la /var/www\"",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh web1 'grep -r \"rm -rf\" /etc/cron.d' ",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "ssh -T git@github.com",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh web1 uptime",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync --version",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rsync -avn --delete src/ backup/",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "rsync --dry-run -az ./site/ deploy@web1:/var/www/html/",
+"label": "publish+send",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "rclone ls s3remote:acme-data",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "rclone sync ./site s3remote:acme-site --dry-run",
+"label": "publish+delete+send",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "rclone delete s3remote:acme-tmp/old --dry-run",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "robocopy C:\\src \\\\nas\\backup /MIR /L",
+"label": "~push+~delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "ssh-keygen -t ed25519 -C \"push key\"",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "ssh-add -l",
+"label": "none",
+"tag": "xfer",
+"shell": "sh"
+},
+{
+"cmd": "curl -X DELETE https://api.acme.com/v1/users/42 -H \"Authorization: Bearer $TOKEN\"",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl --request DELETE https://api.acme.com/v1/items/7",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -XDELETE localhost:9200/old-index",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "http DELETE api.acme.com/v1/items/7 \"Authorization:Bearer $TOKEN\"",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "xh delete api.acme.com/v1/items/7",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-RestMethod -Method Delete -Uri https://api.acme.com/v1/items/7",
+"label": "delete",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-WebRequest -Uri \"https://api.acme.com/v1/items/7\" -Method DELETE -Headers @{Authorization=\"Bearer $t\"}",
+"label": "delete",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "curl -O https://downloads.acme.com/tool-1.2.tar.gz",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -L -o installer.exe https://github.com/acme/tool/releases/download/v1/installer.exe",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -fsSL https://get.acme.sh -o install.sh",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -L https://example.com/data.json > data.json",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -s https://example.com/archive.tar.gz | tar xz",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget https://downloads.acme.com/tool-1.2.tar.gz",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget -q -O model.bin https://huggingface.co/acme/model/resolve/main/model.bin",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget -r -np -nH https://docs.acme.com/",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget -qO- https://example.com/x.tar.gz | tar xz -C /opt",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "aria2c -x 8 https://releases.acme.com/big.iso",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "http --download https://downloads.acme.com/tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "xh --download https://downloads.acme.com/tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-WebRequest -Uri https://downloads.acme.com/tool.zip -OutFile tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "iwr https://downloads.acme.com/tool.zip -OutFile $env:TEMP\\tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "Start-BitsTransfer -Source https://downloads.acme.com/big.iso -Destination C:\\ISO\\big.iso",
+"label": "download",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "certutil -urlcache -split -f https://downloads.acme.com/tool.exe tool.exe",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "bitsadmin /transfer job1 /download /priority normal https://downloads.acme.com/tool.zip C:\\tmp\\tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl.exe -L -o tool.zip https://downloads.acme.com/tool.zip",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "(New-Object System.Net.WebClient).DownloadFile(\"https://downloads.acme.com/tool.zip\", \"$PWD\\tool.zip\")",
+"label": "download",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "[Net.WebClient]::new().DownloadFile('https://downloads.acme.com/a.zip','a.zip')",
+"label": "download",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "yt-dlp -f best https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+"label": "download",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -F \"file=@build.zip\" https://upload.acme.com/api/artifacts",
+"label": "~push|publish|send",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -X POST https://api.github.com/repos/acme/site/releases -H \"Authorization: token $GH\" -d '{\"tag_name\":\"v1.5.0\"}' ",
+"label": "publish",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -X PUT -T site.zip \"https://api.netlify.com/api/v1/sites/abc/deploys\"",
+"label": "~publish",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -X POST https://api.acme.com/v1/messages -d '{\"to\":\"+15550001111\",\"body\":\"hi\"}' ",
+"label": "~send",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "http POST api.acme.com/v1/messages to=+15550001111 body=hi",
+"label": "~send",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "(New-Object Net.WebClient).UploadFile(\"ftp://ftp.acme.com/in/data.csv\", \"data.csv\")",
+"label": "~push|send|publish",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "grpcurl -d '{\"id\": 42}' api.acme.com:443 acme.users.v1.UserService/DeleteUser",
+"label": "delete",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -I https://example.com",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl --head https://acme.com/robots.txt",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget --spider https://downloads.acme.com/tool.zip",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl --version",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "wget --version",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-WebRequest -Uri https://acme.com -Method Head",
+"label": "none",
+"tag": "http",
+"shell": "ps"
+},
+{
+"cmd": "curl -s https://api.acme.com/health",
+"label": "?",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "http GET api.acme.com/v1/items",
+"label": "?",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "grpcurl api.acme.com:443 list",
+"label": "none",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "curl -X GET \"localhost:9200/_cat/indices?v\"",
+"label": "?",
+"tag": "http",
+"shell": "sh"
+},
+{
+"cmd": "stripe charges create --amount=2000 --currency=usd --source=tok_visa",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe payment_intents create --amount=1099 --currency=usd --payment-method=pm_card_visa --confirm=true",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe payment_intents confirm pi_3Mtw --payment-method=pm_card_visa",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe payment_intents capture pi_3Mtw",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe invoices pay in_1MtH",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe transfers create --amount=1000 --currency=usd --destination=acct_1032",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe payouts create --amount=5000 --currency=usd",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe refunds create --charge=ch_3Mtw",
+"label": "~pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe subscriptions create --customer=cus_Na6d -d \"items[0][price]=price_1MowQ\"",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "curl https://api.stripe.com/v1/charges -u \"$STRIPE_KEY:\" -d amount=2000 -d currency=usd -d source=tok_visa",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "curl https://api.stripe.com/v1/payment_intents/pi_3Mtw/confirm -u \"$STRIPE_KEY:\" -X POST",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "curl -X POST https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T/capture -H \"Authorization: Bearer $PP\"",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "curl https://connect.squareup.com/v2/payments -X POST -H \"Authorization: Bearer $SQ\" -H \"Content-Type: application/json\" -d '{\"source_id\":\"cnon:card-nonce-ok\",\"idempotency_key\":\"k1\",\"amount_money\":{\"amount\":100,\"currency\":\"USD\"}}' ",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "bitcoin-cli sendtoaddress bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh 0.01",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "bitcoin-cli -rpcwallet=main sendmany \"\" '{\"bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh\":0.01}' ",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "solana transfer 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU 0.5 --allow-unfunded-recipient",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "cast send 0x742d35Cc6634C0532925a3b844Bc454e4438f44e --value 0.1ether --private-key $PK --rpc-url $RPC",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "lncli payinvoice lnbc10u1p3xyz",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "lightning-cli pay lnbc10u1p3xyz",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import stripe; stripe.api_key='sk_test_x'; stripe.PaymentIntent.create(amount=500, currency='usd', payment_method='pm_card_visa', confirm=True)\"",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('stripe')(process.env.STRIPE_KEY).charges.create({amount:2000,currency:'usd',source:'tok_visa'})\"",
+"label": "pay",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-RestMethod -Uri https://api.stripe.com/v1/charges -Method Post -Headers @{Authorization=\"Bearer $env:STRIPE_KEY\"} -Body @{amount=2000;currency=\"usd\";source=\"tok_visa\"}",
+"label": "pay",
+"tag": "pay",
+"shell": "ps"
+},
+{
+"cmd": "stripe customers delete cus_Na6d",
+"label": "delete",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe products delete prod_NWjs",
+"label": "delete",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe listen --forward-to localhost:4242/webhook",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe logs tail",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe customers list --limit 5",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe payment_intents retrieve pi_3Mtw",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe charges list --limit 3",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe balance retrieve",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe --version",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe charges create --help",
+"label": "pay",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "stripe customers create --email jenny@example.com",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "stripe products create --name \"Gold plan\"",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "npm fund",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "bitcoin-cli getbalance",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "bitcoin-cli getnewaddress",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "solana balance",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "cast balance 0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "lncli walletbalance",
+"label": "none",
+"tag": "pay",
+"shell": "sh"
+},
+{
+"cmd": "grep -rn \"payment_intents\" src/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"print('pay')\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import os; os.remove('build/output.log')\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python3 -c 'import shutil; shutil.rmtree(\"dist\")'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"from pathlib import Path; Path('cache.db').unlink()\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import os, glob; [os.unlink(f) for f in glob.glob('*.tmp')]\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import subprocess; subprocess.run(['git','push','origin','main'])\"",
+"label": "push",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import os; os.system('rm -rf /tmp/build')\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import urllib.request as u; u.urlretrieve('https://acme.com/a.zip','a.zip')\"",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import requests; open('a.zip','wb').write(requests.get('https://acme.com/a.zip').content)\"",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import requests; requests.post('https://hooks.slack.com/services/T/B/X', json={'text':'done'})\"",
+"label": "send",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import requests; requests.delete('https://api.acme.com/v1/items/7')\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python3 - <<'EOF'\nimport shutil\nshutil.rmtree('build')\nEOF",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('fs').unlinkSync('build/out.log')\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('child_process').execSync('git push origin main', {stdio:'inherit'})\"",
+"label": "push",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"fetch('https://hooks.slack.com/services/T/B/X',{method:'POST',body:JSON.stringify({text:'done'})})\"",
+"label": "send",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"fetch('https://api.acme.com/v1/items/7',{method:'DELETE'})\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"require('https').get('https://acme.com/a.zip', r => r.pipe(require('fs').createWriteStream('a.zip')))\"",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "ruby -e 'File.delete(\"tmp/cache.bin\")'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "ruby -rfileutils -e 'FileUtils.rm_rf(\"tmp\")'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "ruby -e 'system(\"git push origin main\")'",
+"label": "push",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "ruby -ropen-uri -e 'File.write(\"a.zip\", URI.open(\"https://acme.com/a.zip\").read)'",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "perl -e 'unlink glob \"*.log\"'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "perl -MFile::Path=remove_tree -e 'remove_tree(\"build\")'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "perl -MLWP::Simple -e 'getstore(\"https://acme.com/a.zip\", \"a.zip\")'",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "php -r 'unlink(\"storage/cache.php\");'",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "php -r 'file_put_contents(\"a.zip\", file_get_contents(\"https://acme.com/a.zip\"));'",
+"label": "download",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "php -r 'mail(\"team@acme.com\", \"Deploy\", \"Done\");'",
+"label": "send",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "deno eval \"await Deno.remove('dist', { recursive: true })\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "deno run -A npm:rimraf dist",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "bun -e \"await Bun.$`rm -rf dist`\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "bun -e \"require('fs').rmSync('dist',{recursive:true})\"",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "npx -y rimraf build",
+"label": "delete",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"print('delete')\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import os; print(os.getcwd())\"",
+"label": "none",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import json; print(json.dumps({'action': 'delete'}))\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"q=[]; q.append(1); print(q.pop())\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"d={'a':1}; del d['a']; print(d)\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import os; print(os.environ.get('SEND_TO'))\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import shutil; print(shutil.which('git'))\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"console.log('git push')\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"const push=[1,2]; push.push(3); console.log(push)\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"const m=new Map([[1,2]]); m.delete(1); console.log(m.size)\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"const s=new Set([1]); s.delete(1); console.log(s.size)\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"console.log(require('os').platform())\"",
+"label": "none",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "ruby -e 'puts \"rm -rf\"'",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "ruby -e 'a=[1,2]; a.delete(1); p a'",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "perl -ne 'print if /DELETE FROM/' dump.sql",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "perl -e 'my %h=(a=>1); delete $h{a}; print scalar(keys %h)'",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "php -r 'echo \"send\";'",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "php -r '$a=[1,2]; array_push($a, 3); echo count($a);'",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "deno eval \"console.log('publish')\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "bun -e \"console.log('download')\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "python -m json.tool payments.json",
+"label": "none",
+"tag": "lang",
+"shell": "sh"
+},
+{
+"cmd": "python -c \"import urllib.parse as p; print(p.quote('rm -rf'))\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "node -e \"process.stdout.write(JSON.stringify({publish:false}))\"",
+"label": "none",
+"tag": "trap",
+"shell": "sh"
+},
+{
+"cmd": "Remove-Item -Path .\\build -Recurse -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item -LiteralPath \"C:\\Users\\dev\\AppData\\Local\\Temp\\build\" -Recurse -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item \"$env:TEMP\\*\" -Recurse -Force -ErrorAction SilentlyContinue",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "ri .\\dist -r -fo",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "rm -Recurse -Force .\\node_modules",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "del .\\out -Recurse -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "rmdir .\\obj -Recurse",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "erase .\\debug.log",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ChildItem -Path . -Include *.tmp -Recurse | Remove-Item -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "gci -r -fi *.log | ri -fo",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ChildItem .\\logs -File | Where-Object LastWriteTime -lt (Get-Date).AddDays(-30) | Remove-Item",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "gci *.bak | % { $_.Delete() }",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "(Get-Item .\\old.txt).Delete()",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "[System.IO.File]::Delete(\"$PWD\\secrets.txt\")",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "[IO.Directory]::Delete(\"C:\\tmp\\build\", $true)",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "[System.IO.Directory]::Delete('.\\cache', $true)",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item -Path HKCU:\\Software\\AcmeApp -Recurse",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-ItemProperty -Path HKCU:\\Software\\AcmeApp -Name LastRun",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Clear-Content .\\app.log",
+"label": "~delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Set-Content -Path .\\app.log -Value \"\"",
+"label": "~delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Clear-RecycleBin -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-LocalUser -Name \"tempuser\"",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Unregister-ScheduledTask -TaskName \"NightlyJob\" -Confirm:$false",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item Cert:\\CurrentUser\\My\\A1B2C3D4E5F6 -DeleteKey",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Uninstall-Module -Name Pester -AllVersions -Force",
+"label": "~delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-AppxPackage -Package Acme.App_1.0.0.0_x64__abc",
+"label": "~delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-S3Object -BucketName acme -Key old/data.json -Force",
+"label": "delete",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-WebRequest -Uri \"https://acme.com/setup.msi\" -OutFile \"$env:USERPROFILE\\Downloads\\setup.msi\" -UseBasicParsing",
+"label": "download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "iwr -useb https://get.scoop.sh | iex",
+"label": "download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "irm https://acme.com/install.ps1 | iex",
+"label": "download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-Expression (New-Object Net.WebClient).DownloadString('https://acme.com/install.ps1')",
+"label": "download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Publish-Script -Path .\\Deploy.ps1 -NuGetApiKey $key",
+"label": "publish",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Publish-Module -Name MyModule -NuGetApiKey $env:PSGALLERY_KEY",
+"label": "publish",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Publish-PSResource -Path .\\MyModule -ApiKey $key",
+"label": "publish",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Save-Module -Name Pester -Path .\\modules",
+"label": "download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Install-Module -Name Az -Scope CurrentUser -Force",
+"label": "~download",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Copy-Item -Path .\\report.pdf -Destination \\\\fileserver\\public\\ ",
+"label": "~push|publish",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Stop-Process -Name node -Force",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Variable -Name tmp",
+"label": "?",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item Env:\\DEBUG",
+"label": "?",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ChildItem $env:USERPROFILE\\Downloads",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Get-Content .\\publish.ps1",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Select-String -Path *.ps1 -Pattern \"Remove-Item\"",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Write-Host \"Deleting temp files...\"",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Write-Output \"git push origin main\"",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Remove-Item .\\build -Recurse -WhatIf",
+"label": "delete",
+"tag": "dryrun",
+"shell": "ps"
+},
+{
+"cmd": "Get-Help Remove-Item -Full",
+"label": "none",
+"tag": "help",
+"shell": "ps"
+},
+{
+"cmd": "Test-Path .\\delete.lock",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-Item .\\push.ps1 | Select-Object Length",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-FileHash .\\download.zip",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "New-Item -ItemType Directory -Path .\\publish",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Copy-Item .\\push.ps1 .\\push.backup.ps1",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Rename-Item .\\delete.txt .\\remove.txt",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Compress-Archive -Path .\\dist -DestinationPath .\\publish.zip",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Expand-Archive .\\download.zip -DestinationPath .\\out",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "$env:SEND_EMAILS = \"false\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-History | Where-Object CommandLine -like \"*Remove-Item*\"",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "Get-Process | Where-Object Name -like \"*send*\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-Service | Where-Object Name -match \"mail\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-Expression \"Get-Date\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "powershell -Command \"Write-Host 'Remove-Item done'\"",
+"label": "none",
+"tag": "mention",
+"shell": "ps"
+},
+{
+"cmd": "pwsh -c \"Get-ChildItem\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ChildItem -Recurse -Filter \"*delete*\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Measure-Command { npm run build }",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-Content .\\send.log -Tail 20",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ChildItem Cert:\\CurrentUser\\My",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Get-ItemProperty -Path HKCU:\\Software\\AcmeApp",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "Start-Process notepad.exe -ArgumentList \"delete-list.txt\"",
+"label": "none",
+"tag": "ps",
+"shell": "ps"
+},
+{
+"cmd": "del /f /q C:\\temp\\*.*",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "del /s /q *.obj",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "rd /s /q build",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "rmdir /s /q node_modules",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "erase /f /s /q *.bak",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "cmd /c rd /s /q dist",
+"label": "delete",
+"tag": "cmd",
+"shell": "sh"
+},
+{
+"cmd": "cmd.exe /c \"del /q out\\*.log\"",
+"label": "delete",
+"tag": "cmd",
+"shell": "sh"
+},
+{
+"cmd": "for /r %f in (*.tmp) do del \"%f\"",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "forfiles /p C:\\logs /s /m *.log /d -30 /c \"cmd /c del @path\"",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "reg delete \"HKCU\\Software\\AcmeApp\" /f",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "schtasks /delete /tn \"NightlyJob\" /f",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "sc.exe delete AcmeSvc",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "net user tempuser /delete",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "vssadmin delete shadows /all /quiet",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "wmic product where \"name='Acme App'\" call uninstall /nointeractive",
+"label": "~delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "rd /s /q \"%LOCALAPPDATA%\\Acme\\cache\"",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "del \"%USERPROFILE%\\Desktop\\old.lnk\"",
+"label": "delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "cipher /w:C:\\temp",
+"label": "~delete",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "dir /s /b *.bat",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "type delete_old.bat",
+"label": "none",
+"tag": "mention",
+"shell": "cmd"
+},
+{
+"cmd": "findstr /s /i \"del \" *.bat",
+"label": "none",
+"tag": "mention",
+"shell": "cmd"
+},
+{
+"cmd": "set PUSH_ENABLED=0",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "where git",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "tasklist | findstr push",
+"label": "none",
+"tag": "mention",
+"shell": "cmd"
+},
+{
+"cmd": "cmd /c echo del x",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "copy publish.cfg publish.cfg.bak",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "ren delete.txt remove.txt",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "mkdir publish",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "certutil -hashfile download.zip SHA256",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "ver",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "ipconfig /all",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "xcopy /e /i src dst",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "move push.log logs\\\\",
+"label": "none",
+"tag": "cmd",
+"shell": "cmd"
+},
+{
+"cmd": "eval \"rm -rf build\"",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "eval \"$(curl -fsSL https://acme.com/env.sh)\"",
+"label": "download",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "eval \"$CLEANUP_CMD\"",
+"label": "?",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "bash -c \"rm -rf dist\"",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "sh -c 'git push origin HEAD'",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "zsh -c \"npm publish\"",
+"label": "publish",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "bash -lc 'aws s3 rm s3://acme-tmp --recursive'",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force .\\dist\"",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "pwsh -NoProfile -c 'git push origin main'",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "powershell.exe -ExecutionPolicy Bypass -Command \"& {Remove-Item C:\\temp\\* -Recurse}\"",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "powershell -NoProfile -EncodedCommand UgBlAG0AbwB2AGUALQBJAHQAZQBtACAALQBSAGUAYwB1AHIAcwBlACAALQBGAG8AcgBjAGUAIABDADoAXAB0AGUAbQBwAFwAYgB1AGkAbABkAA==",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "cmd /c \"git push origin main\"",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "Invoke-Expression \"git push origin main\"",
+"label": "push",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "iex \"Remove-Item .\\build -Recurse -Force\"",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "$c = \"Remove-Item\"; & $c -Path .\\build -Recurse",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "& ([scriptblock]::Create(\"Remove-Item .\\build -Recurse\"))",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "Start-Process git -ArgumentList \"push\",\"origin\",\"main\" -Wait",
+"label": "push",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "Start-Process -FilePath cmd.exe -ArgumentList \"/c del /q C:\\temp\\*\" -NoNewWindow",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "Invoke-Command -ComputerName web01 -ScriptBlock { Remove-Item C:\\inetpub\\old -Recurse -Force }",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "Start-Job { Remove-Item C:\\temp\\cache -Recurse }",
+"label": "delete",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "xargs rm < files_to_remove.txt",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "find . -name '*.pyc' -delete",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "find . -name '*.tmp' -exec rm {} +",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "find /tmp -mtime +7 -print0 | xargs -0 rm -f",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "ls *.log | xargs -I{} rm {}",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "echo \"rm -rf build\" | sh",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "echo 'git push origin main' | bash",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "printf 'DROP TABLE t;\\n' | psql app",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "curl -fsSL https://get.docker.com | sh",
+"label": "download",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "wget -qO- https://acme.com/install.sh | bash",
+"label": "download",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "bash <(curl -s https://acme.com/install.sh)",
+"label": "download",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "source <(curl -s https://acme.com/env.sh)",
+"label": "download",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "echo cm0gLXJmIGJ1aWxk | base64 -d | sh",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "x=git; $x push origin main",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "CMD=\"rm -rf build\"; $CMD",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "\"$(which rm)\" -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "$(printf 'r''m') -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "r\\m -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "\\rm -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "command rm -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "exec rm -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "sudo rm -rf /var/cache/acme",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "sudo -u www-data rm -rf /var/www/cache",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "nohup git push origin main &",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "time git push",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "env GIT_SSH_COMMAND=\"ssh -i ~/.ssh/deploy\" git push",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "GIT_TRACE=1 git push origin main",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "NODE_AUTH_TOKEN=$TOKEN npm publish",
+"label": "publish",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "timeout 60 git push",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "nice -n 10 rm -rf build",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "watch -n 60 'rm -f /tmp/*.lock'",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "parallel rm ::: a.log b.log c.log",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "busybox rm -rf /tmp/x",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "git push; echo done",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "cd ~/repo && git push",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "(cd ~/repo && git push origin main)",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "{ git push; }",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "if git diff --quiet; then git push; fi",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "for f in *.bak; do rm \"$f\"; done",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "while read -r f; do rm -- \"$f\"; done < list.txt",
+"label": "delete",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "git push || true",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "git push 2>/dev/null",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "git push | tee push.log",
+"label": "push",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "npm publish > publish.log 2>&1",
+"label": "publish",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "sh cleanup.sh",
+"label": "?",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "./deploy.sh production",
+"label": "?",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "python deploy.py --prod",
+"label": "?",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": ". ./cleanup.sh",
+"label": "?",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "pwsh -File .\\deploy.ps1",
+"label": "?",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "$cmd = Get-Content .\\cmd.txt; iex $cmd",
+"label": "?",
+"tag": "opaque",
+"shell": "ps"
+},
+{
+"cmd": "bash -c \"echo deleting && ls\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "sh -c 'echo git push'",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "eval \"echo publish\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "xargs echo rm < list.txt",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "watch -n 5 'ls -la downloads'",
+"label": "none",
+"tag": "opaque",
+"shell": "sh"
+},
+{
+"cmd": "rm build/output.log",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "rm -f *.o",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "rm -r dist",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "rm -- -weird-file",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "/bin/rm -rf /tmp/build",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "rm -rf ~/Library/Caches/com.acme.app",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "trash old_report.pdf",
+"label": "~delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "osascript -e 'tell application \"Finder\" to delete POSIX file \"/Users/dev/old.txt\"' ",
+"label": "~delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "shred -u secrets.txt",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "truncate -s 0 app.log",
+"label": "~delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": ": > app.log",
+"label": "~delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "unlink stale.sock",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "rmdir empty_dir",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "find /var/log -name \"*.gz\" -mtime +30 -delete",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "journalctl --vacuum-time=2d",
+"label": "~delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "userdel -r contractor",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "crontab -r",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "defaults delete com.acme.app",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "security delete-generic-password -s acme-api",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "tmutil delete /Volumes/Backup/Backups.backupdb/mac/2025-01-01-000000",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "diskutil eraseDisk APFS Blank disk4",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "wipefs -a /dev/sdb",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "dd if=/dev/zero of=/dev/sdb bs=1M status=progress",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "mkfs.ext4 /dev/sdb1",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "lvremove -f /dev/vg0/scratch",
+"label": "delete",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "xcrun altool --upload-app -f App.ipa -t ios -u dev@acme.com -p @keychain:AC_PASSWORD",
+"label": "publish",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "fastlane deliver --force",
+"label": "publish",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "fastlane supply --track production --aab app.aab",
+"label": "publish",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "xcrun notarytool submit App.zip --keychain-profile AC --wait",
+"label": "~send|publish",
+"tag": "fs",
+"shell": "sh"
+},
+{
+"cmd": "ls -la ~/Downloads",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "dir %USERPROFILE%\\Downloads",
+"label": "none",
+"tag": "mention",
+"shell": "cmd"
+},
+{
+"cmd": "cd publish && ls",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "mkdir -p build/publish",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "touch delete_me.txt",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "cp -r src/payments src/payments_v2",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "mv send.py sender.py",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "code src/pay.ts",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "vim scripts/push_release.sh",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "notepad delete-list.txt",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "cat scripts/deploy.sh",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "less download.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "head -n 50 send_queue.csv",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "wc -l downloads/*.csv",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "grep -rn \"rm -rf\" scripts/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "rg \"git push\" -g \"*.md\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "echo \"Run npm publish when ready\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "echo 'rm -rf node_modules && npm i'",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "printf '%s\\n' \"docker push acme/api\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "history | grep push",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "type -a rm",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "alias rm",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "which wget",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "rm --help",
+"label": "delete",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "man rsync",
+"label": "none",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "sed -n '1,20p' send.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "awk '/DELETE/ {print $0}' access.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "yq '.jobs.deploy' .github/workflows/release.yml",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "find . -name \"*delete*\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "fd publish src/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "locate sendmail",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "ps aux | grep publish",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "echo $PAYMENT_ID",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "export DELETE_AFTER_DAYS=30",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "ping -c 3 github.com",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "nslookup smtp.gmail.com",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "openssl rand -hex 32",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "tar -czf backup.tar.gz src/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "zip -r release.zip dist/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "unzip downloads/data.zip -d data/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "echo \"DROP TABLE users;\" > drop.sql",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "cat > notes.txt <<'EOF'\nremember to git push and npm publish\nEOF",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "find . -name \"*.py\" -newer push.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "diff -u delete_v1.py delete_v2.py",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "chmod +x push.sh",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "ln -s ../publish publish-link",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "du -sh ~/Downloads",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "df -h",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "env | grep -i send",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "npx tsc --noEmit",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "pytest -k \"delete or push\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "python -m pytest tests/test_publish.py -q",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "go vet ./...",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "pre-commit run --all-files",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "eslint src/delete.ts",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "prettier --check \"src/**/push*.ts\"",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "black --check scripts/publish.py",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "ruff check src/pay.py",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "mypy src/send_mail.py",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "make -n clean",
+"label": "delete",
+"tag": "dryrun",
+"shell": "sh"
+},
+{
+"cmd": "./deploy.sh --help",
+"label": "none",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "python scripts/publish.py --help",
+"label": "none",
+"tag": "help",
+"shell": "sh"
+},
+{
+"cmd": "tree -L 2 publish/",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "stat download.zip",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "file payment.bin",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "md5sum download.iso",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "shasum -a 256 release.zip",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "sort -u send_list.txt",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "uniq -c deletes.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "cut -d, -f1 payments.csv",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "tail -f /var/log/mail.log",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "crontab -l",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "kill -0 1234",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "uname -a",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "git log --oneline -- scripts/delete_old_branches.sh",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "echo \"pay invoice #42 by Friday\" >> TODO.md",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "cat ~/.config/rclone/rclone.conf.example",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "python scripts/report.py --out downloads/report.csv",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+},
+{
+"cmd": "node scripts/build-sitemap.js",
+"label": "none",
+"tag": "mention",
+"shell": "sh"
+}
+]

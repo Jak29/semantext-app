@@ -36,7 +36,8 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from .feed import scrub
+from . import normal
+from .feed import WITHHELD, scrub
 
 MAX_CHARS = 20_000          # longer messages are read up to here, and the result says it was clipped
 MAX_CLAUSES = 400
@@ -126,13 +127,48 @@ class Reading:
     acts: tuple = ()
     time: str | None = None
     house: bool = False          # a standing house rule, not words in this message
+    cut: bool = False            # the clause runs to the clip: it is read whole, and shown without its final token (R7)
+    written: str = ""            # the same clause as it was written, before normalisation; "" when it cannot be matched (R11)
+    keyed: bool = False          # a written clause could not be matched to this one and one of them shows a key (R11)
 
     @property
     def label(self) -> str:
         return KINDS[self.kind][0]
 
+    @property
+    def shown(self) -> str:
+        """The clause as it is SHOWN (the page, `semantext read`, the advice's quote). A clause that runs to the clip may
+        end in a part of a key too short to be one to the scrub, so its final token, whatever its length, is replaced by
+        CLIP_MARK. Reading is unchanged: kind, acts and holds come from the whole clause. Linear in the clause (a regex
+        for 'the last token' is quadratic on a long run).
+
+        A clause whose written form shows a key is not shown at all (WITHHELD, R11): normalisation changes characters
+        (it drops format characters, turns a look-alike hyphen into a space, a mark or an ASCII letter, composes marks)
+        before the scrub sees the clause, so a key the scrub withholds as written could show as a different string it
+        does not. The scrub is made on both, each as it is shown (a cut clause with its final token replaced), and the
+        clause is withheld if either shows a key."""
+        if self.keyed:
+            return WITHHELD
+        if self.written and scrub(self._as_shown(self.written)) == WITHHELD:
+            return WITHHELD
+        # Close-1 finding: a written key whose look-alike hyphens normalise to space+mark is ONE token as written and
+        # several once normalised, so cutting the final token cut the whole key as written (nothing seen) but only the
+        # last piece of the normalised key. When normalisation changed the clause, the written clause is also scrubbed
+        # WHOLE (uncut): cheap direction. An unchanged clause keeps the clip's law (shown with its token replaced).
+        if self.cut and self.written and self.written != self.clause and scrub(self.written) == WITHHELD:
+            return WITHHELD
+        return self._as_shown(self.clause)
+
+    def _as_shown(self, t: str) -> str:
+        if not self.cut:
+            return t
+        i = len(t)
+        while i and not t[i - 1].isspace():
+            i -= 1
+        return t[:i] + CLIP_MARK
+
     def to_dict(self) -> dict:
-        return {"clause": scrub(self.clause), "kind": self.kind, "label": self.label, "acts": list(self.acts),
+        return {"clause": scrub(self.shown), "kind": self.kind, "label": self.label, "acts": list(self.acts),
                 "time": self.time, "house": self.house}
 
 
@@ -170,23 +206,77 @@ def normalize(text: str) -> tuple[str, bool]:
     """The text as the reader sees it: compatibility forms folded (NFKC), every apostrophe spelled ', invisible format
     characters (zero-width spaces and joiners) removed, "do n't" joined. And whether it holds letters outside the Latin
     script, which the reader cannot vouch for: such a message never earns ALLOWED for a material act."""
-    t = unicodedata.normalize("NFKC", text).translate(QUOTES)
+    t = normal.nfkc(text).translate(QUOTES)   # linear: unicodedata's was quadratic (actclass r4 attack, finding 3)
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Cf")
     t = re.sub(r"\b(do|does|did|is|are|was|ca|wo|should|could|would) n't\b", r"\1n't", t, flags=re.I)
     odd = any((ch.isalpha() and not ch.isascii()) or unicodedata.category(ch).startswith("M") for ch in t)
     return t, odd
 
 
-def clauses(text: str) -> tuple[list[str], bool]:
-    """The message cut into clauses, and whether it was clipped first."""
-    t = text if isinstance(text, str) else ""
-    clipped = len(t) > MAX_CHARS
-    t = normalize(t[:MAX_CHARS])[0]
+CLIP_MARK = "(the rest is withheld at the clip)"
+
+
+def clip(t: str) -> str:
+    """The message up to MAX_CHARS: the reader reads exactly these characters (R7).
+
+    Round 2 cut a clip that fell inside a word back (R3), so that no fragment of a key was left at the end. That changed
+    what is READ, and it was wrong twice: a hold written in the word the clip falls inside was dropped (a held act then
+    read ALLOWED, and held_by_words released it), and a key longer than the cut-back only had its leak moved. What is
+    read is again the first MAX_CHARS characters, and the withholding is in what is SHOWN: the clause that runs to the
+    clip is shown with its final token replaced by CLIP_MARK (Reading.shown), whatever its length. Limit, stated: the
+    withholding is the one token. A key with white space inside it (a multi-line block) leaves its earlier whole tokens
+    to the scrub, which sees each as it would in an uncut message."""
+    return t[:MAX_CHARS] if isinstance(t, str) else ""
+
+
+def _split(t: str) -> list[str]:
+    """A text cut into clauses, before the clause cap (the one cut, used on the normalised text and, for R11, on the text
+    as written)."""
     out = [c.strip(" \t,") for c in SPLIT.split(t)]
     # a clause of no letters is kept when it holds anything but punctuation (an emoji can be a hold: "Publish it. 🛑")
-    out = [c for c in out if sum(ch.isalpha() for ch in c) > 1 or c.strip(PUNCT)]
+    return [c for c in out if sum(ch.isalpha() for ch in c) > 1 or c.strip(PUNCT)]
+
+
+def written_forms(text, cs: list[str]) -> list[tuple]:
+    """For each clause of `cs` (the normalised clauses of `text`), its written form and whether it is withheld outright
+    (R11). The reader shows normalised clauses, and normalisation changes characters before the scrub sees them, so a
+    key the raw scrub withholds (1,822 look-alikes of its hyphen) could show unwithheld. The text is cut into clauses
+    again without normalising, and Reading.shown scrubs the written clause too: it is withheld if either form shows a
+    key.
+
+    Normalising can change where a clause ends (a look-alike full stop makes one, a line of "..." or a lone format
+    character is dropped), and it can do both in one message, so equal counts prove nothing: round 4 paired by index
+    whenever the counts agreed, and 36 of 36 shifted messages showed the key (R13). A pair is used only when it is
+    VERIFIED: the written clause, normalised on its own and trimmed as _split trims, is exactly the normalised clause.
+    If the lists differ in length, or any one pair fails, no clause can be matched to its written form, and the cheap
+    direction is taken: if any written clause shows a key, every clause is withheld. Limit, stated: that case withholds a
+    whole message for one key, and a message whose clauses are unchanged by normalisation is never in it. A message of
+    more than MAX_CLAUSES clauses is paired on the first MAX_CLAUSES only when the lists agree on them (the normalised
+    list is cut at the cap, the written one is not); a key in a written clause past the cap withholds the message only
+    when the pairing fails. Linear: one normalisation and one scrub per written clause, each clause once."""
+    wr = _split(clip(text))
+    if len(wr) >= len(cs) and all(normalize(w)[0].strip(" \t,") == c for w, c in zip(wr, cs)) \
+            and (len(wr) == len(cs) or len(cs) == MAX_CLAUSES):
+        return [(w, False) for w in wr[:len(cs)]]
+    held = any(scrub(c) == WITHHELD for c in wr)
+    return [("", held)] * len(cs)
+
+
+def _clauses(text: str) -> tuple[list[str], bool, bool]:
+    """The clauses, whether the message was clipped, and whether the last clause runs to the length clip. The clause cap
+    (MAX_CLAUSES) clips too, but the clause it ends on is whole: it runs to no clip."""
+    t = text if isinstance(text, str) else ""
+    clipped = len(t) > MAX_CHARS
+    out = _split(normalize(clip(t))[0])
+    runs_to_clip = clipped and bool(out)
     if len(out) > MAX_CLAUSES:
-        out, clipped = out[:MAX_CLAUSES], True
+        out, clipped, runs_to_clip = out[:MAX_CLAUSES], True, False
+    return out, clipped, runs_to_clip
+
+
+def clauses(text: str) -> tuple[list[str], bool]:
+    """The message cut into clauses, and whether it was clipped first."""
+    out, clipped, _ = _clauses(text)
     return out, clipped
 
 
@@ -242,17 +332,31 @@ def kind_of(clause: str) -> str:
 
 def read(text: str) -> Read:
     """The message read clause by clause."""
-    cs, clipped = clauses(text)
-    odd = normalize(text[:MAX_CHARS])[1] if isinstance(text, str) else False
+    cs, clipped, runs_to_clip = _clauses(text)
+    odd = normalize(clip(text))[1] if isinstance(text, str) else False
+    forms = written_forms(text, cs) if isinstance(text, str) else [("", False)] * len(cs)
+    # Close-1 finding: a key whose name and value fall in different clauses ("password:" / "Zebra77Pa55word") is a key
+    # only in the whole message, which feed.scrub withholds; clause by clause the value shows. When the whole message
+    # (as written or normalised) shows a key and no clause alone does, every clause is withheld. Limit, stated: a message
+    # with a key inside one clause AND a name/value pair across clauses withholds only the first clause, and
+    # "secret = Ze7, so-Pa55wordZebra" (the first clause alone is withheld) still shows its second clause: the reader
+    # cannot tell which clause carries the rest of the value, and withholding all would break the round-4 law that only
+    # the clause with the key is withheld.
+    if isinstance(text, str) and cs and not any(h for _, h in forms):
+        t = clip(text)
+        if any(scrub(x) == WITHHELD for x in (t, normalize(t)[0])) and not any(
+                scrub(c) == WITHHELD for c in list(cs) + [w for w, _ in forms if w]):
+            forms = [("", True)] * len(cs)
     out, named = [], []
-    for c in cs:
+    for n, c in enumerate(cs):
         k, acts = kind_of(c), acts_of(c)
         # A hold that names no act ("Publish it, not now"; "Push it. Thanks. Don't.") holds every act named before it
         # in the message. It can only add a hold, so reading it this way is the safe side.
         if not acts and KINDS[k][1] in ("hold", "ask"):
             acts = tuple(named)
         named += [a for a in acts if a not in named]
-        out.append(Reading(c, k, acts, time_of(c)))
+        out.append(Reading(c, k, acts, time_of(c), cut=runs_to_clip and n == len(cs) - 1,
+                           written=forms[n][0], keyed=forms[n][1]))
     return Read(out, clipped, odd)
 
 
@@ -265,19 +369,21 @@ def read_rules(statements) -> list:
         for r in read(str(s)).readings:
             held = KINDS[r.kind][1] in ("hold", "ask")
             if r.acts:
-                out.append(Reading(r.clause, r.kind if held else "askfirst", r.acts, r.time, house=True))
+                out.append(Reading(r.clause, r.kind if held else "askfirst", r.acts, r.time, house=True, cut=r.cut,
+                                   written=r.written, keyed=r.keyed))
                 if not any(a in MATERIAL for a in r.acts):   # "Nothing leaves the building": "build" is not its act
                     out.append(Reading(r.clause, "askfirst", tuple(a for a in ACTS if a in MATERIAL), r.time,
-                                       house=True))
+                                       house=True, cut=r.cut, written=r.written, keyed=r.keyed))
             elif held:      # "Hold everything": holds every act
-                out.append(Reading(r.clause, r.kind, tuple(ACTS), r.time, house=True))
+                out.append(Reading(r.clause, r.kind, tuple(ACTS), r.time, house=True, cut=r.cut, written=r.written, keyed=r.keyed))
             else:           # "Nothing goes to GitHub without me", "Keep main untouched": ask first for every material act
-                out.append(Reading(r.clause, "askfirst", tuple(a for a in ACTS if a in MATERIAL), r.time, house=True))
+                out.append(Reading(r.clause, "askfirst", tuple(a for a in ACTS if a in MATERIAL), r.time, house=True,
+                                   cut=r.cut, written=r.written, keyed=r.keyed))
     return out
 
 
 def _quote(r: Reading) -> str:
-    return r.clause.rstrip(".!? ")
+    return r.shown.rstrip(".!? ")
 
 
 # What may stand beside a go and leave it plain: a courtesy, praise, or a yes or keep-going naming no act.
@@ -314,11 +420,11 @@ def _plain_go(r: Reading, act: str) -> bool:
             and not DEFER.search(NOW.sub(" ", r.clause[LEAD.match(r.clause).end():])))
 
 
-def _plain_offer(offer: str) -> tuple:
+def _plain_offer(offer: str, got: Read | None = None) -> tuple:
     """The one material act a plain offer names ("Shall I publish the release?"), or () when the offer is not plain:
     more than one clause or act, an alternative, a hold, a condition or a later time. A bare yes binds only to a plain
-    offer; to anything else it asks."""
-    got = read(offer)
+    offer; to anything else it asks. `got` is the offer already read, when the caller has read it (report does)."""
+    got = read(offer) if got is None else got
     if len(got.readings) != 1 or got.clipped or got.unreadable:
         return ()
     r = got.readings[0]
@@ -342,18 +448,28 @@ def advise(readings, act: str, offer: str | None = None, house=()) -> Advice:
     or bounding it but a now-time word), no hold, ask-first or soft reading of it anywhere, every other clause of the
     message a courtesy or one naming other acts, and the whole message read (not clipped, no letters the reader cannot
     vouch for). Anything else asks, or is blocked by a hold."""
+    return _advise(readings, act, offer, house, None)
+
+
+def _advise(readings, act: str, offer, house, offered) -> Advice:
+    """advise(), with what the offer names handed in when the caller has already worked it out (`offered`, from
+    _plain_offer; None works it out here, as advise() does). report() and held_by_words() read the offer ONCE and hand
+    it on: advise() read it again for every act, so one report on an offer at the cap read it eight times (1.5 s for a
+    shape that NFKC widens; found by the whole suite, 15 November 2026). Not on the public face on purpose: a caller
+    that could hand in `offered` could make a bare yes cover an act the offer never named."""
     if act not in ACTS:
         raise ValueError(f"unknown act {act!r}; known: {', '.join(ACTS)}")
     whole = readings if isinstance(readings, Read) else Read(list(readings))
     rs = list(whole.readings)
-    offered = _plain_offer(offer) if offer else ()
+    if offered is None:
+        offered = _plain_offer(offer) if offer else ()
     loose_yes = False
     if offer:
         new = []
         for r in rs:
             if r.kind == "assent" and not r.acts:
                 if offered:
-                    r = Reading(r.clause, r.kind, offered, r.time, r.house)
+                    r = Reading(r.clause, r.kind, offered, r.time, r.house, r.cut, r.written, r.keyed)
                 else:
                     loose_yes = True
             new.append(r)
@@ -433,6 +549,27 @@ def advise(readings, act: str, offer: str | None = None, house=()) -> Advice:
                   + "Words alone never pass this act: confirm it.", _quote(go), bound=go.time, covers=True)
 
 
+def report(message, offer: str | None = None, acts=None) -> dict:
+    """The one reading `semantext read` prints and the page's reader route (POST /api/read) sends: the message read
+    clause by clause, and the advice for each act. `acts` names the acts to advise on; with none, the acts the message
+    names, and, where an offer is given, the acts the offer names (a bare yes answers it), in the order of ACTS.
+    Pure, as read() and advise() are: nothing is saved. An act not in ACTS raises ValueError, as advise() does.
+
+    The CLI and the page both call this, so what one says the other says. It carries no house rules (`read` takes none)."""
+    got = read(message)
+    offer = offer if isinstance(offer, str) and offer else None
+    named = {a for x in got.readings for a in x.acts}
+    offered = None
+    if offer:
+        offer_read = read(offer)       # once per report: the acts it names, and what a bare yes would bind to
+        named |= {a for x in offer_read.readings for a in x.acts}
+        offered = _plain_offer(offer, offer_read)
+    chosen = list(dict.fromkeys(acts)) if acts else sorted(named, key=list(ACTS).index)
+    advice = [_advise(got, a, offer, (), offered).to_dict() for a in chosen]
+    return {**got.to_dict(), "max_chars": MAX_CHARS, "acts": chosen,
+            "means": {a: ACTS[a][2] for a in chosen}, "advice": advice}
+
+
 SEVERITY = {"ALLOWED": 0, "ASK": 1, "BLOCKED": 2}
 
 
@@ -468,7 +605,9 @@ def held_by_words(words, acts, offer=None, house=(), memo: dict | None = None) -
         if a not in ACTS:
             continue
         if a not in memo:
-            adv = advise(memo["read"], a, offer=offer, house=house)
+            if offer and "offered" not in memo:
+                memo["offered"] = _plain_offer(offer)      # once per decision, as the words are read once
+            adv = _advise(memo["read"], a, offer, house, memo.get("offered"))
             memo[a] = {"act": a, "word": adv.word, "rule": adv.rule} if (adv.word in ("ASK", "BLOCKED")
                                                                          and adv.rule in HOLDING) else None
         if memo[a]:

@@ -264,7 +264,7 @@ def run(event_text: str, store: Store | None = None) -> str:
             feed = Feed(store.root)
             feed.add(record(who, WORDS[kind], basis, served,
                             [r["id"] for r in asked if r["status"] == "answered" and not r["read"]],
-                            [r["id"] for r in asked if r["status"] == "open"], sender_name(prompt),
+                            [r["id"] for r in asked if r["status"] == "open" and not r["parked"]], sender_name(prompt),
                             noticed(store, name, prompt, recorded) if own else []))
             if feed.problem:   # a fault, not a busy moment: said once, as one line after the card
                 out = f"{out}\n\nSemantext: {feed.problem}" if out else f"Semantext: {feed.problem}"

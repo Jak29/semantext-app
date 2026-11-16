@@ -30,9 +30,20 @@ from . import jsonread, outside, paths
 
 GROUP = "semantext.plugins"
 KINDS = ("source", "place", "checker")                                       # open now
-# Names the page itself answers at in its address (static/v2/app.js: its own places, and the home page's old addresses), with
-# no registered place behind them. An outside place under one would be added and never reached.
-PAGE_NAMES = ("today", "settings", "live", "inbox", "decisions", "agents", "layers", "test", "history")
+# Names the page itself answers at in its address, with no registered place behind them. An outside place under one would be
+# added and never reached. EVERY such name (D24): the page's own places (static/v2/app.js, ROUTE: prism, today, rules, settings,
+# waiting, projects, documents, diffmap, map, record, work, plugins), the home page's old addresses (OLD: live, inbox,
+# decisions, agents, layers, test, history) and "overview", the first release's place. tests/test_redraw_round5.py compares this
+# list with app.js's own, so the two cannot drift. (The page's map word, a name the person gives the map, is not listed: it is
+# the person's own setting, not a fixed address.)
+PAGE_NAMES = ("prism", "today", "rules", "settings", "waiting", "projects", "documents", "diffmap", "map", "record", "work",
+              "plugins", "overview", "live", "inbox", "decisions", "agents", "layers", "test", "history")
+# A place name the page indexes tables with: Object's own properties. A page that reads S.data[name] for a plug-in place named
+# "constructor" drew the Object function's "data" before anything was read (D24); the page uses own properties now, and a place
+# of such a name is refused where plug-ins are listed (here, and pagemodule.NAME), as a name that could not be told from a
+# property is not a name. Compared in any case.
+OBJECT_PROPS = ("constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
+                "toLocaleString", "__proto__", "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__")
 RESERVED = ("card-format", "evidence-policy", "door", "tool", "exporter")    # named, empty, refused
 BUILT_IN = "built-in"   # the words shown for a built-in's origin; never how one is told apart (Entry.builtin)
 ENABLED_FILE = "plugins.json"
@@ -151,6 +162,9 @@ class Registry:
             raise ValueError(f"there is already a {kind} named {name!r} ({self._by[kind][name].origin})")
         if kind == "place" and origin is not None and name.casefold() in PAGE_NAMES:
             raise ValueError(f"the page itself answers at {name!r}, so a place of that name could never be reached")
+        if kind == "place" and origin is not None and name.casefold() in {p.casefold() for p in OBJECT_PROPS}:
+            raise ValueError(f"{name!r} is the name of a property every object has, which the page's tables would read as "
+                             f"data; a place of that name is refused")
         missing = [a for a in NEEDS[kind] if not hasattr(obj, a)]
         if missing:
             raise ValueError(f"a {kind} needs {', '.join(missing)}")

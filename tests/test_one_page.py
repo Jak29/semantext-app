@@ -34,10 +34,23 @@ def test_the_other_places_still_change_nothing_of_your_rules():   # must refuse
             assert "ownbase.js" not in t or name in OWN, name         # no other place reaches the one way to change them
 
 
-def test_only_the_four_known_modules_ever_post():   # must refuse any new writer
-    # workact.js joined in 1.5.15: the person's own Work changes (PAGE-ACTS r2; tests/test_work_page_acts.py)
+def test_only_the_five_known_modules_ever_post():   # must refuse any new poster
+    # workact.js joined in 1.5.15: the person's own Work changes (PAGE-ACTS r2; tests/test_work_page_acts.py).
+    # reader.js joined with the page's reader: it POSTS but WRITES NOTHING. The route (/api/read) reads the person's words
+    # and answers with the reader's reading; it is a POST only so the words never travel in an address
+    # (tests/test_reader_route.py checks that it changes nothing). It is in this list because it posts, not because it changes.
     posting = sorted(p.name for p in V2.glob("*.js") if re.search(r'method:\s*"POST"', p.read_text("utf-8")))
-    assert posting == ["cards.js", "ownbase.js", "plugins.js", "workact.js"]
+    # proxyholds.js joined with the proxy's page answer: the person's yes, no or revoke to a call the proxy holds
+    # (tests/test_proxy_page.py)
+    assert posting == ["cards.js", "ownbase.js", "plugins.js", "proxyholds.js", "reader.js", "workact.js"]
+
+
+def test_only_reader_js_names_the_reader_route_and_it_is_no_change_to_your_rules():   # must refuse
+    for p in V2.glob("*.js"):
+        t = p.read_text("utf-8")
+        assert ("/api/read" in t) == (p.name == "reader.js"), p.name       # prism.js and ownrules.js ask through reader.js
+    assert "/api/read" not in OWN_ROUTES and not any(r in text("reader.js") for r in OWN_ROUTES)
+    assert "ownbase.js" not in text("reader.js") and "ownbase.js" not in text("prism.js")
 
 
 def test_the_moved_parts_name_only_their_own_routes():   # must refuse answers, parks and plug-ins from them

@@ -23,7 +23,11 @@ from pathlib import Path
 
 from . import registry
 
-NAME = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}")   # a place name the page may ask a module for
+# A place name the page may ask a module for: a plain word that is not the name of a property every object has (D24:
+# registry.OBJECT_PROPS, in any case, as registry refuses them; of the twelve, "constructor" and the lower-cased "tostring"
+# and "valueof" are the ones the lower-case first letter lets through). The lookahead ends at a character a name cannot
+# hold, so "constructor.js" is refused as well as "constructor", and "constructors" is a name.
+NAME = re.compile(r"(?!(?i:" + "|".join(re.escape(p) for p in registry.OBJECT_PROPS) + r")(?![A-Za-z0-9_-]))[a-z0-9][a-z0-9_-]{0,63}")
 MAX_MODULE = 1024 * 1024                          # bytes; a larger module is not served
 PREFIX = "/v2/plugin/"
 

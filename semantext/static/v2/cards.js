@@ -29,7 +29,9 @@ export async function copyId(button) {
     sel.addRange(range);
     toast("Press Ctrl+C to copy " + id);
   }
-  setTimeout(() => { button.textContent = id; }, 1500);
+  // Put the ID back only if the button says something else: when the clipboard was refused the ID is already there and
+  // selected for Ctrl+C, and writing it again would replace the text and drop that selection.
+  setTimeout(() => { if (button.textContent !== id) button.textContent = id; }, 1500);
 }
 
 export function chip(text, cls) { return h("span", { class: "chip " + cls }, text); }
@@ -126,6 +128,10 @@ export function cardNode(c) {
   const label = c.label === "MODEL" ? chip("MODEL", "model-label") : null;
   node.append(h("div", { class: "card-head" }, label, agentChip(c.seat, null, "seat:" + c.key), chip(kindWord, "kind"), id, at));
   node.append(h("h2", { class: "card-title" }, c.title), h("p", { class: "why" }, c.why));
+  // A very long text is drawn cut (sources/own_inbox.py), and the card says so. A command that is cut is not offered to
+  // copy: what is copied is what is run, and the part left out is the part nobody read.
+  const cut = c.cut || [];
+  if (cut.length) node.append(h("p", { class: "refused", "data-k": "cut:" + c.key }, "Part of this request (" + cut.join(", ") + ") is longer than this page draws, and is cut here" + (cut.includes("command") ? ". Its command is not offered to copy: read it whole in your inbox file before you run it." : ". The whole of it is in your inbox file.")));
   if (label && c.model) {
     node.append(h("p", { class: "meta model-id" }, "A model's proposal, never a rule or an answer: " + (c.model.name || "?")
       + " · " + (c.model.version || "?") + " · the digest you named, " + (c.model.digest || "none")));
@@ -148,7 +154,7 @@ export function cardNode(c) {
     if (facts.childNodes.length) node.append(facts);
     if ((c.flags || []).length) node.append(h("p", { class: "refused" }, "Look twice: " + c.flags.join("; ")));
     node.append(h("pre", { class: "command" }, c.command || ""));
-    if (c.own_inbox && waiting) node.append(h("button", { type: "button", class: "answer", "data-k": "copy:" + c.key,
+    if (c.own_inbox && waiting && !cut.includes("command")) node.append(h("button", { type: "button", class: "answer", "data-k": "copy:" + c.key,
       on: { click: async () => { try { await navigator.clipboard.writeText(c.command || ""); toast("Copied the command"); } catch (e) { toast("Your browser refused the clipboard: select the command and copy it"); } } } }, "Copy the command"));
     if (c.run) node.append(runLine(c.run));
     const out = outputBox(c);

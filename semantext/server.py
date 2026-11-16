@@ -20,9 +20,9 @@ from urllib.parse import parse_qs, urlparse
 
 from pathlib import Path
 
-from . import __version__, agentfiles, claude, docserve, jsonread, pagemodule, paths, registry
+from . import __version__, agentfiles, claude, docserve, jsonread, pagemodule, paths, proxycmd, reading, registry
 from .agents import Agents, clean, since
-from .feed import Feed
+from .feed import WITHHELD, Feed, scrub
 from .hook import LIMIT_BYTES, WORDS, compose, fit, rule_lines, sender_name, sent_layers
 from .inbox import Inbox, age, card_notes
 from .sender import whose
@@ -137,10 +137,29 @@ def explain(st: Store, b: dict) -> dict:
     notes = card_notes(inbox, agent) if agent else ""
     text, served = compose(st, name, "full" if words == "own" else "relay", layer_for(st, agent), notes)
     asked = [r for r in inbox.requests().values() if agent and r.get("from") == agent]
-    return {"words": words, "basis": basis, "agent": agent, "from": sender_name(message), "text": text, **served,
+    # Close-1 finding: sender_name folds a look-alike hyphen to '-' and lower-cases, so a key given as the sender name came
+    # back as the key. A sender that scrubs as a key (as written or folded) is not returned.
+    sender = sender_name(message)
+    if any(scrub(x) == WITHHELD for x in (sender, reading.normalize(sender)[0])):
+        sender = ""
+    return {"words": words, "basis": basis, "agent": agent, "from": sender, "text": text, **served,
             "answers": [r["id"] for r in asked if r["status"] == "answered" and not r["read"]],
-            "waiting": [r["id"] for r in asked if r["status"] == "open"],
-            "reading": st.read(name, message, dry=True)}
+            "waiting": [r["id"] for r in asked if r["status"] == "open" and not r["parked"]],
+            "parked": [r["id"] for r in asked if r["status"] == "open" and r["parked"]],
+            "reading": _unkeyed_decisions(st.read(name, message, dry=True), message)}
+
+
+def _unkeyed_decisions(got: dict, message: str) -> dict:
+    """The quick reading, with each decision's copy of the message withheld when the message shows a key (R15). A
+    decision carries the first 160 characters of the words as typed, so the route handed a key out even though the page
+    does not draw it. It is withheld as the reader withholds a clause (reading.Reading.shown): when the message shows a
+    key as written (feed.scrub, which reads a look-alike hyphen as a hyphen) or as the reader normalises it, the whole
+    copy is withheld, never a cut of it (the first 160 characters can end inside the key). Limit, stated: a message with
+    a key anywhere has the copy withheld in every decision, and the rest of the quick reading is unchanged."""
+    m = (message or "").strip()
+    if not got.get("decisions") or not any(scrub(x) == WITHHELD for x in (m, reading.normalize(m)[0])):
+        return got
+    return {**got, "decisions": [{**d, "message": WITHHELD} for d in got["decisions"]]}
 
 
 # What the quick reading noticed, and the base rule that speaks to it: a message was covered when that rule was on the
@@ -205,7 +224,8 @@ def metrics(st: Store) -> dict:
         "noticed": noticed,
         "others": {"n": len(others), "short": sum(r["form"] == "relay" for r in others),
                    "claims_you": sum(r["words"] == "agent" and clean(r["from"]) in you for r in others)},
-        "decisions": {"asked": len(reqs), "open": sum(r["status"] == "open" for r in reqs), "answered": len(answered),
+        "decisions": {"asked": len(reqs), "open": sum(r["status"] == "open" and not r["parked"] for r in reqs),
+                      "parked": sum(r["status"] == "open" and bool(r["parked"]) for r in reqs), "answered": len(answered),
                       "withdrawn": sum(r["status"] == "closed" for r in reqs),
                       "via": {v: sum((r["answer"] or {}).get("via") == v for r in answered)
                               for v in ("page", "chat", "terminal")},
@@ -220,6 +240,8 @@ def metrics(st: Store) -> dict:
 
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY = 200_000
+READ_PATH = "/api/read"   # POST: the page's reader, which changes nothing
+READ_BODY = 100_000       # bytes: the reader takes MAX_CHARS (20,000) of a message, and says when it clipped
 DEEP_BODY = "the request is nested too deeply to be read"
 LOOPBACK = ("127.0.0.1", "localhost")   # the server is IPv4; an address it cannot serve is not offered
 # The v2 page's files beside its index.html, each at /v2/<name>: this list is the whole of what is served from that
@@ -229,8 +251,8 @@ _JS, _CSS = "text/javascript; charset=utf-8", "text/css; charset=utf-8"
 V2_FILES = {f"/v2/{name}": (name, _CSS if name.endswith(".css") else _JS) for name in (
     "style.css", "app.js", "dom.js", "words.js", "parts.js", "frame.js", "cards.js", "drawers.js", "markdown.js",
     "waiting.js", "projects.js", "documents.js", "diffmap.js", "map.js", "record.js", "outside.js", "work.js", "workboard.js",
-    "workitem.js", "workact.js", "plugins.js", "own.css", "ownbase.js", "ownevents.js", "ownplace.js", "owntoday.js", "ownrules.js",
-    "ownsky.js", "ownagents.js", "ownspace.js", "ownsettings.js", "prism.css", "prism.js")}
+    "workitem.js", "workact.js", "plugins.js", "reader.js", "own.css", "ownbase.js", "ownevents.js", "ownplace.js", "owntoday.js", "ownrules.js",
+    "ownsky.js", "ownagents.js", "ownspace.js", "ownsettings.js", "prism.css", "prism.js", "selection.js", "proxyholds.js")}
 # The v2 page and each of its files carry this policy. Scripts only from this server's own files (no inline script
 # and no handler attributes; tests/test_v2_page.py checks index.html), styles only from its stylesheet (no style
 # attribute and no <style>: the audit of c607024 found 'unsafe-inline' there only for literal spacing, now classes in
@@ -242,6 +264,8 @@ V2_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 
 
 
 DOC_PREFIX = "/api/v2/doc/"   # /api/v2/doc/<place>/<row_id>: the serve hook by row
+PROXY_ASKS = "/api/proxy/asks"      # GET: this run's proxy asks, for the Waiting place (proxycmd.page_asks)
+PROXY_ANSWER = "/api/proxy/answer"  # POST {ask, word}: the person's yes, no or revoke, from the page (proxycmd.answer)
 PLUGINS_PREFIX = "/api/v2/plugins/"   # POST /api/v2/plugins/<act>: the Plug-ins tab's changes, and what each takes
 PLUGIN_ACTS = {"on": ("plugin",), "off": ("plugin",), "settings": ("plugin", "settings"), "rollback": ("change",)}
 PLUGIN_FILE = re.compile(r"(" + pagemodule.NAME.pattern + r")\.js")
@@ -366,6 +390,19 @@ class Handler(BaseHTTPRequestHandler):
             raise Refused(f"{e.code}: {e.reason}") from None
         return {"id": got["id"], "applied": got["applied"], "repeat": bool(got.get("repeat"))}
 
+    def _proxy_answer(self, b: dict) -> dict:
+        """The person's answer to one ask the proxy holds, from their own page: {ask, word}, nothing else. It is the
+        command's answer (proxycmd.answer): the chain is verified first, then written, then the asks file, under the
+        proxy's own locks; an ask of an earlier run, an unknown ask and a broken record are refused by name."""
+        if not isinstance(b, dict) or set(b) != {"ask", "word"}:
+            raise Refused("send {ask, word}")
+        ask, word = b["ask"], b["word"]
+        if type(ask) is not str or not ask or len(ask) > 80:
+            raise Refused("name the ask by its id")
+        if type(word) is not str or word not in ("yes", "no", "revoke"):
+            raise Refused("answer yes, no or revoke")
+        return {"ask": ask, "status": proxycmd.answer(proxycmd.proxy_home(self.store.root), ask, word)}
+
     def _drain(self) -> None:
         """Read and drop a refused request's body before answering. A socket closed with unread data is reset, and
         the client can then lose the 403 before reading it (seen on Windows). A body over MAX_BODY is not read, so
@@ -380,11 +417,12 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass   # a client that stalls past the timeout, or goes away, still gets the refusal (or nothing)
 
-    def _body(self, unique: bool = False) -> dict:
+    def _body(self, unique: bool = False, cap: int = MAX_BODY) -> dict:
         n = int(self.headers.get("Content-Length") or 0)
         if n < 0:
             raise Refused("bad Content-Length")
-        if n > MAX_BODY:
+        if n > cap:
+            self._drain()   # only a body up to MAX_BODY is read; a larger one is refused unread, as before
             raise Refused("request too large")
         try:
             return jsonread.loads(self.rfile.read(n) or b"{}", unique=unique)
@@ -392,6 +430,30 @@ class Handler(BaseHTTPRequestHandler):
             if e.deep:   # before, a RecursionError here left the page with no answer and the console with a traceback
                 raise Refused(DEEP_BODY) from None
             raise
+
+    def _read_message(self, has_query: bool):
+        """The page's reader: a message (and, optionally, the agent's last offer) read clause by clause, with the advice
+        for each act (reading.report, the same reading `semantext read` prints). A POST because the person's words must
+        never travel in an address, which browsers, proxies and logs keep; but it changes nothing and writes nothing: no
+        file is opened, no record kept, and the answer is only the reader's. do_POST has already refused a request from
+        another page, from none, or from a plug-in's page module; this also wants the page's own address as Referer (as
+        /api/work does), a body under READ_BODY, and no query string at all."""
+        if has_query:
+            self._drain()
+            raise Refused("the words go in the body, never in the address")
+        if not self._from_the_page():
+            self._drain()
+            return self._send(403, {"error": "the reader answers only the Semantext page itself, which names its own "
+                                             "address"})
+        b = self._body(unique=True, cap=READ_BODY)
+        message, offer, acts = (b.get("message"), b.get("offer"), b.get("acts")) if isinstance(b, dict) else (None,) * 3
+        if (not isinstance(b, dict) or not set(b) <= {"message", "offer", "acts"} or not isinstance(message, str)
+                or not (offer is None or isinstance(offer, str))
+                or not (acts is None or (isinstance(acts, list) and len(acts) <= len(reading.ACTS)
+                                         and all(isinstance(a, str) and a in reading.ACTS for a in acts)))):
+            raise Refused("send {message: text, offer: text or left out, acts: a list of "
+                          + ", ".join(reading.ACTS) + " or left out}")
+        return self._send(200, {"ok": True, **reading.report(message, offer=offer, acts=acts)})
 
     def _plugin_change(self, act: str):
         """One act of the Plug-ins tab, asked for by the page itself: do_POST has already refused one from another
@@ -477,7 +539,8 @@ class Handler(BaseHTTPRequestHandler):
                     if r["status"] == "open":     # the same question, answered before: shown beside it, never used
                         e = inbox.earlier(r, folded)
                         r["earlier"] = {"id": e["id"], "answer": e["answer"], "age": age(e["answer"]["at"])} if e else None
-                return self._send(200, {"open": [r for r in reqs if r["status"] == "open"],
+                return self._send(200, {"open": [r for r in reqs if r["status"] == "open" and not r["parked"]],
+                                        "parked": [r for r in reqs if r["status"] == "open" and r["parked"]],
                                         "recent": [r for r in reqs if r["status"] != "open"][:10]})
             if u.path == "/api/register":
                 if not self._page_reads():
@@ -542,6 +605,10 @@ class Handler(BaseHTTPRequestHandler):
                 except docserve.Refused as e:
                     return self._send(e.status, {"error": e.why})
                 return self._send(200, data, ctype, {"Content-Security-Policy": docserve.DOC_CSP})
+            if u.path == PROXY_ASKS:   # what the proxy holds for your word: tool and agent names, never a call's input
+                if not self._page_reads() or self._from_plugin_module():
+                    return self._send(403, {"error": "what the proxy holds is read only by the Semantext page itself"})
+                return self._send(200, proxycmd.page_asks(proxycmd.proxy_home(st.root)))
             if u.path.startswith("/api/v2/"):
                 if not self._page_reads():
                     return self._send(403, {"error": "these reads are made only by the Semantext page itself"})
@@ -568,7 +635,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path.startswith(PLUGINS_PREFIX):   # the Plug-ins tab's changes (pluginpage.py)
                 return self._plugin_change(u.path[len(PLUGINS_PREFIX):])
-            b = self._body(unique=u.path == "/api/work")   # a key named twice is refused there (Koinos's F6)
+            if u.path == READ_PATH:   # the reader: a POST that changes nothing (see _read_message)
+                return self._read_message("?" in self.path or bool(u.params))
+            b = self._body(unique=u.path in ("/api/work", PROXY_ANSWER))   # a key named twice is refused there (Koinos's F6)
             r = {"ok": True}
             if u.path == "/api/active":
                 st.set_active(b.get("name"))
@@ -639,6 +708,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(403, {"error": "a change to your work is accepted only from the Semantext page "
                                                      "itself, which names its own address"})
                 r.update(self._work_change(b))
+            elif u.path == PROXY_ANSWER:
+                # Answering the proxy is the person's act, held as the work route is: the page's own Origin, and a
+                # Referer naming one of the page's own addresses (X-Semantext and the plug-in-module refusal are above).
+                if self.headers.get("Origin") not in {f"http://{h}" for h in self._own()}:
+                    return self._send(403, {"error": "an answer to the proxy is accepted only from the Semantext page"})
+                if not self._from_the_page():
+                    return self._send(403, {"error": "an answer to the proxy is accepted only from the Semantext page "
+                                                     "itself, which names its own address"})
+                r.update(self._proxy_answer(b))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(200, r)

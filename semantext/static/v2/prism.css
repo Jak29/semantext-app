@@ -80,6 +80,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--ui); }
 .prism-presets .chip { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: 999px;
   padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .prism-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-3); max-width: 60ch; }
+.prism-status { margin: 0; min-height: 1.5em; font-size: 13px; line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
+.prism-status.warn { color: var(--record); }
+.prism-advice { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; font-size: 14px; color: var(--text-2); }
+.prism-advice-row { overflow-wrap: anywhere; }
+.prism-advice-row b { color: var(--text); }
 .prism-art { flex: 1 1 520px; max-width: 760px; min-width: 0; }
 .prism-figure { width: 100%; height: auto; display: block; }
 .prism-figure .beam { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; fill: none;

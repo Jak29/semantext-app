@@ -579,7 +579,10 @@ class Store:
             return "base"
         names = [n for n in self.names() if n != "base"]
         if text in names:
-            return text
+            return text   # a slug always finds its environment, a key-shaped one too (it was made before create refused them)
+        from .agents import key_shaped   # here: agents imports this module
+        if key_shaped(text):   # a key typed after --env: not repeated, and no near miss offered
+            raise Refused("no environment by that name (see them with: semantext env list)")
         got, problems = self.titles()
         titles = {n: t.lower() for n, t in got.items()}
         names = [n for n in names if n in titles or n == text.lower()]
@@ -878,6 +881,13 @@ class Store:
         title = (title or "").strip()
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 '\-]{0,39}", title):
             raise Refused("name it with letters, numbers and spaces, up to 40 characters")
+        # An environment named like a key could never be named again: every message that would say the typed name is
+        # cut (cli._unkeyed), so a command naming it could not tell the person which one it meant (O5 of attack 22).
+        # Refused here, without the title repeated. (One made before this rule stays reachable by its slug: resolve.)
+        from .agents import key_shaped   # here: agents imports this module
+        if key_shaped(title):
+            raise Refused("that name looks like it holds a key, a token or a password, so it is not used for an "
+                          "environment (every message would have to hide it); pick another")
         # A title already in use gets a number, so the switcher never shows two the same: Cooking, then Cooking 2.
         taken = {t.lower() for t in self.titles()[0].values()}   # a broken file is skipped (review of 1.2.2, S4)
         if title.lower() in taken:

@@ -5,12 +5,44 @@ import { crumbs, docHref, header } from "./parts.js";
 import { fill, S } from "./app.js";
 import { chip } from "./cards.js";
 import { renderMarkdown } from "./markdown.js";
+import { findAgain, placeOf } from "./selection.js";
+
+// The scroll inside a keyed text box (the copy box's own scroll, D13; moved here from selection.js, whose size is capped). A
+// node that is taken out of the page and put back (settle) or made again starts at the top, so a person who scrolled through
+// a long text to read it was sent back to the start at every read. Called before a draw; call what it returns after. Only a
+// box that has been scrolled is held, and only a keyed one (found again by its key and which of its key it is). Limit: a
+// scroller that is not a keyed text box (a code block with its own scroll) is not held.
+export function holdScroll() {
+  const held = [];
+  for (const el of document.querySelectorAll("textarea[data-k]")) {
+    if (el.scrollTop || el.scrollLeft) held.push({ el, top: el.scrollTop, left: el.scrollLeft, where: placeOf(el) });
+  }
+  if (!held.length) return () => {};
+  // mark(), for a draw that finishes later (keep()): each box as the draw's synchronous part left it. At the finish a box the
+  // person scrolled since is theirs and is not put back (close1 finding 5: an async render (D25) puts the new box in the page
+  // during the wait, and the old scroll was written over the person's). A box made after the mark starts at the top, so one
+  // found away from the top was scrolled by the person. Limit: a person who scrolls a new box and back to the very top leaves
+  // nothing to tell from a box nobody touched, and the old scroll is put back.
+  const find = (x) => (document.contains(x.el) ? x.el : findAgain(x.where));
+  let marked = false;
+  const restore = () => {
+    for (const x of held) {
+      const el = find(x);
+      if (!el) continue;
+      const theirs = x.mark && x.mark.el === el ? el.scrollTop !== x.mark.top || el.scrollLeft !== x.mark.left : el !== x.el && (el.scrollTop || el.scrollLeft);
+      if (marked && theirs) continue;
+      if (el.scrollTop !== x.top) el.scrollTop = x.top;
+      if (el.scrollLeft !== x.left) el.scrollLeft = x.left;
+    }
+  };
+  return Object.assign(restore, { mark: () => { marked = true; for (const x of held) { const el = find(x); x.mark = el ? { el, top: el.scrollTop, left: el.scrollLeft } : null; } } });
+}
 
 // ---------------------------------------------------------------- Documents
 // Every project folder an agent keeps in its cv/ with a MASTER.md, as your inbox's Documents lists them, read here:
 // MASTER.md (with its Copy button), the detailed documents beside it, and its diagrams. The server reads only a file its
 // documents reader lists in a listed folder; this page sets every word of it as text.
-export const D = { text: new Map(), images: new Map(), pending: new Set() };
+export const D = { text: new Map(), images: new Map(), pending: new Set(), box: null };
 
 export async function readDocument(id, file) {
   const r = await fetch("/api/v2/document?doc=" + encodeURIComponent(id) + "&file=" + encodeURIComponent(file),
@@ -57,15 +89,45 @@ export function diagramNode(d, file, alt) {
   return fig;
 }
 
+// The text shown selected when the clipboard was refused stays through the page's draws (every ten seconds it draws
+// again, and a box made only by the click would be destroyed with its focus and selection) until you copy it, hide it,
+// or leave this document: D.box is {id, text}, and the document's draw puts the box back. `id` is the document's, or
+// null for a box that belongs to no one document.
+export function hideBox() {
+  D.box = null;
+  fill();
+}
+// Whose box may be shown at this address: a document's own id (its address's first piece), or "diffmap:<folder>/<file>" for
+// a spec (D12: Diffmap's command box was destroyed by the next draw, and D.box kept its command after you left). A box with
+// id null belongs to no one place and is kept. Called by each place's draw and when the page moves to another place.
+export function boxOwner(place, sub) {
+  if (place === "documents") return sub ? sub.split("/")[0] : undefined;
+  if (place === "diffmap") return sub ? "diffmap:" + sub : undefined;
+  return undefined;
+}
+export function leaveBox() {
+  if (D.box && D.box.id !== null && D.box.id !== boxOwner(S.place, S.sub)) D.box = null;
+}
+// `label` names what the box holds, for a screen reader: MASTER.md's text, or (Diffmap) a shell command.
+export function boxNodes(label = "MASTER.md, selected to copy") {
+  const box = h("textarea", { class: "copy-box", readonly: true, "aria-label": label, "data-k": "copybox" });
+  box.value = D.box.text;
+  box.addEventListener("copy", () => setTimeout(hideBox, 0));   // after the browser has taken the copy
+  return [box, h("button", { type: "button", class: "toggle small", "data-k": "copybox-hide", on: { click: hideBox } }, "Hide")];
+}
+
 // Copy MASTER.md's text, as your inbox's Copy does; when the clipboard is refused, the text is shown selected.
-export async function copyText(button, text, into) {
+export async function copyText(button, text, into, id, boxLabel) {
   const label = button.textContent;
   try {
     await navigator.clipboard.writeText(text);
+    D.box = null;
+    Array.from(into.children).filter((c) => (c.dataset.k || "").startsWith("copybox")).forEach((c) => c.remove());   // copied: the box is done
     button.textContent = "Copied";
   } catch (e) {
+    D.box = { id: id === undefined ? null : id, text };
     let box = into.querySelector("textarea.copy-box");
-    if (!box) { box = h("textarea", { class: "copy-box", readonly: true, "aria-label": "MASTER.md, selected to copy" }); box.value = text; into.append(box); }
+    if (!box) { into.append(...boxNodes(boxLabel)); box = into.querySelector("textarea.copy-box"); }
     box.focus();
     box.select();
     button.textContent = "Press Ctrl+C";
@@ -75,6 +137,7 @@ export async function copyText(button, text, into) {
 
 export function render(data, el) {
   const place = el;
+  leaveBox();   // you left the document the box was for
   if (!data) {
     place.replaceChildren(header("Documents", S.err ? "The page could not read your documents: " + S.err + ". A server started before the page changed reads them once it is started again."
       : "Reading your files…"));
@@ -125,7 +188,11 @@ function fillDocument(d, id, file, el) {
     if (isMaster) {
       const copy = h("button", { type: "button", "data-k": "copy:" + d.id, disabled: !(got && !got.error) }, "Copy MASTER.md");
       const tools = h("div", { class: "doc-tools" }, copy);
-      if (got && !got.error) copy.addEventListener("click", () => copyText(copy, got.text, tools));
+      if (got && !got.error) {
+        copy.addEventListener("click", () => copyText(copy, got.text, tools, d.id));
+        if (D.box && D.box.text === got.text) tools.append(...boxNodes());   // a box shown when the clipboard was refused stays
+        else D.box = null;                                                   // the document's words moved on: the box is stale
+      }
       parts.push(tools);
     }
   }

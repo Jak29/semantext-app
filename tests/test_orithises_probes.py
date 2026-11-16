@@ -449,7 +449,9 @@ def test_replay_race_only_one_request_gets_the_call(env):
     stub, client, port, home, server = env
     p, aid, note = hold(env)
     p.asks.answer(aid, "yes", time.monotonic())
-    body = dict(GOOD_BODY, stream=False, system="attribution block", messages=history(note), tools=[{"name": "Bash", "description": "r", "input_schema": {"type": "object"}}])
+    hold_tools = [{"name": "Bash", "description": "run", "input_schema": {"type": "object"}},     # what the hold sent (tests.test_proxy.ask)
+                  {"name": "Read", "description": "read", "input_schema": {"type": "object"}}]
+    body = dict(GOOD_BODY, stream=False, system="attribution block", messages=history(note), tools=hold_tools)
     results = []
 
     def go():
@@ -512,8 +514,10 @@ def test_control_the_right_followup_does_replay(env):
     stub, client, port, home, server = env
     p, aid, note = hold(env)
     p.asks.answer(aid, "yes", time.monotonic())
+    hold_tools = [{"name": "Bash", "description": "run", "input_schema": {"type": "object"}},     # what the hold sent (tests.test_proxy.ask)
+                  {"name": "Read", "description": "read", "input_schema": {"type": "object"}}]
     s, b = post(port, dict(GOOD_BODY, stream=False, system="attribution block", messages=history(note),
-                           tools=[{"name": "Bash", "description": "r", "input_schema": {"type": "object"}}]))
+                           tools=hold_tools))
     assert b'"tool_use"' in b and b"rm -rf" in b, (s, b[:300])
 
 def test_message_delta_content_cannot_change_what_is_emitted_or_decided(env):

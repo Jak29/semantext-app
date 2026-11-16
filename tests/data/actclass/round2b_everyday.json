@@ -1,0 +1,366 @@
+[
+{
+"tool": "Bash",
+"cmd": "(cd frontend && npm test)"
+},
+{
+"tool": "Bash",
+"cmd": "(cd docs && make html)"
+},
+{
+"tool": "Bash",
+"cmd": "(set -e; npm ci --dry-run; npm test)"
+},
+{
+"tool": "Bash",
+"cmd": "(cd backend; python -m pytest -q)"
+},
+{
+"tool": "Bash",
+"cmd": "( cd api && go test ./... )"
+},
+{
+"tool": "Bash",
+"cmd": "{ npm run lint; npm test; } 2>&1 | tail -40"
+},
+{
+"tool": "Bash",
+"cmd": "if [ -f package.json ]; then npm test; fi"
+},
+{
+"tool": "Bash",
+"cmd": "if [[ -d .venv ]]; then source .venv/bin/activate; fi"
+},
+{
+"tool": "Bash",
+"cmd": "for f in src/*.py; do python -m py_compile \"$f\"; done"
+},
+{
+"tool": "Bash",
+"cmd": "while read -r line; do echo \"$line\"; done < files.txt"
+},
+{
+"tool": "Bash",
+"cmd": "[ -n \"$CI\" ] && echo \"in CI\""
+},
+{
+"tool": "Bash",
+"cmd": "test -d build || mkdir build"
+},
+{
+"tool": "Bash",
+"cmd": "cd \"$(git rev-parse --show-toplevel)\" && git status"
+},
+{
+"tool": "Bash",
+"cmd": "echo \"branch: $(git branch --show-current)\""
+},
+{
+"tool": "Bash",
+"cmd": "VERSION=$(node -p \"require('./package.json').version\"); echo $VERSION"
+},
+{
+"tool": "Bash",
+"cmd": "export PATH=\"$(pwd)/bin:$PATH\""
+},
+{
+"tool": "Bash",
+"cmd": "diff <(sort a.txt) <(sort b.txt)"
+},
+{
+"tool": "Bash",
+"cmd": "ls -la $(dirname \"$0\")"
+},
+{
+"tool": "Bash",
+"cmd": "python -c \"import sys; print(sys.version)\""
+},
+{
+"tool": "Bash",
+"cmd": "for d in */; do (cd \"$d\" && git status --short); done"
+},
+{
+"tool": "Bash",
+"cmd": "time (npm run build)"
+},
+{
+"tool": "Bash",
+"cmd": "(npm run build && npm test) || echo failed"
+},
+{
+"tool": "Bash",
+"cmd": "git log --oneline | head -5"
+},
+{
+"tool": "Bash",
+"cmd": "find . -name \"*.py\" -newer setup.py | wc -l"
+},
+{
+"tool": "Bash",
+"cmd": "case \"$(uname)\" in Darwin) echo mac ;; Linux) echo linux ;; esac"
+},
+{
+"tool": "Bash",
+"cmd": "echo $(( 2 + 2 ))"
+},
+{
+"tool": "Bash",
+"cmd": "cat <<'EOF' > .env.example\nAPI_URL=http://localhost:8000\nEOF"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem -Path . -Recurse -Filter *.py | Select-Object -First 20"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem | Where-Object { $_.Length -gt 1MB }"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem -Directory | ForEach-Object { $_.Name }"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem *.json | ForEach-Object { $_.FullName }"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Content .\\package.json | ConvertFrom-Json | Select-Object -ExpandProperty version"
+},
+{
+"tool": "PowerShell",
+"cmd": "(Get-Content package.json | ConvertFrom-Json).version"
+},
+{
+"tool": "PowerShell",
+"cmd": "$json = Get-Content config.json -Raw | ConvertFrom-Json; $json.name"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Content .\\app.log -Tail 50"
+},
+{
+"tool": "PowerShell",
+"cmd": "Select-String -Path .\\src\\*.ts -Pattern \"TODO\""
+},
+{
+"tool": "PowerShell",
+"cmd": "Test-Path .\\node_modules"
+},
+{
+"tool": "PowerShell",
+"cmd": "if (Test-Path .\\dist) { Write-Host \"dist exists\" }"
+},
+{
+"tool": "PowerShell",
+"cmd": "if ($LASTEXITCODE -ne 0) { Write-Host \"build failed\" }"
+},
+{
+"tool": "PowerShell",
+"cmd": "if (-not $?) { exit 1 }"
+},
+{
+"tool": "PowerShell",
+"cmd": "$env:NODE_ENV = 'production'; npm run build"
+},
+{
+"tool": "PowerShell",
+"cmd": "$env:PYTHONPATH = \"$PWD\\src\"; python -m pytest -q"
+},
+{
+"tool": "PowerShell",
+"cmd": "$env:PATH -split ';'"
+},
+{
+"tool": "PowerShell",
+"cmd": "$env:PATH -split ';' | Select-String python"
+},
+{
+"tool": "PowerShell",
+"cmd": "$PSVersionTable.PSVersion"
+},
+{
+"tool": "PowerShell",
+"cmd": "$PSVersionTable"
+},
+{
+"tool": "PowerShell",
+"cmd": "foreach ($f in Get-ChildItem *.md) { $f.Name }"
+},
+{
+"tool": "PowerShell",
+"cmd": "foreach ($line in Get-Content .\\list.txt) { Write-Output $line }"
+},
+{
+"tool": "PowerShell",
+"cmd": "$files = Get-ChildItem *.log; $files.Count"
+},
+{
+"tool": "PowerShell",
+"cmd": "$x = 5; $x * 2"
+},
+{
+"tool": "PowerShell",
+"cmd": "$p = Start-Process node -ArgumentList 'server.js' -PassThru; $p.Id"
+},
+{
+"tool": "PowerShell",
+"cmd": "Stop-Process -Id $p.Id"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Process -Name node -ErrorAction SilentlyContinue"
+},
+{
+"tool": "PowerShell",
+"cmd": "(Get-Item .\\dist\\app.js).Length"
+},
+{
+"tool": "PowerShell",
+"cmd": "(Get-ChildItem -Recurse .\\src | Measure-Object -Property Length -Sum).Sum"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem -Recurse | Measure-Object -Property Length -Sum"
+},
+{
+"tool": "PowerShell",
+"cmd": "[Environment]::GetFolderPath('Desktop')"
+},
+{
+"tool": "PowerShell",
+"cmd": "[System.IO.Path]::Combine($PWD, 'src', 'main.py')"
+},
+{
+"tool": "PowerShell",
+"cmd": "Join-Path $PSScriptRoot 'config.json'"
+},
+{
+"tool": "PowerShell",
+"cmd": "Split-Path -Parent $MyInvocation.MyCommand.Path"
+},
+{
+"tool": "PowerShell",
+"cmd": "Resolve-Path .\\src"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Date -Format \"yyyy-MM-dd HH:mm\""
+},
+{
+"tool": "PowerShell",
+"cmd": "Start-Sleep -Seconds 5"
+},
+{
+"tool": "PowerShell",
+"cmd": "Write-Host \"Done: $(Get-Date)\""
+},
+{
+"tool": "PowerShell",
+"cmd": "Write-Output \"Total: $($files.Count)\""
+},
+{
+"tool": "PowerShell",
+"cmd": "New-Item -ItemType Directory -Force -Path .\\out | Out-Null"
+},
+{
+"tool": "PowerShell",
+"cmd": "Copy-Item .\\template.env .\\.env"
+},
+{
+"tool": "PowerShell",
+"cmd": "Out-File -FilePath .\\notes.txt -InputObject \"hello\""
+},
+{
+"tool": "PowerShell",
+"cmd": "\"hello\" | Out-File .\\notes.txt"
+},
+{
+"tool": "PowerShell",
+"cmd": "Add-Content -Path .\\log.txt -Value \"started\""
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Command python -ErrorAction SilentlyContinue"
+},
+{
+"tool": "PowerShell",
+"cmd": "(Get-Command node).Source"
+},
+{
+"tool": "PowerShell",
+"cmd": "git status; git log --oneline -5"
+},
+{
+"tool": "PowerShell",
+"cmd": "git diff --stat | Select-Object -Last 1"
+},
+{
+"tool": "PowerShell",
+"cmd": "npm run build 2>&1 | Select-Object -Last 20"
+},
+{
+"tool": "PowerShell",
+"cmd": "python -m pytest -q 2>&1 | Select-Object -Last 30"
+},
+{
+"tool": "PowerShell",
+"cmd": "& .\\.venv\\Scripts\\python.exe -m pytest -q"
+},
+{
+"tool": "PowerShell",
+"cmd": "& \"$env:USERPROFILE\\.venv\\Scripts\\Activate.ps1\""
+},
+{
+"tool": "PowerShell",
+"cmd": ".\\.venv\\Scripts\\Activate.ps1"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem Env: | Sort-Object Name"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-Service | Where-Object { $_.Status -eq 'Running' }"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue"
+},
+{
+"tool": "PowerShell",
+"cmd": "$result = Invoke-RestMethod http://localhost:8000/health; $result.status"
+},
+{
+"tool": "PowerShell",
+"cmd": "$r = Invoke-WebRequest http://localhost:3000 -UseBasicParsing; $r.StatusCode"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-FileHash .\\dist\\app.zip -Algorithm SHA256"
+},
+{
+"tool": "PowerShell",
+"cmd": "Compress-Archive -Path .\\dist\\* -DestinationPath .\\dist.zip -Force"
+},
+{
+"tool": "PowerShell",
+"cmd": "Measure-Command { npm run build }"
+},
+{
+"tool": "PowerShell",
+"cmd": "$sw = [Diagnostics.Stopwatch]::StartNew(); npm test; $sw.Elapsed"
+},
+{
+"tool": "PowerShell",
+"cmd": "Get-ChildItem -Recurse -Include *.cs | Select-String -Pattern 'class ' | Measure-Object"
+},
+{
+"tool": "PowerShell",
+"cmd": "$count = (Get-ChildItem .\\tests -Filter test_*.py).Count; Write-Host $count"
+}
+]

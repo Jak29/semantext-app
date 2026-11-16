@@ -59,8 +59,8 @@ export function newItemNode(project) {
   }
   const d = WA.drafts["new:" + project] || (WA.drafts["new:" + project] = { title: "", kind: "task" });
   const title = h("input", { type: "text", class: "wfield", value: d.title, placeholder: "What is the work?",
-    "aria-label": "Title of the new item", on: { input: (e) => { d.title = e.target.value; } } });
-  const kind = h("select", { class: "wfield", "aria-label": "Kind", on: { change: (e) => { d.kind = e.target.value; } } },
+    "data-k": "wnew-title:" + project, "aria-label": "Title of the new item", on: { input: (e) => { d.title = e.target.value; } } });
+  const kind = h("select", { class: "wfield", "aria-label": "Kind", "data-k": "wnew-kind:" + project, on: { change: (e) => { d.kind = e.target.value; } } },
     KINDS.map((k) => h("option", { value: k, selected: k === d.kind ? "" : null }, k)));
   const send = async () => {
     if (!d.title.trim()) { WA.said = "Write a title first."; fill(); return; }
@@ -69,8 +69,8 @@ export function newItemNode(project) {
     }
   };
   return h("form", { class: "wnew", "aria-label": "New item in " + project, on: { submit: (e) => { e.preventDefault(); send(); } } },
-    title, kind, h("button", { type: "submit", class: "answer" }, "File it"),
-    h("button", { type: "button", class: "toggle small", on: { click: () => { WA.adding = null; fill(); } } }, "Cancel"));
+    title, kind, h("button", { type: "submit", class: "answer", "data-k": "wnew-file:" + project }, "File it"),
+    h("button", { type: "button", class: "toggle small", "data-k": "wnew-cancel:" + project, on: { click: () => { WA.adding = null; fill(); } } }, "Cancel"));
 }
 
 // ---------------------------------------------------------------- the panel's controls
@@ -81,10 +81,10 @@ function editNode(i) {
       on: { click: () => { WA.editing = i.id; WA.said = null; fill(); } } }, "Edit");
   }
   const d = WA.drafts["edit:" + i.id] || (WA.drafts["edit:" + i.id] = { title: i.title, kind: i.kind, text: i.text || "" });
-  const title = h("input", { type: "text", class: "wfield", value: d.title, "aria-label": "Title", on: { input: (e) => { d.title = e.target.value; } } });
-  const kind = h("select", { class: "wfield", "aria-label": "Kind", on: { change: (e) => { d.kind = e.target.value; } } },
+  const title = h("input", { type: "text", class: "wfield", value: d.title, "aria-label": "Title", "data-k": "wedit-title:" + i.id, on: { input: (e) => { d.title = e.target.value; } } });
+  const kind = h("select", { class: "wfield", "aria-label": "Kind", "data-k": "wedit-kind:" + i.id, on: { change: (e) => { d.kind = e.target.value; } } },
     KINDS.map((k) => h("option", { value: k, selected: k === d.kind ? "" : null }, k)));
-  const text = h("textarea", { class: "wfield", rows: "5", "aria-label": "Text", on: { input: (e) => { d.text = e.target.value; } } });
+  const text = h("textarea", { class: "wfield", rows: "5", "aria-label": "Text", "data-k": "wedit-text:" + i.id, on: { input: (e) => { d.text = e.target.value; } } });
   text.value = d.text;
   const send = async () => {
     const req = { id: i.id };
@@ -95,8 +95,8 @@ function editNode(i) {
     if (await workChange("edit", req, i.id + " saved.", i.version)) { delete WA.drafts["edit:" + i.id]; WA.editing = null; fill(); }
   };
   return h("form", { class: "wedit", "aria-label": "Edit " + i.id, on: { submit: (e) => { e.preventDefault(); send(); } } },
-    title, kind, text, h("div", { class: "row" }, h("button", { type: "submit", class: "answer" }, "Save"),
-      h("button", { type: "button", class: "toggle small", on: { click: () => { delete WA.drafts["edit:" + i.id]; WA.editing = null; fill(); } } }, "Cancel")));
+    title, kind, text, h("div", { class: "row" }, h("button", { type: "submit", class: "answer", "data-k": "wedit-save:" + i.id }, "Save"),
+      h("button", { type: "button", class: "toggle small", "data-k": "wedit-cancel:" + i.id, on: { click: () => { delete WA.drafts["edit:" + i.id]; WA.editing = null; fill(); } } }, "Cancel")));
 }
 
 // A change that one more click cannot take back asks first, in words.
@@ -129,13 +129,13 @@ export function panelControls(i) {
   out.push(h("div", { class: "row" }, row));
   const d = WA.drafts["prio:" + i.id] || (WA.drafts["prio:" + i.id] = { v: i.priority === null || i.priority === undefined ? "" : String(i.priority) });
   const prio = h("input", { type: "number", min: "1", max: "999", step: "1", class: "wfield narrow", value: d.v, "aria-label": "Priority (1 is first)",
-    on: { input: (e) => { d.v = e.target.value; } } });
+    "data-k": "wprio:" + i.id, on: { input: (e) => { d.v = e.target.value; } } });
   out.push(h("form", { class: "row", "aria-label": "Rank " + i.id, on: { submit: (e) => {
     e.preventDefault();
     const n = Number(d.v);
     if (!Number.isInteger(n) || n < 1 || n > 999) { WA.said = "A priority is a whole number from 1 (first) to 999."; fill(); return; }
     act(i, "priority", { value: n }, i.id + " ranked " + n + ".");
-  } } }, h("span", { class: "meta" }, "Priority "), prio, h("button", { type: "submit", class: "toggle small" }, "Rank")));
+  } } }, h("span", { class: "meta" }, "Priority "), prio, h("button", { type: "submit", class: "toggle small", "data-k": "wprio-rank:" + i.id }, "Rank")));
   return out;
 }
 
